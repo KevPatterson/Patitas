@@ -657,9 +657,26 @@ video {
   border-radius: 1rem;
   padding: 0;
   overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  border: 1px solid rgb(229 231 235);
 }
 
 .leaflet-popup-content {
   margin: 0;
   width: 100% !important;
+}
+
+.custom-popup .leaflet-popup-content-wrapper {
+  width: 280px !important;
+  min-height: 240px;
+  max-height: 320px;
+}
+
+.custom-popup .leaflet-popup-content {
+  padding: 0 !important;
+}
+
+.custom-popup .leaflet-popup-tip {
+  background: white;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }

@@ -292,7 +292,7 @@ export function MapPage() {
       </div>
 
       {/* Mapa */}
-      <div className="relative overflow-hidden rounded-3xl border-2 border-navy/10 shadow-lg">
+      <div className="relative overflow-hidden rounded-3xl border-2 border-navy/10 shadow-lg z-20">
         {loading ? (
           <div className="flex h-[600px] items-center justify-center bg-navy/5">
             <div className="text-center space-y-3">
@@ -333,39 +333,44 @@ export function MapPage() {
                     position={[pub.approximateLat, pub.approximateLng]}
                     icon={MARKER_ICONS[pub.type]}
                   >
-                    <Popup maxWidth={300} className="custom-popup">
-                      <div className="space-y-3 p-2">
-                        <StatusBadge status={pub.type} />
-                        <h3 className="font-display text-lg font-bold text-navy">
-                          {pub.title}
-                        </h3>
-                        {pub.coverImageUrl && (
-                          <img
-                            src={pub.coverImageUrl}
-                            alt={pub.title}
-                            className="w-full h-32 object-cover rounded-xl"
-                          />
-                        )}
-                        <p className="text-sm text-navy/70 line-clamp-2">
-                          {pub.description}
-                        </p>
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          {pub.species && (
-                            <span className="rounded-full bg-turquoise/10 border border-turquoise/20 px-2 py-1 font-medium text-turquoise-dark">
-                              {pub.species}
-                            </span>
+                    <Popup maxWidth={280} className="custom-popup">
+                      <div className="flex flex-col h-full">
+                        <div className="p-3 space-y-2 overflow-y-auto">
+                          <div className="flex items-center justify-between">
+                            <StatusBadge status={pub.type} />
+                          </div>
+                          <h3 className="font-display text-lg font-bold text-navy line-clamp-1">
+                            {pub.title}
+                          </h3>
+                          {pub.coverImageUrl && (
+                            <img
+                              src={pub.coverImageUrl}
+                              alt={pub.title}
+                              className="w-full h-40 object-cover rounded-xl"
+                            />
                           )}
-                          {pub.color && (
-                            <span className="rounded-full bg-purple/10 border border-purple/20 px-2 py-1 font-medium text-purple-dark">
-                              {pub.color}
-                            </span>
-                          )}
+                          <p className="text-sm text-navy/70 line-clamp-3">
+                            {pub.description}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5 text-xs">
+                            {pub.species && (
+                              <span className="rounded-full bg-turquoise/10 border border-turquoise/20 px-2 py-1 font-medium text-turquoise-dark">
+                                {pub.species}
+                              </span>
+                            )}
+                            {pub.color && (
+                              <span className="rounded-full bg-purple/10 border border-purple/20 px-2 py-1 font-medium text-purple-dark">
+                                {pub.color}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-medium text-navy/60 flex items-center gap-1">
+                            <span className="text-orange">📍</span>
+                            <span>{[pub.zone, pub.municipality, pub.province].filter(Boolean).join(', ')}</span>
+                          </p>
                         </div>
-                        <p className="text-xs font-medium text-navy/60">
-                          📍 {[pub.zone, pub.municipality, pub.province].filter(Boolean).join(', ')}
-                        </p>
                         <Link to={`/p/${pub.slug}`}>
-                          <Button variant="primary" className="w-full text-sm">
+                          <Button variant="primary" className="w-full text-sm py-3 rounded-none border-t border-navy/10 hover:bg-orange/90 transition-colors">
                             Ver detalles →
                           </Button>
                         </Link>

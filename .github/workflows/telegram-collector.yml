@@ -1,0 +1,95 @@
+name: Telegram Collector Worker
+
+on:
+  # Ejecutar cada 20 minutos (evita colisiones con cron de 15/30 min de otros)
+  schedule:
+    - cron: "*/20 * * * *"
+
+  # Permitir ejecución manual
+  workflow_dispatch:
+
+  # Ejecutar en push a main (para probar cambios)
+  push:
+    branches: [main]
+    paths:
+      - "workers/telegram-collector/**"
+
+# Evitar ejecuciones concurrentes (importante para last_cursor)
+concurrency:
+  group: telegram-collector
+  cancel-in-progress: false
+
+jobs:
+  telegram-collector:
+    name: Ejecutar Worker de Telegram
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      # No necesitamos permisos adicionales
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: "workers/telegram-collector/requirements.txt"
+
+      - name: Install dependencies
+        working-directory: workers/telegram-collector
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify Telethon session
+        working-directory: workers/telegram-collector
+        run: |
+          python -c "
+          from telethon.sessions import StringSession
+          session = StringSession('${{ secrets.TELEGRAM_STRING_SESSION }}')
+          print(f'Session valid: {session.auth_key is not None}')
+          print(f'Data center: {session.dc_id}')
+          "
+
+      - name: Run Telegram Collector
+        working-directory: workers/telegram-collector
+        env:
+          # Telegram API (obtener en https://my.telegram.org)
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELEGRAM_STRING_SESSION: ${{ secrets.TELEGRAM_STRING_SESSION }}
+
+          # Supabase
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_STORAGE_BUCKET: external-imports
+
+          # API de ingesta
+          INGEST_API_URL: ${{ secrets.INGEST_API_URL }}
+          INGEST_HMAC_SECRET: ${{ secrets.INGEST_HMAC_SECRET }}
+
+          # Opcionales (tienen defaults)
+          MAX_IMAGE_SIZE_BYTES: ${{ secrets.MAX_IMAGE_SIZE_BYTES }}
+          MAX_CONSECUTIVE_ERRORS: ${{ secrets.MAX_CONSECUTIVE_ERRORS }}
+          LOG_LEVEL: INFO
+        run: |
+          python -m main
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-collector-logs
+          path: workers/telegram-collector/*.log
+          retention-days: 7
+
+      - name: Notify on repeated failures
+        if: failure()
+        run: |
+          echo "::warning::Telegram Collector failed. Check workflow logs."
+          # Opcional: integrar con Slack, Discord, email via secrets

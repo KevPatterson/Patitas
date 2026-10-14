@@ -5,8 +5,12 @@ import { supabase } from '../lib/supabase/client';
 import { Button } from '../components/ui/button';
 import { DuplicateReview } from '../components/admin/duplicate-review';
 import { ModerationQueue } from '../components/admin/moderation-queue';
-import { UserPlus, Shield, Copy, AlertTriangle } from 'lucide-react';
-
+import { TakedownQueue } from '../components/admin/takedown-queue';
+import { PendingReviewQueue } from '../components/admin/pending-review-queue';
+import { ExternalSourcesManager } from '../components/admin/external-sources-manager';
+import { AdminMetrics } from '../components/admin/admin-metrics';
+import { UserPlus, Shield, Copy, AlertTriangle, Flag, CheckCircle, TrendingUp, Eye } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 type DashboardCounts = {
   activePublications: number;
   pendingReports: number;
@@ -14,6 +18,11 @@ type DashboardCounts = {
   totalUsers: number;
   recentSightings: number;
   adoptionRequests: number;
+  pendingTakedowns: number;
+  approvedTakedowns: number;
+  rejectedTakedowns: number;
+  activeSources: number;
+  inactiveSources: number;
 };
 
 type RecentReport = {
@@ -47,7 +56,7 @@ type UserProfile = {
   deleted_at: string | null;
 };
 
-type Tab = 'dashboard' | 'reports' | 'users' | 'publications' | 'duplicates' | 'moderation';
+type Tab = 'dashboard' | 'reports' | 'users' | 'publications' | 'duplicates' | 'moderation' | 'takedowns' | 'pending-review' | 'sources' | 'metrics';
 
 export function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -77,13 +86,24 @@ export function AdminPage() {
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
           supabase.from('sightings').select('id', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
           supabase.from('adoption_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
+          // Takedown metrics
+          supabase.from('takedown_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
+          supabase.from('takedown_requests').select('id', { count: 'exact', head: true }).eq('status', 'APPROVED'),
+          supabase.from('takedown_requests').select('id', { count: 'exact', head: true }).eq('status', 'REJECTED'),
+          // Source metrics
+          supabase.from('external_sources').select('id', { count: 'exact', head: true }).eq('is_active', true),
+          supabase.from('external_sources').select('id', { count: 'exact', head: true }).eq('is_active', false),
         ]),
         supabase.from('reports').select('id, reason, status, created_at, publication_id, publication:publications(slug, title)').order('created_at', { ascending: false }).limit(20),
         supabase.from('publications').select('id, slug, title, type, status, created_at').order('created_at', { ascending: false }).limit(20),
         supabase.from('profiles').select('id, username, full_name, avatar_url, role, created_at, deleted_at').order('created_at', { ascending: false }).limit(100),
       ]);
 
-      const [activePubs, pendingReports, resolvedCases, totalUsers, recentSightings, adoptionRequests] = countsResults;
+      const [
+        activePubs, pendingReports, resolvedCases, totalUsers, recentSightings, adoptionRequests,
+        pendingTakedowns, approvedTakedowns, rejectedTakedowns,
+        activeSources, inactiveSources
+      ] = countsResults;
 
       setCounts({
         activePublications: activePubs.count ?? 0,
@@ -92,6 +112,11 @@ export function AdminPage() {
         totalUsers: totalUsers.count ?? 0,
         recentSightings: recentSightings.count ?? 0,
         adoptionRequests: adoptionRequests.count ?? 0,
+        pendingTakedowns: pendingTakedowns.count ?? 0,
+        approvedTakedowns: approvedTakedowns.count ?? 0,
+        rejectedTakedowns: rejectedTakedowns.count ?? 0,
+        activeSources: activeSources.count ?? 0,
+        inactiveSources: inactiveSources.count ?? 0,
       });
 
       setReports(((reportsRes.data ?? []).map((r) => ({ ...r, publication: Array.isArray(r.publication) ? r.publication[0] : r.publication })) as RecentReport[]));
@@ -219,9 +244,13 @@ export function AdminPage() {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Resumen', icon: <Shield className="size-5" /> },
+    { id: 'metrics', label: 'Métricas', icon: <TrendingUp className="size-5" /> },
     { id: 'reports', label: 'Reportes', icon: <Shield className="size-5" /> },
     { id: 'duplicates', label: 'Duplicados', icon: <Copy className="size-5" /> },
     { id: 'moderation', label: 'Moderación IA', icon: <AlertTriangle className="size-5" /> },
+    { id: 'pending-review', label: 'Pendientes revisión', icon: <Eye className="size-5" /> },
+    { id: 'takedowns', label: 'Retiradas', icon: <Flag className="size-5" /> },
+    { id: 'sources', label: 'Fuentes', icon: <ExternalLink className="size-5" /> },
     { id: 'publications', label: 'Publicaciones', icon: <UserPlus className="size-5" /> },
     { id: 'users', label: 'Usuarios', icon: <UserPlus className="size-5" /> },
   ];
@@ -338,15 +367,37 @@ export function AdminPage() {
             <p className="text-sm font-medium text-navy/70 mt-2">Últimos 7 días</p>
           </div>
           
-          <div className="group rounded-2xl border-2 border-orange/20 bg-orange/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
+          <div className="group rounded-2xl border-2 border-red/20 bg-red/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
             <div className="flex items-center gap-3 mb-3">
-              <div className="size-12 rounded-xl bg-orange/10 flex items-center justify-center">
-                <UserPlus className="size-6 text-orange" />
+              <div className="size-12 rounded-xl bg-red/10 flex items-center justify-center">
+                <Flag className="size-6 text-red-600" />
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Adopciones</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Retiradas pendientes</p>
             </div>
-            <p className="font-display text-4xl font-extrabold text-navy">{counts.adoptionRequests}</p>
-            <p className="text-sm font-medium text-navy/70 mt-2">Solicitudes</p>
+            <p className="font-display text-4xl font-extrabold text-navy">{counts.pendingTakedowns}</p>
+            <p className="text-sm font-medium text-navy/70 mt-2">Requieren revisión</p>
+          </div>
+
+          <div className="group rounded-2xl border-2 border-green/20 bg-green/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="size-12 rounded-xl bg-green/10 flex items-center justify-center">
+                <CheckCircle className="size-6 text-green-600" />
+              </div>
+              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Retiradas aprobadas</p>
+            </div>
+            <p className="font-display text-4xl font-extrabold text-navy">{counts.approvedTakedowns}</p>
+            <p className="text-sm font-medium text-navy/70 mt-2">Publicaciones eliminadas</p>
+          </div>
+
+          <div className="group rounded-2xl border-2 border-blue/20 bg-blue/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="size-12 rounded-xl bg-blue/10 flex items-center justify-center">
+                <UserPlus className="size-6 text-blue-600" />
+              </div>
+              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Fuentes activas</p>
+            </div>
+            <p className="font-display text-4xl font-extrabold text-navy">{counts.activeSources}</p>
+            <p className="text-sm font-medium text-navy/70 mt-2">Canales monitoreados</p>
           </div>
         </div>
       )}
@@ -419,10 +470,34 @@ export function AdminPage() {
           <DuplicateReview />
         </div>
       )}
-
+      
+      {activeTab === 'metrics' && (
+        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
+          <AdminMetrics />
+        </div>
+      )}
+      
+      {activeTab === 'pending-review' && (
+        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
+          <PendingReviewQueue />
+        </div>
+      )}
+      
+      {activeTab === 'sources' && (
+        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
+          <ExternalSourcesManager />
+        </div>
+      )}
+      
       {activeTab === 'moderation' && (
         <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
           <ModerationQueue />
+        </div>
+      )}
+
+      {activeTab === 'takedowns' && (
+        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
+          <TakedownQueue />
         </div>
       )}
 

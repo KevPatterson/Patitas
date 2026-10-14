@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Calendar, CheckCircle, MapPin, PawPrint, X, Heart, Flag, Pencil, Trash2 } from 'lucide-react';
+import { AlertTriangle, Calendar, CheckCircle, MapPin, PawPrint, X, Heart, Flag, Pencil, Trash2, Shield, XCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { TextareaField } from '../components/ui/textarea-field';
 import { StatusBadge } from '../components/ui/status-badge';
@@ -51,6 +51,12 @@ export function PublicationPage() {
   const [adoptSuccess, setAdoptSuccess] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [showTakedownModal, setShowTakedownModal] = useState(false);
+  const [takedownReason, setTakedownReason] = useState<'COPYRIGHT' | 'PRIVACY' | 'INACCURATE' | 'OTHER'>('INACCURATE');
+  const [takedownEmail, setTakedownEmail] = useState('');
+  const [takedownDetails, setTakedownDetails] = useState('');
+  const [takedownLoading, setTakedownLoading] = useState(false);
+  const [takedownMessage, setTakedownMessage] = useState<string | null>(null);
   const loadSightings = async () => {
     if (!publication) return;
     const data = await getSightings(publication.id);
@@ -253,6 +259,47 @@ export function PublicationPage() {
       alert(error instanceof Error ? error.message : 'No se pudo eliminar la publicación');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleTakedown = async () => {
+    if (!publication) return;
+
+    setTakedownLoading(true);
+    setTakedownMessage(null);
+
+    try {
+      const response = await fetch('/api/takedown', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publication_id: publication.id,
+          reason: takedownReason,
+          contact_email: takedownEmail || undefined,
+          details: takedownDetails || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al crear solicitud');
+      }
+
+      setTakedownMessage('Solicitud enviada. La publicación ha sido ocultada pendiente de revisión.');
+      
+      // Cerrar modal y recargar publicación
+      setShowTakedownModal(false);
+      setTakedownReason('INACCURATE');
+      setTakedownEmail('');
+      setTakedownDetails('');
+      
+      const updated = await getPublicationBySlug(publication.slug);
+      setPublication(updated);
+    } catch (error) {
+      setTakedownMessage(error instanceof Error ? error.message : 'No pudimos procesar la solicitud.');
+    } finally {
+      setTakedownLoading(false);
     }
   };
 
@@ -542,26 +589,40 @@ export function PublicationPage() {
                       </div>
                     )
                   ) : null}
-                  
-                  <ShareMenu
-                    publication={{
-                      title: publication.title,
-                      type: publication.type,
-                      location: (() => {
-                        const loc = normalizeLocation(publication.location);
-                        return [loc?.municipality, loc?.province].filter(Boolean).join(', ');
-                      })(),
-                      slug: publication.slug,
-                    }}
-                  />
-
-                  {!showReportForm ? (
-                    <Button type="button" variant="ghost" onClick={() => setShowReportForm(true)} className="gap-2">
-                      <AlertTriangle size={16} />
-                      Reportar
+                  {/* Botón Retirar para publicaciones importadas */}
+                  {publication.is_imported && publication.status !== 'HIDDEN' && publication.status !== 'DELETED' ? (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => setShowTakedownModal(true)}
+                      className="gap-2"
+                    >
+                      <Shield size={16} />
+                      Retirar
                     </Button>
                   ) : null}
-                </div>
+
+                  <div className="flex items-stretch gap-3">
+                    <ShareMenu
+                      publication={{
+                        title: publication.title,
+                        type: publication.type,
+                        location: (() => {
+                          const loc = normalizeLocation(publication.location);
+                          return [loc?.municipality, loc?.province].filter(Boolean).join(', ');
+                        })(),
+                        slug: publication.slug,
+                      }}
+                      className="flex-1"
+                    />
+
+                    {!showReportForm ? (
+                      <Button type="button" variant="ghost" onClick={() => setShowReportForm(true)} className="flex-1 w-full gap-2 justify-center">
+                        <AlertTriangle size={16} />
+                        Reportar
+                      </Button>
+                    ) : null}
+                  </div>
               </div>
 
               {/* Formulario de reporte */}
@@ -619,7 +680,98 @@ export function PublicationPage() {
                   </Button>
                 </div>
               ) : null}
-              {/* Información del publicador */}
+            </div>
+
+            {/* Modal de retirada (takedown) */}
+            {showTakedownModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                  <div className="w-full max-w-md bg-white rounded-3xl border-2 border-navy/10 shadow-2xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="font-display text-xl font-bold text-navy flex items-center gap-2">
+                        <Shield className="size-6 text-lost" />
+                        Retirar publicación
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => { setShowTakedownModal(false); setTakedownMessage(null); }}
+                        className="p-1 rounded-xl hover:bg-navy/5 transition"
+                      >
+                        <XCircle className="size-5 text-navy/50" />
+                      </button>
+                    </div>
+
+                    <p className="text-sm text-navy/70 mb-4">
+                      Esta acción ocultará la publicación inmediatamente y notificará a los moderadores.
+                      Solo para publicaciones importadas desde fuentes externas.
+                    </p>
+
+                    <label className="space-y-2 text-sm font-semibold text-navy">
+                      <span>Motivo</span>
+                      <select
+                        className="w-full h-10 rounded-2xl border-2 border-navy/10 bg-white px-3 text-base text-navy"
+                        value={takedownReason}
+                        onChange={(e) => setTakedownReason(e.target.value as typeof takedownReason)}
+                      >
+                        <option value="COPYRIGHT">Derechos de autor / Propiedad intelectual</option>
+                        <option value="PRIVACY">Privacidad / Datos personales</option>
+                        <option value="INACCURATE">Información incorrecta / Desactualizada</option>
+                        <option value="OTHER">Otro motivo</option>
+                      </select>
+                    </label>
+
+                    <label className="space-y-2 text-sm font-semibold text-navy">
+                      <span>Tu email (opcional, para seguimiento)</span>
+                      <input
+                        type="email"
+                        className="w-full h-10 rounded-2xl border-2 border-navy/10 bg-white px-3 text-base text-navy"
+                        placeholder="tu@email.com"
+                        value={takedownEmail}
+                        onChange={(e) => setTakedownEmail(e.target.value)}
+                      />
+                    </label>
+
+                    <label className="space-y-2 text-sm font-semibold text-navy">
+                      <span>Detalles adicionales (opcional)</span>
+                      <TextareaField
+                        label="Detalles adicionales"
+                        value={takedownDetails}
+                        onChange={(e) => setTakedownDetails(e.target.value)}
+                        placeholder="Explica brevemente por qué solicitas la retirada..."
+                      />
+                    </label>
+
+                    {takedownMessage && (
+                      <p
+                        className={`rounded-2xl px-4 py-3 text-sm font-medium ${
+                          takedownMessage.includes('enviado') ? 'bg-found/10 border border-found/20 text-found-dark' : 'bg-lost/10 border border-lost/20 text-lost-dark'
+                        }`}
+                      >
+                        {takedownMessage}
+                      </p>
+                    )}
+
+                    <div className="flex gap-3 pt-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => { setShowTakedownModal(false); setTakedownMessage(null); }}
+                        className="flex-1"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        onClick={handleTakedown}
+                        loading={takedownLoading}
+                        className="flex-1"
+                      >
+                        Enviar solicitud
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="rounded-3xl border-2 border-purple/20 bg-white p-6 space-y-3 shadow-md">
                 <h2 className="font-display text-xl font-extrabold text-navy">👤 Publicado por</h2>
                 {publication.owner?.username ? (

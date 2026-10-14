@@ -3,7 +3,7 @@
  * Permite cambiar de proveedor sin modificar toda la aplicación
  */
 
-export type AIProvider = 'CLOUDFLARE' | 'OPENAI' | 'MOCK';
+export type AIProvider = 'TESSERACT' | 'GOOGLE_VISION' | 'CLOUDFLARE' | 'OPENAI' | 'MOCK';
 
 export type OCRResult = {
   text: string;
@@ -55,6 +55,11 @@ export interface IAIProvider {
   analyzeImage(imageUrl: string, prompt?: string): Promise<VisionResult>;
 
   /**
+   * Analizar texto (clasificación, extracción de entidades, etc.)
+   */
+  analyzeText(text: string, prompt?: string): Promise<{ summary?: string; confidence?: number }>;
+
+  /**
    * Generar embedding de texto
    */
   generateTextEmbedding(text: string): Promise<TextEmbeddingResult>;
@@ -77,8 +82,11 @@ export function getAIProvider(): IAIProvider {
   const provider = (process.env.AI_PROVIDER || 'MOCK') as AIProvider;
 
   switch (provider) {
+    case 'TESSERACT':
+      return getTesseractProvider();
+    case 'GOOGLE_VISION':
+      return getGoogleVisionProvider();
     case 'CLOUDFLARE':
-      // Lazy import para no cargar si no se usa
       return getCloudflareProvider();
     case 'OPENAI':
       throw new Error('OpenAI provider not implemented yet');
@@ -167,6 +175,333 @@ function getMockProvider(): IAIProvider {
         },
       };
     },
+
+    async analyzeText(_text: string, _prompt?: string): Promise<{ summary?: string; confidence?: number }> {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return {
+        summary: JSON.stringify({
+          type: 'LOST',
+          confidence: 0.7,
+          resolved: false,
+        }),
+        confidence: 0.7,
+      };
+    },
+  };
+}
+
+/**
+ * Proveedor de Tesseract.js (OCR gratuito)
+ */
+function getTesseractProvider(): IAIProvider {
+  // Import dinámico para evitar carga innecesaria
+  let tesseractModule: typeof import('tesseract.js') | null = null;
+
+  const getTesseract = async () => {
+    if (!tesseractModule) {
+      tesseractModule = await import('tesseract.js');
+    }
+    return tesseractModule;
+  };
+
+  return {
+    async extractTextFromImage(imageUrl: string): Promise<OCRResult> {
+      try {
+        const Tesseract = await getTesseract();
+        
+        const worker = await Tesseract.createWorker('spa+eng', 1, {
+          logger: (m) => console.log('Tesseract:', m),
+        });
+
+        const { data } = await worker.recognize(imageUrl);
+        
+        await worker.terminate();
+
+        // Mapear a nuestro formato
+        const boundingBoxes = data.words?.map((word) => ({
+          text: word.text,
+          bbox: [
+            word.bbox.x0,
+            word.bbox.y0,
+            word.bbox.x1,
+            word.bbox.y1,
+          ] as [number, number, number, number],
+          confidence: word.confidence / 100,
+        })) || [];
+
+        return {
+          text: data.text,
+          confidence: data.confidence / 100,
+          language: 'es',
+          boundingBoxes,
+        };
+      } catch (error) {
+        console.error('Tesseract OCR error:', error);
+        throw new Error('OCR failed');
+      }
+    },
+
+    async analyzeImage(_imageUrl: string, _prompt?: string): Promise<VisionResult> {
+      // Tesseract es solo OCR, no tiene Computer Vision
+      // Usar Google Vision si está disponible o retornar resultado básico
+      return {
+        labels: [],
+        description: 'Tesseract no soporta Computer Vision. Use GOOGLE_VISION provider.',
+      };
+    },
+
+    async generateTextEmbedding(_text: string): Promise<TextEmbeddingResult> {
+      throw new Error('Tesseract no soporta embeddings. Use GOOGLE_VISION o CLOUDFLARE provider.');
+    },
+
+    async generateImageEmbedding(_imageUrl: string): Promise<ImageEmbeddingResult> {
+      throw new Error('Tesseract no soporta embeddings. Use GOOGLE_VISION o CLOUDFLARE provider.');
+    },
+
+    async moderateContent(_text: string, _imageUrl?: string): Promise<ModerationResult> {
+      throw new Error('Tesseract no soporta moderación. Use GOOGLE_VISION o CLOUDFLARE provider.');
+    },
+
+    async analyzeText(_text: string, _prompt?: string): Promise<{ summary?: string; confidence?: number }> {
+      throw new Error('Tesseract no soporta análisis de texto. Use GOOGLE_VISION o CLOUDFLARE provider.');
+    },
+  };
+}
+
+/**
+ * Proveedor de Google Cloud Vision (gratuito hasta 1000 req/mes)
+ */
+function getGoogleVisionProvider(): IAIProvider {
+  const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+  
+  if (!credentials) {
+    throw new Error('Missing GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable');
+  }
+
+  // Import dinámico
+  let visionModule: typeof import('@google-cloud/vision') | null = null;
+  let visionClient: InstanceType<typeof import('@google-cloud/vision').ImageAnnotatorClient> | null = null;
+
+  const getVisionClient = async () => {
+    if (!visionClient) {
+      visionModule = await import('@google-cloud/vision');
+      const credentialsObj = JSON.parse(credentials);
+      visionClient = new visionModule.ImageAnnotatorClient({
+        credentials: credentialsObj,
+      });
+    }
+    return visionClient;
+  };
+
+  return {
+    async extractTextFromImage(imageUrl: string): Promise<OCRResult> {
+      try {
+        const client = await getVisionClient();
+        
+        const [result] = await client.textDetection(imageUrl);
+        const detections = result.textAnnotations;
+
+        if (!detections || detections.length === 0) {
+          return {
+            text: '',
+            confidence: 0,
+            language: 'es',
+          };
+        }
+
+        // El primer elemento contiene todo el texto
+        const fullText = detections[0];
+        
+        // Los demás elementos son palabras individuales con bounding boxes
+        const boundingBoxes = detections.slice(1).map((word) => {
+          const vertices = word.boundingPoly?.vertices || [];
+          const bbox: [number, number, number, number] = [
+            vertices[0]?.x || 0,
+            vertices[0]?.y || 0,
+            vertices[2]?.x || 0,
+            vertices[2]?.y || 0,
+          ];
+
+          return {
+            text: word.description || '',
+            bbox,
+            confidence: 0.9, // Google no provee confidence por palabra en text detection
+          };
+        });
+
+        return {
+          text: fullText.description || '',
+          confidence: 0.95,
+          language: fullText.locale || 'es',
+          boundingBoxes,
+        };
+      } catch (error) {
+        console.error('Google Vision OCR error:', error);
+        throw new Error('OCR failed');
+      }
+    },
+
+    async analyzeImage(imageUrl: string, _prompt?: string): Promise<VisionResult> {
+      try {
+        const client = await getVisionClient();
+        
+        // Obtener múltiples tipos de anotaciones
+        const [result] = await client.annotateImage({
+          image: { source: { imageUri: imageUrl } },
+          features: [
+            { type: 'LABEL_DETECTION', maxResults: 20 },
+            { type: 'OBJECT_LOCALIZATION', maxResults: 10 },
+            { type: 'IMAGE_PROPERTIES' },
+          ],
+        });
+
+        // Procesar labels
+        const labels = (result.labelAnnotations || []).map((label) => ({
+          label: label.description || '',
+          confidence: label.score || 0,
+        }));
+
+        // Procesar objetos
+        const objects = (result.localizedObjectAnnotations || []).map((obj) => {
+          const vertices = obj.boundingPoly?.normalizedVertices || [];
+          const bbox: [number, number, number, number] | undefined = vertices.length >= 2
+            ? [
+                vertices[0]?.x || 0,
+                vertices[0]?.y || 0,
+                vertices[2]?.x || 0,
+                vertices[2]?.y || 0,
+              ]
+            : undefined;
+
+          return {
+            object: obj.name || '',
+            confidence: obj.score || 0,
+            bbox,
+          };
+        });
+
+        // Generar descripción a partir de los labels principales
+        const topLabels = labels.slice(0, 5).map((l) => l.label).join(', ');
+        const description = `Image contains: ${topLabels}`;
+
+        return {
+          labels,
+          objects,
+          description,
+        };
+      } catch (error) {
+        console.error('Google Vision analysis error:', error);
+        throw new Error('Vision analysis failed');
+      }
+    },
+
+    async generateTextEmbedding(_text: string): Promise<TextEmbeddingResult> {
+      throw new Error('Google Vision no soporta embeddings de texto directamente. Use CLOUDFLARE provider o implemente usando Cloud Natural Language API.');
+    },
+
+    async generateImageEmbedding(_imageUrl: string): Promise<ImageEmbeddingResult> {
+      throw new Error('Google Vision no soporta embeddings de imagen directamente. Use CLOUDFLARE provider o implemente usando Vertex AI.');
+    },
+
+    async moderateContent(text: string, imageUrl?: string): Promise<ModerationResult> {
+      try {
+        const client = await getVisionClient();
+        
+        // Si hay imagen, usar Safe Search
+        if (imageUrl) {
+          const [result] = await client.safeSearchDetection(imageUrl);
+          const safeSearch = result.safeSearchAnnotation;
+
+          if (!safeSearch) {
+            return { classification: 'UNCERTAIN', confidence: 0 };
+          }
+
+          // Mapear niveles de Google a nuestras clasificaciones
+          const likelihood = (value: string | null | undefined) => {
+            if (!value) return 0;
+            const map: Record<string, number> = {
+              'VERY_UNLIKELY': 0,
+              'UNLIKELY': 0.2,
+              'POSSIBLE': 0.5,
+              'LIKELY': 0.8,
+              'VERY_LIKELY': 1,
+            };
+            return map[value] || 0;
+          };
+
+          const adult = likelihood(safeSearch.adult);
+          const violence = likelihood(safeSearch.violence);
+          const spoof = likelihood(safeSearch.spoof);
+          const medical = likelihood(safeSearch.medical);
+
+          const maxScore = Math.max(adult, violence, spoof, medical);
+
+          if (maxScore >= 0.8) {
+            return {
+              classification: 'INAPPROPRIATE',
+              confidence: maxScore,
+              categories: {
+                adult: adult,
+                violence: violence,
+                spoof: spoof,
+                medical: medical,
+              },
+            };
+          } else if (maxScore >= 0.5) {
+            return {
+              classification: 'UNCERTAIN',
+              confidence: 0.5,
+              categories: {
+                adult: adult,
+                violence: violence,
+                spoof: spoof,
+                medical: medical,
+              },
+            };
+          }
+        }
+
+        // Moderación básica del texto (keywords)
+        const lowerText = text.toLowerCase();
+        const spamKeywords = ['viagra', 'casino', 'lottery', 'winner', 'click here'];
+        const hasSpam = spamKeywords.some((keyword) => lowerText.includes(keyword));
+
+        if (hasSpam) {
+          return { classification: 'SPAM', confidence: 0.8 };
+        }
+
+        return { classification: 'SAFE', confidence: 0.9 };
+      } catch (error) {
+        console.error('Google Vision moderation error:', error);
+        return { classification: 'UNCERTAIN', confidence: 0 };
+      }
+    },
+
+    async analyzeText(text: string, _prompt?: string): Promise<{ summary?: string; confidence?: number }> {
+      // Por ahora, análisis heurístico básico
+      const lowerText = text.toLowerCase();
+      let type = 'NOT_RELEVANT';
+      let confidence = 0.3;
+
+      if (lowerText.includes('perdido') || lowerText.includes('se perdió') || lowerText.includes('busco a mi')) {
+        type = 'LOST'; confidence = 0.7;
+      } else if (lowerText.includes('encontrado') || lowerText.includes('encontré') || lowerText.includes('hallado')) {
+        type = 'FOUND'; confidence = 0.7;
+      } else if (lowerText.includes('adopción') || lowerText.includes('adoptar') || lowerText.includes('busca hogar')) {
+        type = 'ADOPTION'; confidence = 0.7;
+      } else if (lowerText.includes('abandonado') || lowerText.includes('abandono')) {
+        type = 'ABANDONED'; confidence = 0.7;
+      }
+
+      const resolved = lowerText.includes('ya apareció') || lowerText.includes('ya está en casa') ||
+                       lowerText.includes('ya tiene dueño') || lowerText.includes('adoptado') ||
+                       (type === 'LOST' && lowerText.includes('encontrado'));
+
+      return {
+        summary: JSON.stringify({ type, confidence, resolved }),
+        confidence,
+      };
+    },
   };
 }
 
@@ -184,9 +519,7 @@ function getCloudflareProvider(): IAIProvider {
   const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run`;
 
   return {
-    async extractTextFromImage(imageUrl: string): Promise<OCRResult> {
-      // Descargar la imagen
-      const imageResponse = await fetch(imageUrl);
+    async extractTextFromImage(_imageUrl: string): Promise<OCRResult> {
       const imageBuffer = await imageResponse.arrayBuffer();
       const imageBase64 = Buffer.from(imageBuffer).toString('base64');
 
@@ -338,6 +671,62 @@ function getCloudflareProvider(): IAIProvider {
       return {
         classification,
         confidence: 0.75,
+      };
+    },
+
+    async analyzeText(text: string, prompt?: string): Promise<{ summary?: string; confidence?: number }> {
+      // Usar LLM de Cloudflare para análisis de texto
+      const analysisPrompt = prompt || 
+        `Clasifica este contenido sobre mascotas en Cuba. Responde SOLO en JSON:
+{
+  "type": "LOST|FOUND|ADOPTION|ABANDONED|NOT_RELEVANT",
+  "confidence": 0.0-1.0,
+  "resolved": true|false
+}
+
+Contenido: "${text}"`;
+
+      const response = await fetch(`${baseUrl}/@cf/meta/llama-3-8b-instruct`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: analysisPrompt,
+          max_tokens: 256,
+          temperature: 0.1,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Cloudflare AI text analysis failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const result = data.result?.response || '{}';
+
+      // Intentar parsear JSON de la respuesta
+      let parsed: { type?: string; confidence?: number; resolved?: boolean };
+      try {
+        const jsonMatch = result.match(/\{[\s\S]*\}/);
+        parsed = JSON.parse(jsonMatch ? jsonMatch[0] : result);
+      } catch {
+        // Fallback heurístico
+        const lowerText = text.toLowerCase();
+        let type = 'NOT_RELEVANT';
+        let confidence = 0.3;
+        if (lowerText.includes('perdido') || lowerText.includes('se perdió')) { type = 'LOST'; confidence = 0.7; }
+        else if (lowerText.includes('encontrado') || lowerText.includes('encontré')) { type = 'FOUND'; confidence = 0.7; }
+        else if (lowerText.includes('adopción') || lowerText.includes('adoptar')) { type = 'ADOPTION'; confidence = 0.7; }
+        else if (lowerText.includes('abandonado')) { type = 'ABANDONED'; confidence = 0.7; }
+        const resolved = lowerText.includes('ya apareció') || lowerText.includes('ya está en casa');
+        parsed = { type, confidence, resolved };
+      }
+
+      return {
+        summary: JSON.stringify(parsed),
+        confidence: parsed.confidence ?? 0.3,
       };
     },
   };

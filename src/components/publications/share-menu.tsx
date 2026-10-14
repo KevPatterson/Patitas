@@ -18,9 +18,10 @@ type ShareMenuProps = {
     location: string;
     slug: string;
   };
+  className?: string;
 };
 
-export function ShareMenu({ publication }: ShareMenuProps) {
+export function ShareMenu({ publication, className }: ShareMenuProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -42,10 +43,9 @@ export function ShareMenu({ publication }: ShareMenuProps) {
       // Error al copiar
     }
   };
-
   return (
-    <div className="relative">
-      <Button type="button" variant="secondary" onClick={() => setShowMenu(!showMenu)}>
+    <div className={['relative', className].filter(Boolean).join(' ')}>
+      <Button type="button" variant="secondary" onClick={() => setShowMenu(!showMenu)} className="w-full">
         {showMenu ? (
           <>
             <X className="size-4" aria-hidden="true" /> Cerrar
@@ -56,7 +56,6 @@ export function ShareMenu({ publication }: ShareMenuProps) {
           </>
         )}
       </Button>
-
       {showMenu ? (
         <div className="absolute right-0 top-full z-10 mt-3 w-64 space-y-2 rounded-2xl border-2 border-[#CFEFE6] bg-white p-4 shadow-[0_18px_50px_rgba(11,59,60,0.08)]">
           {canUseWebShare() ? (

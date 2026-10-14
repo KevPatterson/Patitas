@@ -2,7 +2,13 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../_lib/supabase-admin';
 import { consumeRateLimit } from '../_lib/rate-limit';
 
-type ModerationAction = 'resolve-report' | 'hide-publication' | 'restore-publication' | 'set-role';
+type ModerationAction = 
+  | 'resolve-report' 
+  | 'hide-publication' 
+  | 'restore-publication' 
+  | 'set-role'
+  | 'approve-takedown'
+  | 'reject-takedown';
 
 function json(res: VercelResponse, statusCode: number, body: Record<string, unknown>) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -131,6 +137,105 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     return json(res, 200, { ok: true, role: newRole });
+  }
+
+  if (payload.action === 'approve-takedown') {
+    // Aprobar solicitud: marcar publicación como DELETED permanentemente
+    const { data: takedown, error: takedownError } = await supabaseAdmin
+      .from('takedown_requests')
+      .select('id, publication_id, reason')
+      .eq('id', payload.id)
+      .single();
+
+    if (takedownError || !takedown) {
+      return json(res, 404, { error: 'Solicitud no encontrada' });
+    }
+
+    // Actualizar solicitud
+    await supabaseAdmin
+      .from('takedown_requests')
+      .update({
+        status: 'APPROVED',
+        reviewed_by: userData.user.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', payload.id);
+
+    // Marcar publicación como DELETED
+    await supabaseAdmin
+      .from('publications')
+      .update({
+        status: 'DELETED',
+        deleted_at: new Date().toISOString(),
+      })
+      .eq('id', takedown.publication_id);
+
+    // Actualizar external_posts si es importada
+    await supabaseAdmin
+      .from('external_posts')
+      .update({ status: 'TAKEN_DOWN' })
+      .eq('publication_id', takedown.publication_id);
+
+    await supabaseAdmin.from('audit_logs').insert({
+      actor_profile_id: userData.user.id,
+      action: 'TAKEDOWN_APPROVED',
+      entity_type: 'takedown_request',
+      entity_id: payload.id,
+      metadata: { publication_id: takedown.publication_id, reason: takedown.reason },
+    });
+
+    return json(res, 200, { ok: true, message: 'Solicitud aprobada. Publicación eliminada.' });
+  }
+
+
+  if (payload.action === 'reject-takedown') {
+    // Rechazar solicitud: restaurar publicación si estaba oculta
+    const { data: takedown, error: takedownError } = await supabaseAdmin
+      .from('takedown_requests')
+      .select('id, publication_id, previous_status, review_notes')
+      .eq('id', payload.id)
+      .single();
+
+    if (takedownError || !takedown) {
+      return json(res, 404, { error: 'Solicitud no encontrada' });
+    }
+
+    const previousStatus = takedown.previous_status ?? 'ACTIVE';
+
+    // Actualizar solicitud
+    await supabaseAdmin
+      .from('takedown_requests')
+      .update({
+        status: 'REJECTED',
+        reviewed_by: userData.user.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', payload.id);
+
+    // Restaurar publicación
+    await supabaseAdmin
+      .from('publications')
+      .update({
+        status: previousStatus,
+      })
+      .eq('id', takedown.publication_id);
+
+
+    // Actualizar external_posts si es importada
+    await supabaseAdmin
+      .from('external_posts')
+      .update({ status: 'PUBLISHED' })
+      .eq('publication_id', takedown.publication_id);
+
+    await supabaseAdmin.from('audit_logs').insert({
+      actor_profile_id: userData.user.id,
+      action: 'TAKEDOWN_REJECTED',
+      entity_type: 'takedown_request',
+      entity_id: payload.id,
+      metadata: { publication_id: takedown.publication_id },
+    });
+
+    return json(res, 200, { ok: true, message: 'Solicitud rechazada. Publicación restaurada.' });
   }
 
   return json(res, 400, { error: 'Unknown action' });

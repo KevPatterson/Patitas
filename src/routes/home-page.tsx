@@ -31,8 +31,9 @@ export function HomePage() {
     }
     return null;
   });
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [_locationError, setLocationError] = useState(false);
+
   const [loadingLocation, setLoadingLocation] = useState(() => {
     // Si ya tiene ubicación guardada, no mostrar indicador
     try {
@@ -42,7 +43,6 @@ export function HomePage() {
       return true;
     }
   });
-
   useEffect(() => {
     setPageMeta({
       title: `${SITE_NAME} · Que ninguna patita se quede sin casa`,

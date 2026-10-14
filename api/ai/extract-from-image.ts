@@ -179,7 +179,7 @@ function extractStructuredDataFromText(text: string): {
   }
 
   // Extraer fecha (formatos: DD/MM/YYYY, DD-MM-YYYY, DD de mes)
-  const dateRegex = /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})|(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/i;
+  const dateRegex = /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})|(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/i;
   const dateMatch = text.match(dateRegex);
   if (dateMatch) {
     result.date = dateMatch[0];

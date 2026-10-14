@@ -32,6 +32,11 @@ type CreatePublicationInput = {
   contactEmail?: string;
   eventDate?: string;
   eventTimeApprox?: string;
+  // Campos de importación (Módulo B - Facebook Import)
+  isImported?: boolean;
+  sourcePlatform?: 'TELEGRAM' | 'FACEBOOK_PUBLIC';
+  sourceUrl?: string;
+  importReviewStatus?: 'AUTO_APPROVED' | 'MANUAL_APPROVED' | 'REJECTED';
 };
 
 export async function createLocation(input: CreateLocationInput) {
@@ -115,6 +120,11 @@ export async function createPublication(input: CreatePublicationInput) {
       contact_email: input.contactEmail || null,
       event_date: input.eventDate || null,
       event_time_approx: input.eventTimeApprox || null,
+      // Campos de importación
+      is_imported: input.isImported ?? false,
+      source_platform: input.sourcePlatform ?? null,
+      source_url: input.sourceUrl ?? null,
+      import_review_status: input.importReviewStatus ?? 'MANUAL_APPROVED',
     })
     .select('id, slug')
     .single();
@@ -173,5 +183,29 @@ export async function uploadPublicationImages(publicationId: string, files: File
 
   if (error) {
     throw error;
+  }
+}
+export async function deletePublicationImages(publicationId: string, storagePaths: string[]) {
+  if (storagePaths.length === 0) return;
+  
+  // Eliminar de storage
+  const { error: storageError } = await supabase.storage
+    .from('pet-images')
+    .remove(storagePaths);
+  
+  if (storageError) {
+    console.error('Error deleting images from storage:', storageError);
+    // No lanzar error, continuar con eliminación de BD
+  }
+  
+  // Eliminar de base de datos
+  const { error: dbError } = await supabase
+    .from('publication_images')
+    .delete()
+    .eq('publication_id', publicationId)
+    .in('storage_path', storagePaths);
+  
+  if (dbError) {
+    throw dbError;
   }
 }

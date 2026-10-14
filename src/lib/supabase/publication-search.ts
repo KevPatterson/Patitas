@@ -13,12 +13,18 @@ type PublicationRow = {
   sex: string | null;
   size: string | null;
   published_at: string;
-  contact_mode?: 'INTERNAL' | 'PHONE' | 'WHATSAPP';
+  contact_mode?: 'INTERNAL' | 'PHONE' | 'WHATSAPP' | 'EMAIL';
   contact_phone?: string | null;
   contact_whatsapp?: string | null;
+  contact_email?: string | null;
   reward?: string | null;
   event_date?: string | null;
   event_time_approx?: string | null;
+  is_imported?: boolean;
+  source_platform?: string | null;
+  source_url?: string | null;
+  import_review_status?: string | null;
+  microchip?: string | null;
   location:
     | {
         province: string;
@@ -40,6 +46,8 @@ type PublicationRow = {
     is_cover: boolean;
     alt_text: string | null;
   }>;
+  owner?: { username: string } | null;
+  owner_profile_id?: string;
 };
 
 export type PublicationSummary = {
@@ -405,6 +413,69 @@ export async function getPublicationBySlug(slug: string) {
         reward: string | null;
         event_date: string | null;
         event_time_approx: string | null;
+        owner_profile_id: string | null;
+        owner: { username: string } | null;
+      })
+    | null;
+}
+export async function getPublicationById(id: string) {
+  const { data, error } = await supabase
+    .from('publications')
+    .select(`
+      id, 
+      slug, 
+      title, 
+      description, 
+      type, 
+      status, 
+      species, 
+      breed, 
+      color, 
+      sex, 
+      size, 
+      age_approx,
+      characteristics,
+      published_at, 
+      contact_phone, 
+      contact_whatsapp, 
+      contact_email,
+      contact_mode, 
+      reward, 
+      event_date, 
+      event_time_approx, 
+      microchip,
+      is_imported,
+      source_platform,
+      source_url,
+      import_review_status,
+      owner_profile_id,
+      owner:profiles!owner_profile_id(username),
+      location:locations!inner(province, municipality, zone, approximate_lat, approximate_lng), 
+      publication_images(storage_path, is_cover, alt_text)
+    `)
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as
+    | (PublicationRow & {
+        age_approx: string | null;
+        characteristics: string | null;
+        contact_phone: string | null;
+        contact_whatsapp: string | null;
+        contact_email: string | null;
+        contact_mode: 'INTERNAL' | 'PHONE' | 'WHATSAPP' | 'EMAIL';
+        reward: string | null;
+        event_date: string | null;
+        event_time_approx: string | null;
+        microchip: string | null;
+        is_imported: boolean | null;
+        source_platform: string | null;
+        source_url: string | null;
+        import_review_status: string | null;
         owner_profile_id: string | null;
         owner: { username: string } | null;
       })

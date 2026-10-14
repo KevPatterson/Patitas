@@ -1,16 +1,19 @@
-import { useMemo, useState, type ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Circle, Tag } from 'lucide-react';
+import { Circle, Tag, Globe } from 'lucide-react';
 import { useAuth } from '../app/auth-context';
 import { Button, LinkButton } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
 import { TextareaField } from '../components/ui/textarea-field';
 import { PawLoader } from '../components/ui/paw-loader';
 import { ImageDataExtractor } from '../components/ai/image-data-extractor';
-import { createLocation, createPublication, uploadPublicationImages, createPet } from '../lib/supabase/publications';
+import { FacebookImportWizard } from '../components/import/FacebookImportWizard';
+import { createLocation, createPublication, uploadPublicationImages, createPet, deletePublicationImages } from '../lib/supabase/publications';
+import { updatePublication } from '../lib/supabase/my-publications';
+import { getPublicationById } from '../lib/supabase/publication-search';
 import { buildPublicationSlug } from '../lib/utils/slug';
 import { publicationFormSchema, type PublicationFormValues } from '../lib/validations/publication';
 import { TYPE_LABELS, TYPE_EMOJIS, SPECIES_LABELS, SEX_LABELS, SIZE_LABELS, AGE_LABELS, MAX_IMAGES, MAX_IMAGE_BYTES, ALLOWED_IMAGE_TYPES } from '../lib/constants/labels';
@@ -36,13 +39,20 @@ function LocationPicker({ onChange }: { onChange: (lat: string, lng: string) => 
   });
   return null;
 }
-
 export function PublishPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editParam = searchParams.get('edit');
+  
   const [step, setStep] = useState(1);
   const [files, setFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<Array<{ storage_path: string; is_cover: boolean }>>([]);
+  const [originalExistingImages, setOriginalExistingImages] = useState<Array<{ storage_path: string; is_cover: boolean }>>([]);
+  const [editingPublicationId, setEditingPublicationId] = useState<string | null>(null);
+  const [originalSlug, setOriginalSlug] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [values, setValues] = useState<PublicationFormValues>({
     type: 'LOST',
     title: '',
@@ -75,6 +85,86 @@ export function PublishPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successSlug, setSuccessSlug] = useState<string | null>(null);
+  const [showFacebookImport, setShowFacebookImport] = useState(false);
+  const [facebookSourceUrl, setFacebookSourceUrl] = useState<string>('');
+
+  // Cargar datos de publicación existente al editar
+  useEffect(() => {
+    if (editParam && !isEditing) {
+      const loadPublication = async () => {
+        try {
+          setSubmitting(true);
+          const publication = await getPublicationById(editParam);
+
+          if (publication) {
+            setEditingPublicationId(publication.id);
+            setOriginalSlug(publication.slug);
+            setIsEditing(true);
+
+            // Mapear datos de la publicación al formulario
+            const location = Array.isArray(publication.location)
+              ? publication.location[0] ?? null
+              : publication.location ?? null;
+
+            setValues({
+              type: publication.type,
+              title: publication.title,
+              description: publication.description,
+              species: publication.species,
+              breed: publication.breed ?? '',
+              sex: publication.sex ?? '',
+              size: publication.size ?? '',
+              ageApprox: publication.age_approx ?? '',
+              color: publication.color ?? '',
+              characteristics: publication.characteristics ?? '',
+              collar: false,
+              plate: false,
+              reward: publication.reward ?? '',
+              contactMode: publication.contact_mode,
+              contactPhone: publication.contact_phone ?? '',
+              contactWhatsapp: publication.contact_whatsapp ?? '',
+              contactEmail: publication.contact_email ?? '',
+              microchip: publication.microchip ?? '',
+              province: location?.province ?? '',
+              municipality: location?.municipality ?? '',
+              zone: location?.zone ?? '',
+              approximateLat: '',
+              approximateLng: '',
+              eventDate: publication.event_date ?? '',
+              eventTimeApprox: '',
+            });
+
+            setExistingImages(
+              (publication.publication_images ?? []).map((img) => ({
+                storage_path: img.storage_path,
+                is_cover: img.is_cover,
+              }))
+            );
+            setOriginalExistingImages(
+              (publication.publication_images ?? []).map((img) => ({
+                storage_path: img.storage_path,
+                is_cover: img.is_cover,
+              }))
+            );
+
+            if (publication.publication_images && publication.publication_images.length > 0) {
+              const coverImage = publication.publication_images.find((img) => img.is_cover);
+              if (coverImage) {
+                setFilePreviews([coverImage.storage_path]);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error loading publication for edit:', error);
+          setErrorMessage('No se pudo cargar la publicación para editar.');
+        } finally {
+          setSubmitting(false);
+        }
+      };
+
+      loadPublication();
+    }
+  }, [editParam, isEditing]);
 
   const municipalities = useMemo(() => values.province ? CUBA[values.province as keyof typeof CUBA] ?? [] : [], [values.province]);
 
@@ -97,7 +187,13 @@ export function PublishPage() {
   };
 
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    const newFiles = Array.from(event.target.files ?? []).slice(0, MAX_IMAGES - files.length);
+    const totalImages = existingImages.length + files.length;
+    const remainingSlots = MAX_IMAGES - totalImages;
+    if (remainingSlots <= 0) {
+      setErrorMessage(`Límite de ${MAX_IMAGES} imágenes alcanzado. Elimina alguna para agregar más.`);
+      return;
+    }
+    const newFiles = Array.from(event.target.files ?? []).slice(0, remainingSlots);
     const validFiles: File[] = [];
     const previews: string[] = [];
 
@@ -120,9 +216,19 @@ export function PublishPage() {
   };
 
   const removeFile = (index: number) => {
-    URL.revokeObjectURL(filePreviews[index]);
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-    setFilePreviews((prev) => prev.filter((_, i) => i !== index));
+    // Determinar si es una imagen existente o nueva
+    const existingCount = existingImages.length;
+    if (index < existingCount) {
+      // Es una imagen existente - marcar para eliminación (filtrar de existingImages)
+      setExistingImages((prev) => prev.filter((_, i) => i !== index));
+      setFilePreviews((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      // Es una imagen nueva - revocar URL y filtrar de files
+      const fileIndex = index - existingCount;
+      URL.revokeObjectURL(filePreviews[index]);
+      setFiles((prev) => prev.filter((_, i) => i !== fileIndex));
+      setFilePreviews((prev) => prev.filter((_, i) => i !== index));
+    }
   };
 
   const handleAIDataExtracted = (data: {
@@ -171,9 +277,14 @@ export function PublishPage() {
       ...(data.contactWhatsapp && { contactWhatsapp: data.contactWhatsapp }),
       ...(data.contactEmail && { contactEmail: data.contactEmail }),
     }));
+  };
 
-    // Limpiar cualquier mensaje de error previo
-    setErrorMessage(null);
+  const handleFacebookImportComplete = (data: PublicationFormValues, sourceUrl: string) => {
+    setValues(data);
+    setFacebookSourceUrl(sourceUrl);
+    setShowFacebookImport(false);
+    // Saltar al paso 2 (datos de mascota) si está en paso 1
+    if (step === 1) setStep(2);
   };
 
   const handleGeocode = async () => {
@@ -313,72 +424,152 @@ export function PublishPage() {
 
     try {
       const parsed = publicationFormSchema.parse(values);
-      const slug = buildPublicationSlug(parsed.title);
 
-      console.log('📝 Datos del formulario parseados:', {
-        province: parsed.province,
-        municipality: parsed.municipality,
-        zone: parsed.zone,
-        approximateLat: parsed.approximateLat,
-        approximateLng: parsed.approximateLng,
-      });
+      if (isEditing && editingPublicationId) {
+        // MODO EDICIÓN: Actualizar publicación existente
+        console.log('📝 Actualizando publicación:', editingPublicationId);
 
-      const locationId = await createLocation({
-        province: parsed.province,
-        municipality: parsed.municipality,
-        zone: parsed.zone,
-        approximateLat: parsed.approximateLat,
-        approximateLng: parsed.approximateLng,
-      });
+        // Actualizar ubicación si cambió
+        const _locationId = await createLocation({
+          province: parsed.province,
+          municipality: parsed.municipality,
+          zone: parsed.zone,
+          approximateLat: parsed.approximateLat,
+          approximateLng: parsed.approximateLng,
+        });
 
-      console.log('✅ Location creada con ID:', locationId);
+        // Actualizar mascota - crear nueva o usar existente
+        const _petId = await createPet({
+          ownerProfileId: user?.id ?? '',
+          species: parsed.species,
+          breed: parsed.breed,
+          sex: parsed.sex,
+          size: parsed.size,
+          ageApprox: parsed.ageApprox,
+          color: parsed.color,
+          characteristics: parsed.characteristics,
+          collar: parsed.collar,
+          plate: parsed.plate,
+          microchip: parsed.microchip,
+        });
+        // Actualizar publicación
+        await updatePublication(editingPublicationId, {
+          title: parsed.title,
+          description: parsed.description,
+          type: parsed.type,
+          species: parsed.species,
+          breed: parsed.breed,
+          sex: parsed.sex,
+          size: parsed.size,
+          ageApprox: parsed.ageApprox,
+          color: parsed.color,
+          characteristics: parsed.characteristics,
+          collar: parsed.collar,
+          plate: parsed.plate,
+          reward: parsed.reward,
+          contactMode: parsed.contactMode,
+          contactPhone: parsed.contactPhone,
+          contactWhatsapp: parsed.contactWhatsapp,
+          contactEmail: parsed.contactEmail,
+          eventDate: parsed.eventDate,
+          eventTimeApprox: parsed.eventTimeApprox,
+          // Ubicación
+          province: parsed.province,
+          municipality: parsed.municipality,
+          zone: parsed.zone,
+          approximateLng: parsed.approximateLng,
+        });
 
-      const petId = await createPet({
-        ownerProfileId: user?.id ?? '',
-        species: parsed.species,
-        breed: parsed.breed,
-        sex: parsed.sex,
-        size: parsed.size,
-        ageApprox: parsed.ageApprox,
-        color: parsed.color,
-        characteristics: parsed.characteristics,
-        collar: parsed.collar,
-        plate: parsed.plate,
-        microchip: parsed.microchip,
-      });
+        // Eliminar imágenes que se quitaron
+        const removedImages = originalExistingImages
+          .filter((orig) => !existingImages.some((curr) => curr.storage_path === orig.storage_path))
+          .map((img) => img.storage_path);
+        if (removedImages.length > 0) {
+          await deletePublicationImages(editingPublicationId, removedImages);
+        }
 
-      const publication = await createPublication({
-        ownerProfileId: user?.id ?? '',
-        slug,
-        locationId,
-        petId,
-        type: parsed.type,
-        title: parsed.title,
-        description: parsed.description,
-        species: parsed.species,
-        breed: parsed.breed,
-        sex: parsed.sex,
-        size: parsed.size,
-        ageApprox: parsed.ageApprox,
-        color: parsed.color,
-        characteristics: parsed.characteristics,
-        collar: parsed.collar,
-        plate: parsed.plate,
-        reward: parsed.reward,
-        contactMode: parsed.contactMode,
-        contactPhone: parsed.contactPhone,
-        contactWhatsapp: parsed.contactWhatsapp,
-        contactEmail: parsed.contactEmail,
-        eventDate: parsed.eventDate,
-        eventTimeApprox: parsed.eventTimeApprox,
-      });
+        // Subir nuevas imágenes si hay
+        if (files.length > 0) {
+          await uploadPublicationImages(editingPublicationId, files);
+        }
 
-      if (files.length > 0) {
-        await uploadPublicationImages(publication.id, files);
+        navigate(`/p/${originalSlug ?? ''}`); // El slug no cambia en edición
+      } else {
+        // MODO CREACIÓN: Crear nueva publicación
+        const slug = buildPublicationSlug(parsed.title);
+
+        console.log('📝 Datos del formulario parseados:', {
+          province: parsed.province,
+          municipality: parsed.municipality,
+          zone: parsed.zone,
+          approximateLat: parsed.approximateLat,
+          approximateLng: parsed.approximateLng,
+        });
+
+        const locationId = await createLocation({
+          province: parsed.province,
+          municipality: parsed.municipality,
+          zone: parsed.zone,
+          approximateLat: parsed.approximateLat,
+          approximateLng: parsed.approximateLng,
+        });
+
+        console.log('✅ Location creada con ID:', locationId);
+
+        const petId = await createPet({
+          ownerProfileId: user?.id ?? '',
+          species: parsed.species,
+          breed: parsed.breed,
+          sex: parsed.sex,
+          size: parsed.size,
+          ageApprox: parsed.ageApprox,
+          color: parsed.color,
+          characteristics: parsed.characteristics,
+          collar: parsed.collar,
+          plate: parsed.plate,
+          microchip: parsed.microchip,
+        });
+
+        const publication = await createPublication({
+          ownerProfileId: user?.id ?? '',
+          slug,
+          locationId,
+          petId,
+          type: parsed.type,
+          title: parsed.title,
+          description: parsed.description,
+          species: parsed.species,
+          breed: parsed.breed,
+          sex: parsed.sex,
+          size: parsed.size,
+          ageApprox: parsed.ageApprox,
+          color: parsed.color,
+          characteristics: parsed.characteristics,
+          collar: parsed.collar,
+          plate: parsed.plate,
+          reward: parsed.reward,
+          contactMode: parsed.contactMode,
+          contactPhone: parsed.contactPhone,
+          contactWhatsapp: parsed.contactWhatsapp,
+          contactEmail: parsed.contactEmail,
+          eventDate: parsed.eventDate,
+          eventTimeApprox: parsed.eventTimeApprox,
+          // Campos de importación (si viene de Facebook Import)
+          isImported: facebookSourceUrl.length > 0,
+          sourcePlatform: facebookSourceUrl.length > 0 ? 'FACEBOOK_PUBLIC' : undefined,
+          sourceUrl: facebookSourceUrl || undefined,
+          importReviewStatus: 'MANUAL_APPROVED',
+        });
+
+        if (files.length > 0) {
+          await uploadPublicationImages(publication.id, files);
+        }
+
+        setSuccessSlug(slug);
+        // Limpiar URL de fuente después de crear
+        setFacebookSourceUrl('');
+        navigate(`/p/${slug}`);
       }
-
-      setSuccessSlug(slug);
-      navigate(`/p/${slug}`);
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'issues' in error) {
         const zodError = error as { issues: Array<{ path: string[]; message: string }> };
@@ -386,7 +577,7 @@ export function PublishPage() {
         const fieldName = firstError.path[0] || 'desconocido';
         setErrorMessage(`Error en el campo "${fieldName}": ${firstError.message}`);
       } else {
-        setErrorMessage(error instanceof Error ? error.message : 'No pudimos publicar el caso.');
+        setErrorMessage(error instanceof Error ? error.message : 'No pudimos procesar el caso.');
       }
     } finally {
       setSubmitting(false);
@@ -401,13 +592,17 @@ export function PublishPage() {
         
         <div className="relative space-y-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Publicar caso</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-navy/60">
+              {isEditing ? 'Editar caso' : 'Publicar caso'}
+            </span>
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-extrabold text-navy">
-            {stepTitle}
+            {isEditing ? `Editar: ${values.title || 'Cargando...'}` : stepTitle}
           </h1>
           <p className="text-lg text-navy/70 max-w-2xl">
-            El wizard guía la publicación en pasos cortos para que el caso quede estructurado y fácil de buscar.
+            {isEditing
+              ? 'Modifica los campos que necesites. Los cambios se guardarán al finalizar.'
+              : 'El wizard guía la publicación en pasos cortos para que el caso quede estructurado y fácil de buscar.'}
           </p>
         </div>
       </div>
@@ -488,11 +683,35 @@ export function PublishPage() {
 
           {step === 2 && (
             <div className="space-y-4">
-              {/* Componente de extracción IA */}
-              <ImageDataExtractor 
-                onDataExtracted={handleAIDataExtracted}
-                disabled={submitting}
-              />
+              {/* Acciones de IA: Extracción de imagen + Importar Facebook */}
+              <div className="space-y-3">
+                <ImageDataExtractor 
+                  onDataExtracted={handleAIDataExtracted}
+                  disabled={submitting}
+                />
+                
+                <div className="border-2 border-dashed border-purple/20 rounded-2xl p-4 bg-purple/5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-xl bg-purple/10 flex items-center justify-center">
+                        <Globe className="size-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-navy">Importar desde Facebook</p>
+                        <p className="text-sm text-navy/60">Pega un enlace público o sube una captura → la IA pre-llena el formulario</p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => setShowFacebookImport(true)}
+                      className="gap-2"
+                    >
+                      <Globe className="size-4" />
+                      Importar
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
               {/* Campos del formulario */}
               <div className="grid gap-4 md:grid-cols-2">
@@ -771,16 +990,23 @@ export function PublishPage() {
           {step === 4 && (
             <div className="space-y-4">
               <label className="block space-y-3">
-                <span className="text-sm font-semibold text-navy">📸 Imágenes (máx. {MAX_IMAGES}, JPG/PNG/WebP, 8 MB c/u)</span>
+                <span className="text-sm font-semibold text-navy">
+                  📸 Imágenes (máx. {MAX_IMAGES}, JPG/PNG/WebP, 8 MB c/u)
+                  {existingImages.length > 0 && (
+                    <span className="ml-2 text-xs font-normal text-found bg-found/10 border border-found/20 rounded-full px-2 py-0.5">
+                      {existingImages.length} guardada{existingImages.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </span>
                 <input 
                   type="file" 
                   accept="image/jpeg,image/png,image/webp" 
                   multiple 
                   onChange={handleFiles} 
                   className="w-full rounded-2xl border-2 border-navy/10 bg-white px-4 py-3 text-sm transition hover:border-orange/50 file:mr-4 file:rounded-pill file:border-0 file:bg-orange/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-orange hover:file:bg-orange/20" 
-                  disabled={files.length >= MAX_IMAGES} 
+                  disabled={(existingImages.length + files.length) >= MAX_IMAGES} 
                 />
-                {files.length >= MAX_IMAGES && (
+                {(existingImages.length + files.length) >= MAX_IMAGES && (
                   <span className="text-xs font-medium text-lost bg-lost/10 border border-lost/20 rounded-full px-3 py-1 inline-block">
                     Límite de {MAX_IMAGES} imágenes alcanzado
                   </span>
@@ -789,24 +1015,34 @@ export function PublishPage() {
 
               {filePreviews.length > 0 && (
                 <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {filePreviews.map((preview, index) => (
-                    <div key={index} className="group relative aspect-square rounded-2xl overflow-hidden border-2 border-navy/10 shadow-md transition-all hover:shadow-lg hover:-translate-y-1">
-                      <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                      {index === 0 && (
-                        <span className="absolute top-2 left-2 rounded-full bg-orange text-white px-3 py-1 text-xs font-bold shadow-paw">
-                          Portada
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        className="absolute top-2 right-2 rounded-full bg-navy/80 text-white p-2 hover:bg-navy transition backdrop-blur-sm"
-                        aria-label="Eliminar imagen"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                  {filePreviews.map((preview, index) => {
+                    const isExisting = index < existingImages.length;
+                    return (
+                      <div key={index} className="group relative aspect-square rounded-2xl overflow-hidden border-2 shadow-md transition-all hover:shadow-lg hover:-translate-y-1"
+                        style={{ borderColor: isExisting ? 'rgb(34, 197, 94)' : 'rgb(229, 231, 235)' }}>
+                        <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                        {index === 0 && (
+                          <span className="absolute top-2 left-2 rounded-full bg-orange text-white px-3 py-1 text-xs font-bold shadow-paw">
+                            Portada
+                          </span>
+                        )}
+                        {isExisting && (
+                          <span className="absolute top-2 right-2 rounded-full bg-found text-white px-2 py-0.5 text-xs font-bold flex items-center gap-1">
+                            <span className="size-1.5 rounded-full bg-white animate-pulse" />
+                            Guardada
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="absolute bottom-2 right-2 rounded-full bg-navy/80 text-white p-2 hover:bg-navy transition backdrop-blur-sm"
+                          aria-label={isExisting ? 'Quitar imagen guardada' : 'Eliminar imagen nueva'}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               
@@ -949,7 +1185,11 @@ export function PublishPage() {
             </div>
             {step === totalSteps ? (
               <Button type="button" onClick={handleSubmit} disabled={submitting} className="gap-2">
-                {submitting ? '⏳ Publicando...' : '🐾 Publicar caso'}
+                {submitting
+                  ? '⏳ Guardando...'
+                  : isEditing
+                  ? '💾 Guardar cambios'
+                  : '🐾 Publicar caso'}
               </Button>
             ) : null}
           </div>
@@ -966,6 +1206,15 @@ export function PublishPage() {
               <LinkButton href="/auth/login">Iniciar sesión</LinkButton>
               <LinkButton href="/auth/register" variant="secondary">Crear cuenta</LinkButton>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Facebook Import Modal */}
+      {showFacebookImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl border-2 border-navy/10 shadow-2xl p-6 lg:p-8">
+            <FacebookImportWizard onImportComplete={handleFacebookImportComplete} />
           </div>
         </div>
       )}

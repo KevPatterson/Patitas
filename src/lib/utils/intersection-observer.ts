@@ -49,7 +49,7 @@ export function useStaggerAnimation(count: number, delay = 100) {
     if (!isIntersecting) return;
 
     // Animar elementos uno por uno con delay
-    const timeouts: number[] = [];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
     
     for (let i = 0; i < count; i++) {
       const timeout = setTimeout(() => {

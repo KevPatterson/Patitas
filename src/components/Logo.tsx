@@ -91,11 +91,13 @@ export function Logo({ variant = 'full', size = 40, className = '', animated = f
             fontFamily: '"Baloo 2", cursive',
             fontWeight: 800,
             fontSize: textSize,
-            letterSpacing: '-0.02em',
             lineHeight: 1,
-            textTransform: 'lowercase',
+            letterSpacing: '-0.02em',
+            background: 'linear-gradient(135deg, #231942 0%, #3d345e 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
           }}
-          className={animated ? 'transition-colors duration-base group-hover:text-orange' : ''}
         >
           patitas
         </span>
