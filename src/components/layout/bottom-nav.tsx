@@ -1,21 +1,28 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { Home, Search, MapPinned, PlusCircle, Bell } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
 
-const items = [
+interface NavItem {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  highlight?: boolean;
+}
+
+const items: readonly NavItem[] = [
   { to: '/', label: 'Inicio', icon: Home },
   { to: '/buscar', label: 'Buscar', icon: Search },
   { to: '/publicar', label: 'Publicar', icon: PlusCircle, highlight: true },
   { to: '/mapa', label: 'Mapa', icon: MapPinned },
   { to: '/notificaciones', label: 'Notifs', icon: Bell },
 ];
-
 export function BottomNav() {
   const location = useLocation();
   const unreadCount = useNotificationCount();
 
   return (
-    <nav 
+    <nav
       className="fixed inset-x-0 bottom-0 z-50 border-t-2 border-navy/10 bg-white/95 px-2 py-2 backdrop-blur-md shadow-lg lg:hidden"
       aria-label="Navegación móvil"
     >
@@ -24,8 +31,7 @@ export function BottomNav() {
           const Icon = item.icon;
           const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to + '/'));
           const showBadge = item.to === '/notificaciones' && unreadCount > 0;
-          
-          // Botón central destacado
+
           if (item.highlight) {
             return (
               <NavLink
@@ -37,7 +43,7 @@ export function BottomNav() {
                   'flex size-14 items-center justify-center rounded-2xl shadow-lg transition-all duration-base ease-smooth',
                   isActive
                     ? 'bg-orange-dark scale-110'
-                    : 'bg-orange hover:bg-orange-dark hover:scale-105'
+                    : 'bg-orange hover:bg-orange-dark hover:scale-105',
                 ].join(' ')}>
                   <Icon className="size-6 text-white" aria-hidden="true" />
                 </div>
@@ -47,7 +53,7 @@ export function BottomNav() {
               </NavLink>
             );
           }
-          
+
           return (
             <NavLink
               key={item.to}

@@ -10,7 +10,6 @@ import { Logo } from '../Logo';
 type SiteShellProps = {
   children: React.ReactNode;
 };
-
 function NavItem({ href, label, Icon, badge }: { href: string; label: string; Icon: LucideIcon; badge?: number }) {
   return (
     <NavLink
@@ -22,7 +21,7 @@ function NavItem({ href, label, Icon, badge }: { href: string; label: string; Ic
           : 'border-transparent text-[#6B6585] hover:bg-[#FFE3CC] hover:text-[#231942]',
       ].join(' ')}
     >
-      {({ isActive }) => (
+      {({ isActive: _isActive }) => (
         <>
           <Icon className="size-5" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" />
           {label}
@@ -33,25 +32,6 @@ function NavItem({ href, label, Icon, badge }: { href: string; label: string; Ic
             >
               {(badge ?? 0) > 9 ? '9+' : badge}
             </span>
-          )}
-          {isActive && (
-            <svg
-              className="absolute -bottom-[14px] left-1/2 -translate-x-1/2 size-7 text-[#FF8C42] drop-shadow-[0_2px_4px_rgba(255,140,66,0.3)]"
-              viewBox="0 0 32 32"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-              style={{ transformOrigin: 'center bottom' }}
-            >
-              {/* Almohadilla principal (palmar) */}
-              <ellipse cx="16" cy="22" rx="9" ry="6" fill="currentColor" />
-              {/* Almohadillas de los dedos (toe beans) */}
-              <circle cx="16" cy="10" r="3.5" fill="currentColor" />
-              <circle cx="7" cy="13" r="3" fill="currentColor" />
-              <circle cx="25" cy="13" r="3" fill="currentColor" />
-              <circle cx="4.5" cy="18" r="2.5" fill="currentColor" />
-              <circle cx="27.5" cy="18" r="2.5" fill="currentColor" />
-            </svg>
           )}
         </>
       )}
@@ -294,8 +274,18 @@ export function SiteShell({ children }: SiteShellProps) {
 
         <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 lg:px-8 md:flex-row md:items-center md:justify-between">
           <div className="space-y-3">
-            <div className="flex items-center gap-3 text-cream">
-              <Logo variant="full" size={32} className="text-cream" />
+            <div className="flex items-center gap-3">
+              <Logo variant="mark" size={36} className="text-cream" />
+              <span style={{
+                fontFamily: '"Baloo 2", cursive',
+                fontWeight: 800,
+                fontSize: '1.5rem',
+                lineHeight: 1,
+                letterSpacing: '-0.02em',
+                color: '#fef8f0'
+              }}>
+                patitas
+              </span>
             </div>
             <p className="max-w-md font-display text-lg leading-relaxed text-cream/90">
               🐾 Cada patita merece volver a casa
