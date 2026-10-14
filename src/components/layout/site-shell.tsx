@@ -35,10 +35,23 @@ function NavItem({ href, label, Icon, badge }: { href: string; label: string; Ic
             </span>
           )}
           {isActive && (
-            <span 
-              className="absolute -bottom-[9px] left-1/2 size-2.5 -translate-x-1/2 rounded-full border-2 border-[#231942] bg-orange" 
-              aria-hidden="true" 
-            />
+            <svg
+              className="absolute -bottom-[14px] left-1/2 -translate-x-1/2 size-7 text-[#FF8C42] drop-shadow-[0_2px_4px_rgba(255,140,66,0.3)]"
+              viewBox="0 0 32 32"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+              style={{ transformOrigin: 'center bottom' }}
+            >
+              {/* Almohadilla principal (palmar) */}
+              <ellipse cx="16" cy="22" rx="9" ry="6" fill="currentColor" />
+              {/* Almohadillas de los dedos (toe beans) */}
+              <circle cx="16" cy="10" r="3.5" fill="currentColor" />
+              <circle cx="7" cy="13" r="3" fill="currentColor" />
+              <circle cx="25" cy="13" r="3" fill="currentColor" />
+              <circle cx="4.5" cy="18" r="2.5" fill="currentColor" />
+              <circle cx="27.5" cy="18" r="2.5" fill="currentColor" />
+            </svg>
           )}
         </>
       )}
@@ -127,13 +140,12 @@ export function SiteShell({ children }: SiteShellProps) {
                   <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" />
                 </svg>
               </div>
-              <span className="hidden font-display text-[1.65rem] font-extrabold leading-none tracking-[-0.02em] sm:inline">
+              <span className="font-display text-[1.65rem] font-extrabold leading-none tracking-[-0.02em]">
                 patitas
               </span>
             </Link>
-            
             {/* Desktop Navigation Links */}
-            <div className="hidden gap-2 min-[901px]:flex">
+            <div className="hidden gap-2 lg:flex">
               <NavItem href="/buscar" label="Buscar" Icon={Search} />
               <NavItem href="/mapa" label="Mapa" Icon={MapPin} />
               
@@ -145,7 +157,7 @@ export function SiteShell({ children }: SiteShellProps) {
             {/* CTA Publicar - Desktop y tablet */}
             <Link
               to="/publicar"
-              className="group mx-2 hidden gap-2 rounded-2xl border-2 border-[#231942] bg-orange px-5 py-2.5 font-display text-sm font-extrabold text-[#231942] shadow-[0_4px_0_#231942] transition-all duration-base hover:-translate-y-0.5 hover:shadow-[0_6px_0_#231942] active:translate-y-[3px] active:shadow-[0_1px_0_#231942] focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange min-[901px]:inline-flex"
+              className="group mx-2 hidden gap-2 rounded-2xl border-2 border-[#231942] bg-orange px-5 py-2.5 font-display text-sm font-extrabold text-[#231942] shadow-[0_4px_0_#231942] transition-all duration-base hover:-translate-y-0.5 hover:shadow-[0_6px_0_#231942] active:translate-y-[3px] active:shadow-[0_1px_0_#231942] focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange lg:inline-flex"
             >
               <svg 
                 className="size-5 transition-transform duration-300 group-hover:-rotate-[20deg] group-hover:scale-[1.2]" 
@@ -167,8 +179,7 @@ export function SiteShell({ children }: SiteShellProps) {
               user ? (
                 <>
                   {/* Desktop */}
-                  <div className="hidden gap-1 min-[901px]:flex">
-                    {/* Perfil */}
+                  <div className="hidden gap-1 lg:flex">
                     <Link
                       to={profileHref}
                       className="inline-flex items-center gap-2 rounded-full border-2 border-[#231942] bg-white px-3.5 py-2 text-sm font-semibold text-[#231942] transition-all duration-base hover:bg-[#FFE3CC] active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
@@ -199,8 +210,7 @@ export function SiteShell({ children }: SiteShellProps) {
                   </div>
 
                   {/* Móvil - Solo Perfil y Logout */}
-                  <div className="flex gap-1 min-[901px]:hidden">
-                    {/* Perfil */}
+                  <div className="flex gap-1 lg:hidden">
                     <Link
                       to={profileHref}
                       className="flex items-center justify-center rounded-full border-2 border-[#231942] bg-white p-2 transition-all duration-base hover:bg-[#FFE3CC] active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
@@ -231,12 +241,22 @@ export function SiteShell({ children }: SiteShellProps) {
                   </div>
                 </>
               ) : (
-                <Link
-                  to="/auth/login"
-                  className="hidden gap-2 rounded-full border-2 border-[#231942] bg-[#231942] px-5 py-2 text-sm font-extrabold text-white shadow-sm transition-all duration-base hover:bg-[#1a1332] hover:scale-105 active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange min-[901px]:inline-flex"
-                >
-                  Entrar
-                </Link>
+                <>
+                  {/* Móvil - Botón Entrar en esquina derecha */}
+                  <Link
+                    to="/auth/login"
+                    className="inline-flex gap-2 rounded-full border-2 border-[#231942] bg-[#231942] px-4 py-2 text-sm font-extrabold text-white shadow-sm transition-all duration-base hover:bg-[#1a1332] hover:scale-105 active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange lg:hidden"
+                  >
+                    Entrar
+                  </Link>
+                  {/* Desktop */}
+                  <Link
+                    to="/auth/login"
+                    className="hidden gap-2 rounded-full border-2 border-[#231942] bg-[#231942] px-5 py-2 text-sm font-extrabold text-white shadow-sm transition-all duration-base hover:bg-[#1a1332] hover:scale-105 active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange lg:inline-flex"
+                  >
+                    Entrar
+                  </Link>
+                </>
               )
             )}
           </nav>

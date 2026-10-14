@@ -16,7 +16,7 @@ export function BottomNav() {
 
   return (
     <nav 
-      className="fixed inset-x-0 bottom-0 z-50 border-t-2 border-navy/10 bg-white/95 px-2 py-2 backdrop-blur-md shadow-lg md:hidden" 
+      className="fixed inset-x-0 bottom-0 z-50 border-t-2 border-navy/10 bg-white/95 px-2 py-2 backdrop-blur-md shadow-lg lg:hidden"
       aria-label="Navegación móvil"
     >
       <div className="mx-auto grid max-w-3xl grid-cols-5 gap-1">
