@@ -1,4 +1,83 @@
 import { supabase } from './client';
+import type { User } from '@supabase/supabase-js';
+
+/**
+ * Evento global que se dispara cuando el avatar del usuario cambia
+ * (subida o eliminación) para que la barra de navegación se actualice.
+ */
+export const AVATAR_UPDATED_EVENT = 'patitas:avatar-updated';
+
+export function notifyAvatarUpdated() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(AVATAR_UPDATED_EVENT));
+  }
+}
+
+/**
+ * Devuelve la URL del avatar proveniente de un proveedor OAuth (Google, etc.).
+ * Google expone la foto tanto como `avatar_url` como `picture`.
+ */
+export function getOAuthAvatarUrl(user: User | null): string | null {
+  if (!user) return null;
+  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const avatar = meta.avatar_url;
+  const picture = meta.picture;
+  if (typeof avatar === 'string' && avatar.trim() !== '') return avatar;
+  if (typeof picture === 'string' && picture.trim() !== '') return picture;
+  return null;
+}
+
+/**
+ * Sincroniza los datos de auth.users hacia profiles de forma no destructiva:
+ * - Crea el perfil si no existe (safety net por si el trigger de BD no se aplicó).
+ * - Si el perfil no tiene avatar y el usuario tiene uno de Google/OAuth, lo usa por defecto.
+ * Nunca sobrescribe un avatar personalizado ya existente.
+ */
+export async function syncProfileFromAuth(user?: User | null): Promise<void> {
+  let effectiveUser = user ?? null;
+  if (!effectiveUser) {
+    const { data } = await supabase.auth.getUser();
+    effectiveUser = data.user ?? null;
+  }
+  if (!effectiveUser) return;
+
+  const oauthAvatar = getOAuthAvatarUrl(effectiveUser);
+  const meta = (effectiveUser.user_metadata ?? {}) as Record<string, unknown>;
+  const fullName = typeof meta.full_name === 'string' ? meta.full_name : null;
+  const fallbackUsername = effectiveUser.email ? effectiveUser.email.split('@')[0] : 'usuario';
+
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id, avatar_url')
+    .eq('id', effectiveUser.id)
+    .maybeSingle();
+
+  if (!existing) {
+    // El trigger debería haber creado el perfil; lo creamos como respaldo.
+    const username = (typeof meta.username === 'string' && meta.username) || fallbackUsername;
+    const { error: insertError } = await supabase
+      .from('profiles')
+      .upsert(
+        { id: effectiveUser.id, username, full_name: fullName, avatar_url: oauthAvatar },
+        { onConflict: 'id' }
+      );
+    if (insertError) {
+      console.warn('syncProfileFromAuth: no se pudo crear el perfil.', insertError);
+    }
+    return;
+  }
+
+  // Rellenar el avatar de Google/OAuth únicamente si el perfil no tiene uno.
+  if (!existing.avatar_url && oauthAvatar) {
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ avatar_url: oauthAvatar })
+      .eq('id', effectiveUser.id);
+    if (updateError) {
+      console.warn('syncProfileFromAuth: no se pudo sincronizar el avatar.', updateError);
+    }
+  }
+}
 
 export async function ensureProfile(username: string, fullName?: string | null) {
   const { data: userResponse, error: userError } = await supabase.auth.getUser();
@@ -174,7 +253,7 @@ export async function uploadAvatar(userId: string, file: File) {
   return avatarUrl;
 }
 
-export async function deleteAvatar(userId: string) {
+export async function deleteAvatar(userId: string): Promise<string | null> {
   // Eliminar archivos del storage
   const { data: existingFiles } = await supabase.storage
     .from('avatars')
@@ -186,13 +265,19 @@ export async function deleteAvatar(userId: string) {
       .remove(existingFiles.map(f => `${userId}/${f.name}`));
   }
 
-  // Actualizar profile para quitar la URL
+  // Al eliminar la foto personalizada, volvemos a la foto de Google/OAuth
+  // (si existe), para que la foto de Google siga siendo el valor por defecto.
+  const { data: authData } = await supabase.auth.getUser();
+  const oauthAvatar = authData.user ? getOAuthAvatarUrl(authData.user) : null;
+
   const { error } = await supabase
     .from('profiles')
-    .update({ avatar_url: null })
+    .update({ avatar_url: oauthAvatar })
     .eq('id', userId);
 
   if (error) {
     throw error;
   }
+
+  return oauthAvatar;
 }

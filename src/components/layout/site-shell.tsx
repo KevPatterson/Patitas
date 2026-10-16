@@ -5,6 +5,7 @@ import { signOut } from '../../lib/supabase/auth';
 import { useAuth } from '../../app/auth-context';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
 import { supabase } from '../../lib/supabase/client';
+import { getOAuthAvatarUrl, AVATAR_UPDATED_EVENT } from '../../lib/supabase/profiles';
 import { Logo } from '../Logo';
 
 type SiteShellProps = {
@@ -67,6 +68,8 @@ export function SiteShell({ children }: SiteShellProps) {
     let active = true;
 
     const fetchProfile = async () => {
+      // La foto de Google/OAuth es el fallback inmediato mientras se sincroniza el perfil.
+      const oauthAvatar = getOAuthAvatarUrl(user);
       try {
         const { data, error } = await supabase
           .from('profiles')
@@ -74,18 +77,25 @@ export function SiteShell({ children }: SiteShellProps) {
           .eq('id', user.id)
           .single();
         
-        if (!error && data && active) {
-          setAvatarUrl(data.avatar_url);
+        if (active) {
+          setAvatarUrl((!error && data?.avatar_url) || oauthAvatar || null);
         }
       } catch {
-        if (active) setAvatarUrl(null);
+        if (active) setAvatarUrl(oauthAvatar);
       }
     };
 
     fetchProfile();
 
+    // Refrescar el avatar cuando el usuario lo cambia o lo elimina en otra vista.
+    const onAvatarUpdated = () => {
+      void fetchProfile();
+    };
+    window.addEventListener(AVATAR_UPDATED_EVENT, onAvatarUpdated);
+
     return () => {
       active = false;
+      window.removeEventListener(AVATAR_UPDATED_EVENT, onAvatarUpdated);
     };
   }, [user, authLoading]);
 

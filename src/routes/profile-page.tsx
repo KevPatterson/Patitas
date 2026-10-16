@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, PawPrint, MapPin, CheckCircle, Eye, Calendar } from 'lucide-react';
+import { User, PawPrint, MapPin, CheckCircle, Eye, Calendar, Camera, Trash2, Pencil } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { PublicationCard } from '../components/publications/publication-card';
 import { PawLoader } from '../components/ui/paw-loader';
@@ -8,6 +8,8 @@ import { EmptyState } from '../components/ui/empty-state';
 import { supabase } from '../lib/supabase/client';
 import type { PublicationSummary } from '../lib/supabase/publication-search';
 import { setPageMeta } from '../lib/seo/page-meta';
+import { useAuth } from '../app/auth-context';
+import { uploadAvatar, deleteAvatar, notifyAvatarUpdated, getOAuthAvatarUrl } from '../lib/supabase/profiles';
 
 type ProfileRow = {
   id: string;
@@ -19,10 +21,14 @@ type ProfileRow = {
 
 export function ProfilePage() {
   const { username } = useParams<{ username: string }>();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [publications, setPublications] = useState<PublicationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!username) {
@@ -53,7 +59,10 @@ export function ProfilePage() {
           return;
         }
 
-        if (active) setProfile(profileData as ProfileRow);
+        if (active) {
+          setProfile(profileData as ProfileRow);
+          setAvatarUrl((profileData as ProfileRow).avatar_url);
+        }
 
         // Publicaciones públicas del usuario (excluye DELETED/HIDDEN)
         const { data: pubs, error: pubsError } = await supabase
@@ -162,6 +171,58 @@ export function ProfilePage() {
     );
   }
 
+  const isOwner = !!user && user.id === profile.id;
+  // Si el perfil aún no tiene avatar guardado, el dueño ve su foto de Google/OAuth.
+  const oauthAvatar = user ? getOAuthAvatarUrl(user) : null;
+  const displayedAvatar = avatarUrl ?? (isOwner ? oauthAvatar : null);
+  // Solo se puede eliminar una foto personalizada (no la de Google por defecto).
+  const canDeleteAvatar = !!avatarUrl && avatarUrl !== oauthAvatar;
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Por favor selecciona una imagen válida (JPG, PNG o WebP)');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('La imagen debe ser menor a 2MB');
+      event.target.value = '';
+      return;
+    }
+
+    setAvatarSaving(true);
+    try {
+      const url = await uploadAvatar(profile.id, file);
+      setAvatarUrl(url);
+      notifyAvatarUpdated();
+    } catch (e) {
+      console.error('Error al subir avatar:', e);
+      alert('No se pudo subir la imagen. Intenta de nuevo.');
+    } finally {
+      setAvatarSaving(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    if (!window.confirm('¿Eliminar tu foto de perfil?')) return;
+    setAvatarSaving(true);
+    try {
+      const url = await deleteAvatar(profile.id);
+      setAvatarUrl(url);
+      notifyAvatarUpdated();
+    } catch (e) {
+      console.error('Error al eliminar avatar:', e);
+      alert('No se pudo eliminar la imagen. Intenta de nuevo.');
+    } finally {
+      setAvatarSaving(false);
+    }
+  };
+
   const stats = {
     total: publications.length,
     active: publications.filter((p) => p.status === 'ACTIVE').length,
@@ -174,17 +235,82 @@ export function ProfilePage() {
       <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-purple/10 via-cream to-turquoise/10 border-2 border-navy/10 p-8 shadow-md">
         <div className="blob-decoration absolute top-5 right-5 size-24 bg-orange/20" />
         <div className="relative flex flex-col md:flex-row items-center gap-6">
-          <div className="size-24 rounded-2xl overflow-hidden border-4 border-navy/10 shadow-lg bg-linear-to-br from-orange to-turquoise flex items-center justify-center text-white text-4xl font-display font-extrabold">
-            {profile.avatar_url ? (
-              <img 
-                src={profile.avatar_url} 
-                alt={`Avatar de ${profile.username}`} 
-                className="size-full object-cover"
+          {isOwner ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="group relative">
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarSaving}
+                  aria-label={displayedAvatar ? 'Cambiar foto de perfil' : 'Añadir foto de perfil'}
+                  className="relative flex size-24 items-center justify-center overflow-hidden rounded-2xl border-4 border-navy/10 bg-linear-to-br from-orange to-turquoise font-display text-4xl font-extrabold text-white shadow-lg transition-transform duration-base hover:scale-105 disabled:cursor-not-allowed"
+                >
+                  {displayedAvatar ? (
+                    <img
+                      src={displayedAvatar}
+                      alt={`Avatar de ${profile.username}`}
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <span>{profile.username?.[0]?.toUpperCase() || 'U'}</span>
+                  )}
+                </button>
+
+                {/* Overlay de cámara al pasar el cursor */}
+                {!avatarSaving && (
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-navy/60 opacity-0 transition-opacity duration-base group-hover:opacity-100">
+                    <Camera className="size-7 text-white" aria-hidden="true" />
+                  </span>
+                )}
+
+                {/* Estado de guardado */}
+                {avatarSaving && (
+                  <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-navy/80">
+                    <PawLoader size="sm" />
+                  </span>
+                )}
+
+                {/* Eliminar foto */}
+                {canDeleteAvatar && !avatarSaving && (
+                  <button
+                    type="button"
+                    onClick={handleAvatarDelete}
+                    aria-label="Eliminar foto de perfil"
+                    title="Eliminar foto"
+                    className="absolute -bottom-2 -right-2 flex size-8 items-center justify-center rounded-full border-2 border-white bg-lost text-white shadow-md transition-transform hover:scale-110 active:scale-95"
+                  >
+                    <Trash2 className="size-4" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleAvatarChange}
+                className="hidden"
+                aria-label="Seleccionar foto de perfil"
               />
-            ) : (
-              profile.username?.[0]?.toUpperCase() || 'U'
-            )}
-          </div>
+
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-navy/60">
+                <Pencil className="size-3" aria-hidden="true" />
+                {canDeleteAvatar ? 'Cambiar o eliminar foto' : displayedAvatar ? 'Cambiar foto' : 'Añadir foto'}
+              </span>
+            </div>
+          ) : (
+            <div className="size-24 rounded-2xl overflow-hidden border-4 border-navy/10 shadow-lg bg-linear-to-br from-orange to-turquoise flex items-center justify-center text-white text-4xl font-display font-extrabold">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={`Avatar de ${profile.username}`}
+                  className="size-full object-cover"
+                />
+              ) : (
+                profile.username?.[0]?.toUpperCase() || 'U'
+              )}
+            </div>
+          )}
           <div className="flex-1 text-center md:text-left">
             <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
               <User className="size-5 text-navy/60" />

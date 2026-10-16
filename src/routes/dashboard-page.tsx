@@ -4,7 +4,7 @@ import { useAuth } from '../app/auth-context';
 import { getMyPublications, type MyPublication } from '../lib/supabase/my-publications';
 import { resolvePublication, deletePublication } from '../lib/supabase/publication-actions';
 import { signOut } from '../lib/supabase/auth';
-import { getProfile, uploadAvatar, deleteAvatar } from '../lib/supabase/profiles';
+import { getProfile, uploadAvatar, deleteAvatar, getOAuthAvatarUrl, notifyAvatarUpdated } from '../lib/supabase/profiles';
 import { PublicationCard } from '../components/publications/publication-card';
 import { Button } from '../components/ui/button';
 import { PawLoader } from '../components/ui/paw-loader';
@@ -61,9 +61,10 @@ export function DashboardPage() {
     if (!user) return;
     try {
       const profile = await getProfile(user.id);
-      setAvatarUrl(profile.avatar_url);
+      setAvatarUrl(profile.avatar_url ?? getOAuthAvatarUrl(user) ?? null);
     } catch (error) {
       console.error('Error loading profile:', error);
+      setAvatarUrl(getOAuthAvatarUrl(user));
     }
   };
 
@@ -71,12 +72,15 @@ export function DashboardPage() {
     if (!user) return;
     const newAvatarUrl = await uploadAvatar(user.id, file);
     setAvatarUrl(newAvatarUrl);
+    notifyAvatarUpdated();
   };
 
   const handleAvatarDelete = async () => {
     if (!user) return;
-    await deleteAvatar(user.id);
-    setAvatarUrl(null);
+    // deleteAvatar devuelve la foto de Google/OAuth si existe; si no, null.
+    const newAvatarUrl = await deleteAvatar(user.id);
+    setAvatarUrl(newAvatarUrl ?? getOAuthAvatarUrl(user) ?? null);
+    notifyAvatarUpdated();
   };
 
   const handleResolve = async (id: string) => {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase/client';
+import { syncProfileFromAuth } from '../lib/supabase/profiles';
 import { AuthContext } from './auth-context';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -10,15 +11,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
       setSession(data.session);
-      setLoading(false);
+      if (data.session) {
+        try {
+          await syncProfileFromAuth(data.session.user);
+        } catch (e) {
+          console.warn('Error sincronizando perfil desde auth:', e);
+        }
+      }
+      if (mounted) setLoading(false);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
       setLoading(false);
+      // Al iniciar sesión (Google o email) sincronizamos el avatar por defecto.
+      if (event === 'SIGNED_IN' && nextSession) {
+        void syncProfileFromAuth(nextSession.user).catch((e) => {
+          console.warn('Error sincronizando perfil desde auth:', e);
+        });
+      }
     });
 
     return () => {
