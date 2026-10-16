@@ -94,10 +94,16 @@ export function validateHmacTimestamp(timestamp: number): { valid: boolean; erro
 }
 
 /**
- * Verificar firma HMAC
+ * Verificar firma HMAC.
+ *
+ * FIXME(seguridad): esta función es un stub inseguro — ignora `_payload` y
+ * `_secret` y acepta cualquier cadena de 64+ caracteres. NO USAR. La
+ * verificación real (timing-safe con `crypto.subtle`) vive en
+ * `api/ingest/external-post.ts`. Ver hallazgo ING-02 en
+ * docs/AUDITORIA_SEGURIDAD.md (Fase 1).
  */
 export function verifyHmacSignature(
-  payload: string,
+  _payload: string,
   signature: string,
   _secret: string
 ): boolean {
