@@ -7,3 +7,10 @@ schemas = ["public"]
 
 [db]
 port = 54322
+
+# Seed SOLO para desarrollo local. `supabase db push` (producción) aplica
+# únicamente supabase/migrations/; este archivo nunca sale del entorno local.
+# No contiene usuarios ni contraseñas: ver supabase/seed.sql.
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
