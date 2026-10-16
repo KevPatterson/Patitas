@@ -26,6 +26,7 @@ La columna **Evidencia** siempre cita `archivo:línea` comprobado a mano.
 |---|----------|--------|-----------|------|
 | DOC-01 | Usuarios semilla con contraseña pública en migraciones | **NO EXISTE** | — | 0 |
 | DOC-02 | README documenta usuarios semilla que no existen | **EXISTE** | Baja | 0 ✅ |
+| DOC-03 | No había `supabase/seed.sql` para desarrollo local | **NO EXISTE** el seed previo | Baja | 0 ✅ |
 | SEC-01 | Claves expuestas en el historial de git | **NO EXISTE** | — | — |
 | DEP-01 | 12 vulnerabilidades npm (10 altas) | **EXISTE** | Alta | 0 ✅ |
 | DEP-02 | `api/` no estaba en ningún `tsconfig` (sin verificación de tipos) | **EXISTE** | Media | 0 ✅ |
@@ -443,20 +444,22 @@ No existe `supabase/tests/`. Cero ocurrencias de `plan(`/`pgtap`/`has_table` en
 
 ### DB-13 — Sin `supabase/seed.sql` → **NO EXISTE** (Fase 1)
 
-No existe. Y `supabase/config.toml` no tiene sección `[db.seed]`, así que
-`supabase db reset` no carga ningún seed.
+No existía (`config.toml` tampoco tenía sección `[db.seed]`, así que
+`supabase db reset` no cargaba ningún seed).
 
 Lo más cercano es `scripts/seed-test-publications.mjs` (`npm run seed:test`), que
 **no crea usuarios**: reutiliza un perfil existente (`:169-184`) y aborta si no
 hay ninguno (`:177-180`); inserta `locations`/`pets`/`publications` con su propio
 fuzzing en cliente (`:211-213`, `Math.random()*0.001`).
 
-> **Decisión de Fase 0**: el plan pedía *"mover cualquier seed a
-> `supabase/seed.sql`"*. Como **no hay ningún seed que mover**, crear un
-> `seed.sql` con usuarios de prueba sería introducir precisamente el riesgo que
-> DOC-01 quería eliminar. En su lugar, el README documenta cómo crear cuentas
-> locales a mano. Si en Fase 1 se decide tener seed, debe vivir en
-> `supabase/seed.sql` (nunca en `migrations/`) y usar contraseñas aleatorias.
+> **Decisión tomada**: el plan pedía *"mover cualquier seed a `supabase/seed.sql`"*.
+> Como **no había ningún seed que mover**, crear uno con usuarios de prueba sería
+> introducir precisamente el riesgo que DOC-01 quería eliminar. Se creó
+> `supabase/seed.sql` con **solo ubicaciones de referencia** (idempotentes, sin
+> credenciales), documentado como exclusivo de local, más un `WARNING` si detecta
+> cuentas semilla obsoletas en la base local. Se activó con `[db.seed]` en
+> `supabase/config.toml`: `supabase db push` solo aplica `supabase/migrations/`,
+> así que el seed nunca llega a producción.
 
 ### AI-01 — Proveedor IA por defecto sin dependencia → **EXISTE** (Fase 5)
 
@@ -499,6 +502,7 @@ mismo UUID placeholder en `duplicate_detections`.
 | 6 | CI: lint + typecheck + build + test + `npm audit --audit-level=high` | `.github/workflows/ci.yml` |
 | 7 | README: URL real del repo, usuarios semilla inexistentes, endpoints reales, estado honesto de rate limiting/ubicación/contacto | `README.md` |
 | 8 | `FIXME` en el stub HMAC engañoso | `src/lib/validations/ingest.ts` |
+| 9 | `supabase/seed.sql` sin credenciales + `[db.seed]` en config | `supabase/seed.sql`, `supabase/config.toml` |
 
 `LICENSE` (MIT) ya existía y es correcto — se verificó el contenido y la
 codificación, sin cambios.
