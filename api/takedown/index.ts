@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
 import { checkRateLimit, extractToken, verifyAuth } from '../_lib/rate-limit-utils';
 
@@ -34,12 +34,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
   
-  let payload: { 
+  let payload: Partial<{ 
     publication_id: string; 
     reason: TakedownReason; 
     contact_email?: string;
     details?: string;
-  } = {};
+  }> = {};
   
   try {
     payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;

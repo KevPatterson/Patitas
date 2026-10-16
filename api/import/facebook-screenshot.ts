@@ -1,7 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
 import { checkRateLimit, extractToken, verifyAuth } from '../_lib/rate-limit-utils';
-import { getAIProvider } from '../_lib/ai-provider';
+import { getAIProvider, type VisionResult } from '../_lib/ai-provider';
 
 function json(res: VercelResponse, statusCode: number, body: unknown) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -109,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
     
     // Combinar resultados
-    const combinedText = `${ocrResult.text}\n\n${visionResult.description}`;
+    const combinedText = `${ocrResult.text}\n\n${visionResult.description ?? ''}`;
     
     // Extraer datos estructurados del texto combinado
     const extracted = extractStructuredDataFromText(combinedText, visionResult);
@@ -135,11 +135,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-function extractStructuredDataFromText(text: string, visionResult: { 
-  description: string; 
-  labels: Array<{ label: string; confidence: number }>;
-  objects: Array<{ object: string; confidence: number; bbox?: number[] }>;
-}): {
+function extractStructuredDataFromText(text: string, visionResult: VisionResult): {
   type?: 'LOST' | 'FOUND' | 'ADOPTION' | 'ABANDONED';
   species?: string;
   breed?: string;

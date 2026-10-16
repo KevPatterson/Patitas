@@ -1,5 +1,5 @@
 import { consumeRateLimit } from './rate-limit';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../types/vercel';
 
 export function getClientIp(req: VercelRequest): string {
   const forwarded = req.headers['x-forwarded-for'];

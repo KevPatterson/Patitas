@@ -26,6 +26,47 @@ export type VisionResult = {
   description?: string;
 };
 
+/**
+ * Tipos locales para los SDK opcionales.
+ *
+ * `tesseract.js` y `@google-cloud/vision` no están instalados (ver
+ * api/types/ai-dependencies.d.ts), así que sus retornos llegan como `any` y los
+ * callbacks de `.map()` serían `implicit any` con `strict`. Estas formas
+ * mínimas documentan lo que realmente consumimos.
+ */
+type TesseractWord = {
+  text: string;
+  bbox: { x0: number; y0: number; x1: number; y1: number };
+  confidence: number;
+};
+
+type VisionTextAnnotation = {
+  description?: string | null;
+  locale?: string | null;
+  boundingPoly?: { vertices?: Array<{ x?: number | null; y?: number | null }> } | null;
+};
+
+type VisionLabelAnnotation = {
+  description?: string | null;
+  score?: number | null;
+};
+
+type VisionLocalizedObject = {
+  name?: string | null;
+  score?: number | null;
+  boundingPoly?: { normalizedVertices?: Array<{ x?: number | null; y?: number | null }> } | null;
+};
+
+/** Respuesta genérica de un modelo de Cloudflare Workers AI. */
+type CloudflareAIResponse = {
+  result?: {
+    response?: string;
+    data?: number[][];
+    embedding?: number[];
+  };
+  errors?: Array<{ message?: string }>;
+};
+
 export type TextEmbeddingResult = {
   embedding: number[];
   dimension: number;
@@ -210,7 +251,7 @@ function getTesseractProvider(): IAIProvider {
         const Tesseract = await getTesseract();
         
         const worker = await Tesseract.createWorker('spa+eng', 1, {
-          logger: (m) => console.log('Tesseract:', m),
+          logger: (m: import('tesseract.js').LoggerMessage) => console.log('Tesseract:', m),
         });
 
         const { data } = await worker.recognize(imageUrl);
@@ -218,7 +259,7 @@ function getTesseractProvider(): IAIProvider {
         await worker.terminate();
 
         // Mapear a nuestro formato
-        const boundingBoxes = data.words?.map((word) => ({
+        const boundingBoxes = data.words?.map((word: TesseractWord) => ({
           text: word.text,
           bbox: [
             word.bbox.x0,
@@ -313,7 +354,7 @@ function getGoogleVisionProvider(): IAIProvider {
         const fullText = detections[0];
         
         // Los demás elementos son palabras individuales con bounding boxes
-        const boundingBoxes = detections.slice(1).map((word) => {
+        const boundingBoxes = detections.slice(1).map((word: VisionTextAnnotation) => {
           const vertices = word.boundingPoly?.vertices || [];
           const bbox: [number, number, number, number] = [
             vertices[0]?.x || 0,
@@ -356,13 +397,13 @@ function getGoogleVisionProvider(): IAIProvider {
         });
 
         // Procesar labels
-        const labels = (result.labelAnnotations || []).map((label) => ({
+        const labels = (result.labelAnnotations || []).map((label: VisionLabelAnnotation) => ({
           label: label.description || '',
           confidence: label.score || 0,
         }));
 
         // Procesar objetos
-        const objects = (result.localizedObjectAnnotations || []).map((obj) => {
+        const objects = (result.localizedObjectAnnotations || []).map((obj: VisionLocalizedObject) => {
           const vertices = obj.boundingPoly?.normalizedVertices || [];
           const bbox: [number, number, number, number] | undefined = vertices.length >= 2
             ? [
@@ -381,7 +422,7 @@ function getGoogleVisionProvider(): IAIProvider {
         });
 
         // Generar descripción a partir de los labels principales
-        const topLabels = labels.slice(0, 5).map((l) => l.label).join(', ');
+        const topLabels = labels.slice(0, 5).map((l: { label: string }) => l.label).join(', ');
         const description = `Image contains: ${topLabels}`;
 
         return {
@@ -519,7 +560,8 @@ function getCloudflareProvider(): IAIProvider {
   const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run`;
 
   return {
-    async extractTextFromImage(_imageUrl: string): Promise<OCRResult> {
+    async extractTextFromImage(imageUrl: string): Promise<OCRResult> {
+      const imageResponse = await fetch(imageUrl);
       const imageBuffer = await imageResponse.arrayBuffer();
       const imageBase64 = Buffer.from(imageBuffer).toString('base64');
 
@@ -541,7 +583,7 @@ function getCloudflareProvider(): IAIProvider {
         throw new Error(`Cloudflare AI OCR failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as CloudflareAIResponse;
       const extractedText = data.result?.response || '';
 
       return {
@@ -576,7 +618,7 @@ function getCloudflareProvider(): IAIProvider {
         throw new Error(`Cloudflare AI vision failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as CloudflareAIResponse;
       const description = data.result?.response || '';
 
       // Parsear la respuesta para extraer labels
@@ -604,7 +646,7 @@ function getCloudflareProvider(): IAIProvider {
         throw new Error(`Cloudflare AI embedding failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as CloudflareAIResponse;
       const embedding = data.result?.data?.[0] || [];
 
       return {
@@ -633,7 +675,7 @@ function getCloudflareProvider(): IAIProvider {
         throw new Error(`Cloudflare AI image embedding failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as CloudflareAIResponse;
       const embedding = data.result?.embedding || [];
 
       return {
@@ -660,7 +702,7 @@ function getCloudflareProvider(): IAIProvider {
         throw new Error(`Cloudflare AI moderation failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as CloudflareAIResponse;
       const result = (data.result?.response || 'SAFE').trim().toUpperCase();
 
       const validClassifications = ['SAFE', 'SPAM', 'FRAUD', 'OFFENSIVE', 'INAPPROPRIATE', 'UNRELATED'];
@@ -703,7 +745,7 @@ Contenido: "${text}"`;
         throw new Error(`Cloudflare AI text analysis failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as CloudflareAIResponse;
       const result = data.result?.response || '{}';
 
       // Intentar parsear JSON de la respuesta

@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types/vercel';
 
 export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 

@@ -1,10 +1,11 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
 import { consumeRateLimit } from '../_lib/rate-limit';
 import {
   ingestExternalPostSchema,
   sanitizeExternalText,
   validateHmacTimestamp,
+  type IngestExternalPostInput,
 } from '../../src/lib/validations/ingest';
 import { getAIProvider } from '../_lib/ai-provider';
 
@@ -302,7 +303,7 @@ function calculateConfidence(
  */
 async function checkDuplicates(
   extracted: ExtractedData,
-  images: string[],
+  _images: string[],
   platform: 'TELEGRAM' | 'FACEBOOK_PUBLIC',
   externalId: string
 ): Promise<{ isDuplicate: boolean; duplicateOf?: string; similarity: number }> {

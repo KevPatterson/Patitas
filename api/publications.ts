@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from './types/vercel';
 import { supabaseAdmin } from './_lib/supabase-admin';
 import { checkRateLimit, extractToken, verifyAuth } from './_lib/rate-limit-utils';
 
