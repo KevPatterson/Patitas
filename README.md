@@ -223,8 +223,8 @@ Patitas centraliza en un único lugar lo que hoy se dispersa en estados de Whats
 
 ```bash
 # 1. Clonar repositorio
-git clone https://github.com/tu-usuario/patitas.git
-cd patitas
+git clone https://github.com/KevPatterson/Patitas---Plataforma-de-mascotas.git
+cd Patitas---Plataforma-de-mascotas
 
 # 2. Instalar dependencias
 npm install
@@ -270,27 +270,32 @@ SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key-aqui
 ### Comandos disponibles
 
 ```bash
-npm run dev      # Servidor de desarrollo (http://localhost:5173)
-npm run build    # Build de producción
-npm run preview  # Preview del build
-npm run lint     # Verificar código con ESLint
-npm run format   # Formatear código con Prettier
-npm run test     # Ejecutar tests con Vitest
+npm run dev        # Servidor de desarrollo (http://localhost:5173)
+npm run build      # tsc -b (app + api + tooling) y bundle de producción
+npm run preview    # Preview del build
+npm run lint       # Verificar código con ESLint
+npm run typecheck  # Solo verificación de tipos (tsc -b)
+npm run format     # Formatear código con Prettier
+npm test           # Ejecutar tests con Vitest
+npm audit          # Vulnerabilidades de dependencias
 ```
 
-### Usuarios de prueba (seed local)
+### Usuarios de prueba
 
-Si usas Supabase local, las migraciones incluyen usuarios de prueba:
-
-```
-Email: ana@patitas.dev | luis@patitas.dev
-Rol: USER
-Contraseña: patitas123
-
-Email: mod@patitas.dev
-Rol: MODERATOR
-Contraseña: patitas123
-```
+> **No existen usuarios semilla.** Las migraciones de `supabase/migrations/`
+> **no** crean cuentas: solo definen el esquema y las políticas RLS. Tampoco hay
+> `supabase/seed.sql` (ver hallazgo DOC-01 en
+> [docs/AUDITORIA_SEGURIDAD.md](./docs/AUDITORIA_SEGURIDAD.md)).
+>
+> Para probar en local crea tus propias cuentas:
+>
+> 1. `supabase start` y abre Supabase Studio en http://127.0.0.1:54323
+> 2. Authentication → Users → *Add user* (email + contraseña propios)
+> 3. Los perfiles se crean solos por el trigger `on_auth_user_created`
+> 4. Si necesitas un moderador, cambia el rol a mano:
+>    `update public.profiles set role = 'MODERATOR' where username = 'tu_usuario';`
+>
+> Nunca pongas credenciales de prueba en migraciones: se aplican en producción.
 
 ---
 
@@ -299,11 +304,15 @@ Contraseña: patitas123
 ```
 patitas/
 ├── api/                      # Vercel Serverless Functions
-│   ├── _lib/                 # Utilidades (rate limit, supabase admin)
-│   ├── admin/moderation.ts   # Moderación
-│   ├── ai/                   # Procesamiento IA
-│   ├── publications/create.ts
-│   ├── uploads/validate.ts
+│   ├── _lib/                 # Utilidades (rate limit, supabase admin, IA)
+│   ├── types/vercel.ts       # Tipos mínimos de VercelRequest/VercelResponse
+│   ├── admin/moderation.ts   # Moderación (JWT + rol desde profiles)
+│   ├── ai.ts                 # Router de IA (?action=...)
+│   ├── ai/                   # Handlers de IA (procesados vía api/ai.ts)
+│   ├── import/               # Importación desde Facebook
+│   ├── ingest/               # Ingesta desde worker de Telegram (HMAC)
+│   ├── takedown/             # Solicitudes de retirada
+│   ├── publications.ts       # create / validate-upload
 │   └── health.ts
 │
 ├── src/
@@ -347,21 +356,24 @@ patitas/
 │   └── main.tsx              # Entry point
 │
 ├── supabase/
-│   ├── migrations/           # 10 migraciones SQL
+│   ├── migrations/           # 12 migraciones SQL (0001-0010 + dos 0011)
 │   │   ├── 0001_initial_schema.sql
 │   │   ├── 0002_storage_policies.sql
 │   │   ├── ...
-│   │   └── 0010_matching_system.sql
+│   │   ├── 0011_external_sources.sql
+│   │   └── 0011_fix_resolve_policy.sql
 │   └── config.toml
 │
 ├── docs/                     # Documentación
+│   ├── AUDITORIA_SEGURIDAD.md
 │   ├── ESTADO_IMPLEMENTACION.md
 │   ├── PROGRESO_IMPLEMENTACION.md
 │   └── REDISENO_FINAL_COMPLETO.md
 │
+├── .github/workflows/ci.yml  # lint + typecheck + build + test + audit
 ├── .env.example
 ├── package.json
-├── tsconfig.json
+├── tsconfig.json             # referencias: app, api, node
 ├── vite.config.ts
 ├── tailwind.config.js
 └── vercel.json
@@ -425,16 +437,37 @@ patitas/
 
 ### Protección de datos sensibles
 
-- **Column-level grants**: `profiles.phone`, `pets.microchip_private` NO accesibles directamente
-- **Coordenadas exactas**: `locations.exact_lat/lng` sin grants, cliente solo ve fuzzy
-- **Service role key**: NUNCA expuesta al cliente (sin prefijo `VITE_`)
+- **Estado real hoy**: la protección es **solo RLS a nivel de fila**. No existen
+  `GRANT`/`REVOKE` por columna en ninguna migración.
+- **`pets.microchip_private`**: oculto a `anon` únicamente por la política de
+  fila de `pets` (dueño o moderador).
+- **`profiles.phone` y `locations.exact_lat/lng`**: esas columnas **no existen**;
+  solo hay `locations.approximate_lat/lng`, ya difuminadas.
+- **⚠️ `publications.contact_phone` / `contact_whatsapp` / `contact_email`**:
+  legibles por cualquiera (incluido `anon`) en publicaciones `ACTIVE`/`RESOLVED`.
+  Sin límite de revelaciones. Ver hallazgos DB-06 y DB-07 en
+  [docs/AUDITORIA_SEGURIDAD.md](./docs/AUDITORIA_SEGURIDAD.md) — se corrige en Fase 2.
+- **Service role key**: nunca expuesta al cliente (sin prefijo `VITE_`). Un test
+  de CI falla si aparece en `src/` (Fase 1).
 
 ### Rate limiting
 
-Endpoints protegidos (100 requests/15min por IP):
-- `/api/publications/create`
-- `/api/uploads/validate`
-- `/api/ai/*`
+> **⚠️ Limitación conocida**: hoy el almacén es un `Map` **en memoria** por
+> instancia de función y la clave es la **IP leída de `x-forwarded-for[0]`**, un
+> header que el cliente puede falsificar. El límite efectivo es
+> `límite × nº de instancias` y se puede saltar cambiando el header.
+
+Endpoints con rate limit (por IP):
+
+- `/api/ai/*` (process-publication, calculate-matches, create-match, detect-duplicates, extract-from-image)
+- `/api/publications` (create, validate-upload)
+- `/api/admin/moderation`
+- `/api/import/*`
+- `/api/takedown`
+- `/api/ingest/external-post`
+
+La Fase 2 sustituye esto por rate limiting **en la base de datos**
+(triggers `BEFORE INSERT` por `auth.uid()`) y Redis distribuido para `/api`.
 
 ### Headers de seguridad (Vercel)
 
@@ -447,12 +480,21 @@ Endpoints protegidos (100 requests/15min por IP):
 }
 ```
 
+Pendiente (Fase 4): migrar `routes` → `rewrites`, añadir CSP, HSTS y COOP.
+
 ### Privacidad de ubicación
 
 1. Usuario ingresa ubicación (provincia, municipio, coordenadas opcionales)
-2. **Trigger automático** difumina coordenadas (±500m)
-3. Cliente **nunca recibe** coordenadas exactas
+2. **Trigger automático** difumina coordenadas con ±0.003° de ruido (~330 m)
+3. El cliente nunca recibe la coordenada exacta (no se almacena)
 4. Mapa muestra ubicación aproximada
+
+> **⚠️ El difuminado usa `random()`**, no un hash con secreto. Cualquier usuario
+> autenticado puede volver a guardar la misma ubicación muchas veces y **promediar**
+> el ruido para recuperar el punto real (con 50 muestras el error baja de ~330 m a
+> ~27 m). Ver hallazgo DB-04 en
+> [docs/AUDITORIA_SEGURIDAD.md](./docs/AUDITORIA_SEGURIDAD.md) — se corrige en Fase 2
+> con un desplazamiento determinista derivado de un secreto de BD.
 
 ---
 
@@ -639,47 +681,27 @@ Ver estado detallado en [docs/ESTADO_IMPLEMENTACION.md](./docs/ESTADO_IMPLEMENTA
 
 #### Endpoints disponibles
 
-**Health check**
-```
-GET /api/health
-```
+Los listados aquí son los que existen hoy en `api/`. Todos reciben **POST** salvo
+el health check, y todos exigen `Authorization: Bearer <jwt>` salvo donde se
+indica.
 
-**Validar upload**
-```
-POST /api/uploads/validate
-Body: { file: File, publicationId?: string }
-```
+| Endpoint | Auth | Descripción |
+|----------|------|-------------|
+| `GET /api/health` | pública | Health check (BD, storage y proveedor IA) |
+| `POST /api/publications?action=create` | JWT | Alta de publicación con rate limit |
+| `POST /api/publications?action=validate-upload` | JWT | Valida tipo/tamaño/cantidad antes de subir a Storage |
+| `POST /api/admin/moderation` | JWT + rol MODERATOR/ADMIN | Acciones de moderación; escribe en `audit_logs` |
+| `POST /api/ai?action=<action>` | JWT | Router de IA (`process-publication`, `calculate-matches`, `create-match`, `detect-duplicates`, `extract-from-image`, `process-job`) |
+| `POST /api/import/facebook-link` | JWT | Importa metadatos OG de un enlace público de Facebook |
+| `POST /api/import/facebook-screenshot` | JWT | Importa datos desde una captura de pantalla |
+| `POST /api/ingest/external-post` | HMAC | Ingesta desde el worker de Telegram (`INGEST_HMAC_SECRET`) |
+| `POST /api/takedown` | opcional | Solicitud de retirada de contenido (COPYRIGHT, PRIVACY, INACCURATE, OTHER) |
 
-**Crear publicación (con rate limit)**
-```
-POST /api/publications/create
-Body: PublicationData
-```
-
-**Moderación administrativa**
-```
-POST /api/admin/moderation
-Body: { action, targetId, reason }
-Headers: Authorization
-```
-
-**Procesar publicación con IA**
-```
-POST /api/ai/process-publication
-Body: { publicationId }
-```
-
-**Calcular coincidencias**
-```
-POST /api/ai/calculate-matches
-Body: { publicationId }
-```
-
-**Crear match**
-```
-POST /api/ai/create-match
-Body: { publicationAId, publicationBId, scores }
-```
+> ⚠️ Varios de estos endpoints todavía tienen validación incompleta (sin Zod,
+> sin comprobación de propiedad del recurso) y su rate limiting es por IP en
+> memoria. **No confíes solo en `/api` para la autorización**: la Fase 2 del plan
+> mueve esas garantías a la base de datos. Ver
+> [docs/AUDITORIA_SEGURIDAD.md](./docs/AUDITORIA_SEGURIDAD.md).
 
 ---
 
