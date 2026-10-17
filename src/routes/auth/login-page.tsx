@@ -8,6 +8,7 @@ import { Button, LinkButton } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { loginSchema, type LoginInput } from '../../lib/validations/auth';
 import { signInWithPassword, signInWithGoogle } from '../../lib/supabase/auth';
+import { loginErrorMessage } from '../../lib/auth/error-messages';
 import { setPageMeta } from '../../lib/seo/page-meta';
 import { useEffect } from 'react';
 
@@ -30,7 +31,9 @@ export function LoginPage() {
       await signInWithPassword(values.email, values.password);
       navigate('/publicar', { replace: true });
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : 'No pudimos iniciar sesión.');
+      // Mensaje genérico: no se distingue "no existe" de "contraseña incorrecta"
+      // ni de "correo sin confirmar" (evita enumeración de cuentas).
+      setServerError(loginErrorMessage(error));
     }
   };
 
@@ -39,7 +42,7 @@ export function LoginPage() {
     try {
       await signInWithGoogle();
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : 'No pudimos iniciar con Google.');
+      setServerError(loginErrorMessage(error));
     }
   };
 
