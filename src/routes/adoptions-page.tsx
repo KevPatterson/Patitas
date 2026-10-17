@@ -17,8 +17,18 @@ export function AdoptionsPage() {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
-  // Cargar ubicación guardada de localStorage
-  const userLocation = (() => {
+  /**
+   * Ubicación del usuario, leída UNA sola vez.
+   *
+   * Se usa `useState` con inicializador perezoso a propósito. Antes se calculaba
+   * en el cuerpo del componente, así que cada render devolvía un objeto **nuevo**
+   * (`{ lat, lng }`); como esa variable estaba en las dependencias del efecto de
+   * búsqueda, cada render lo volvía a disparar → `setResults` → render → nueva
+   * identidad → … y `searchPublications` se llamaba indefinidamente.
+   *
+   * Con el inicializador, el valor se calcula una vez y su identidad no cambia.
+   */
+  const [userLocation] = useState<{ lat: number; lng: number } | null>(() => {
     try {
       const saved = localStorage.getItem('userLocation');
       if (saved) {
@@ -28,7 +38,7 @@ export function AdoptionsPage() {
       console.warn('Error cargando ubicación:', error);
     }
     return null;
-  })();
+  });
 
   useEffect(() => {
     setPageMeta({
