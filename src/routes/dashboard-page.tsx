@@ -10,9 +10,10 @@ import { Button } from '../components/ui/button';
 import { PawLoader } from '../components/ui/paw-loader';
 import { EmptyState } from '../components/ui/empty-state';
 import { AvatarUpload } from '../components/ui/avatar-upload';
-import { Trash2, CheckCircle, Eye, PlusCircle, FileText, User as UserIcon, PawPrint, TrendingUp, LogOut } from 'lucide-react';
+import { Trash2, CheckCircle, Eye, PlusCircle, FileText, User as UserIcon, PawPrint, TrendingUp, LogOut, HeartHandshake } from 'lucide-react';
+import { AdoptionRequestsPanel } from '../components/adoptions/adoption-requests-panel';
 
-type Tab = 'resumen' | 'publicaciones' | 'perfil';
+type Tab = 'resumen' | 'publicaciones' | 'adopciones' | 'perfil';
 
 export function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -145,6 +146,7 @@ export function DashboardPage() {
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'resumen', label: 'Resumen', icon: <TrendingUp className="size-4" /> },
     { id: 'publicaciones', label: 'Mis publicaciones', icon: <FileText className="size-4" /> },
+    { id: 'adopciones', label: 'Adopciones', icon: <HeartHandshake className="size-4" /> },
     { id: 'perfil', label: 'Perfil', icon: <UserIcon className="size-4" /> },
   ];
 
@@ -286,6 +288,12 @@ export function DashboardPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'adopciones' && (
+        <div className="rounded-3xl border-2 border-navy/10 bg-white p-6 shadow-md">
+          <AdoptionRequestsPanel />
         </div>
       )}
 

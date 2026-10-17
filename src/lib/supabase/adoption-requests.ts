@@ -260,11 +260,22 @@ export async function getReceivedAdoptionRequests(): Promise<AdoptionRequest[]> 
 }
 
 /**
- * Actualizar estado de solicitud (solo owner de la publicación)
+ * Actualizar estado de solicitud (solo owner de la publicación).
+ *
+ * Desde la migración 0017:
+ *   - las notas del dueño se guardan en `owner_notes`;
+ *   - la notificación al solicitante la crea un TRIGGER de la base de datos. Antes
+ *     la insertaba este código, pero desde la 0013 la inserción en `notifications`
+ *     es exclusiva del service role, así que fallaba en silencio y el solicitante
+ *     nunca se enteraba.
+ *
+ * Los permisos los sigue validando la RLS: solo el dueño de la publicación puede
+ * actualizar la solicitud (política de 0005).
  */
 export async function updateAdoptionRequestStatus(
   requestId: string,
-  status: 'ACCEPTED' | 'REJECTED'
+  status: 'ACCEPTED' | 'REJECTED',
+  ownerNotes?: string
 ): Promise<void> {
   const { data: userResponse } = await supabase.auth.getUser();
   const user = userResponse.user;
@@ -273,37 +284,26 @@ export async function updateAdoptionRequestStatus(
     throw new Error('No hay sesión activa');
   }
 
+  const notes = ownerNotes?.trim();
+
   const { error } = await supabase
     .from('adoption_requests')
     .update({
       status,
       resolved_at: new Date().toISOString(),
+      ...(notes ? { owner_notes: notes.slice(0, 1000) } : {}),
     })
     .eq('id', requestId);
 
   if (error) {
+    // Códigos estables de la base de datos para que la UI pueda explicarse.
+    if (error.code === '42501') {
+      throw new Error('Solo el dueño de la publicación puede responder a esta solicitud.');
+    }
+    if (error.code === '23514' || error.code === '23505') {
+      throw new Error('No se pudo actualizar la solicitud: revisa que siga pendiente.');
+    }
     throw error;
-  }
-
-  // Obtener datos de la solicitud para notificar
-  const { data: request } = await supabase
-    .from('adoption_requests')
-    .select('requester_profile_id, publication:publications(title)')
-    .eq('id', requestId)
-    .single();
-
-  if (request) {
-    // Notificar al solicitante
-    await supabase.from('notifications').insert({
-      profile_id: request.requester_profile_id,
-      type: 'PUBLICATION_UPDATE',
-      title: status === 'ACCEPTED' ? '¡Solicitud aceptada!' : 'Solicitud rechazada',
-      body:
-        status === 'ACCEPTED'
-          ? `Tu solicitud de adopción para "${(request.publication as { title?: string })?.title}" fue aceptada. El propietario se pondrá en contacto contigo.`
-          : `Tu solicitud de adopción para "${(request.publication as { title?: string })?.title}" fue rechazada.`,
-      link: `/dashboard`,
-    });
   }
 }
 
