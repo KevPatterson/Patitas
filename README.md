@@ -570,12 +570,28 @@ Ver documentación completa en [docs/REDISENO_FINAL_COMPLETO.md](./docs/REDISENO
    SUPABASE_SERVICE_ROLE_KEY
    VITE_SUPABASE_URL
    VITE_SUPABASE_ANON_KEY
-   VITE_SITE_URL (tu dominio Vercel)
+   VITE_SITE_URL=https://patitass.vercel.app
    ```
 
-4. **Configurar Supabase Auth**:
-   - Site URL: `https://tu-app.vercel.app`
-   - Redirect URLs: `https://tu-app.vercel.app/auth/callback`
+4. **Configurar Supabase Auth** (Dashboard → Authentication → URL Configuration):
+   - **Site URL**: `https://patitass.vercel.app`
+   - **Redirect URLs** (una por línea, **sin comodines**):
+     ```
+     https://patitass.vercel.app/auth/callback
+     https://patitass.vercel.app/auth/reset-password
+     http://localhost:5173/auth/callback
+     http://localhost:5173/auth/reset-password
+     ```
+   - Los previews de Vercel (`*-git-*.vercel.app`) **no** se añaden: si necesitas
+     probar el login en un preview, añade esa URL exacta de forma temporal y
+     quítala después.
+
+> ⚠️ **Un solo dominio canónico.** El proyecto se sirvió en algún momento desde
+> `patitas-plataforma-de-mascotas.vercel.app` y desde `patitass.vercel.app`. Usa
+> **`patitass.vercel.app`** y desactiva (o borra) el otro proyecto de Vercel: dos
+> dominios sirviendo la misma app duplican el contenido para los buscadores y
+> rompen el `redirect_to` de OAuth, que solo puede apuntar a las URLs declaradas
+> en Supabase.
 
 5. **Deploy automático** en cada push a `main`
 
