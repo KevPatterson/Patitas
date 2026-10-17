@@ -275,13 +275,25 @@ $do$;
 
 -- Las funciones de búsqueda son SECURITY INVOKER (RLS aplica), pero no hay razón
 -- para dejar EXECUTE a PUBLIC. Se deja explícito a los roles que las usan.
+--
+-- IMPORTANTE: las firmas son las REALES del esquema (se comprobaron contra
+-- 0008_search_optimization.sql y 0010_matching_system.sql). Una versión anterior
+-- de este bloque tenía firmas inventadas:
+--
+--   search_publications:                       9 args  →  en realidad tiene 11
+--   search_similar_publications_by_text(text…): text    →  en realidad vector
+--
+-- y el `exception when undefined_function` las omitía en silencio, de modo que el
+-- REVOKE nunca se aplicaba. Ahora las firmas son exactas y, si algo no se
+-- encuentra, se emite un WARNING (visible en la salida de la migración) en lugar
+-- de un NOTICE fácil de perder.
 do $do$
 declare
   fn text;
   fns text[] := array[
-    'public.search_publications(text, text, text, text, text, text, text, integer, integer)',
+    'public.search_publications(text, public.publication_type, text, text, text, public.publication_status, text, text, date, integer, integer)',
     'public.calculate_structured_match_score(uuid, uuid)',
-    'public.search_similar_publications_by_text(text, real, integer)',
+    'public.search_similar_publications_by_text(public.vector, real, integer)',
     'public.search_similar_images(public.vector, real, integer)'
   ];
 begin
@@ -289,8 +301,9 @@ begin
     begin
       execute format('revoke all on function %s from public, anon', fn);
       execute format('grant execute on function %s to authenticated, service_role', fn);
-    exception when undefined_function then
-      raise notice 'funcion no encontrada, se omite: %', fn;
+    exception
+      when undefined_function or undefined_object then
+        raise warning 'no se pudo ajustar privilegios de % (¿pgvector sin instalar?)', fn;
     end;
   end loop;
 end

@@ -371,9 +371,11 @@ declare
   v_json         jsonb;
   v_owner_text   text;
 begin
-  -- Autor de la fila: se obtiene con SQL dinámico porque el nombre de la
-  -- columna cambia según la tabla (owner_profile_id, author_profile_id, …).
-  execute format('select ($1).%I::text', v_owner_column) into v_owner_text using new;
+  -- Autor de la fila. Se obtiene del propio NEW serializado a jsonb, así que no
+  -- hace falta SQL dinámico ni `format('%I', …)`: el nombre de la columna varía
+  -- según la tabla (owner_profile_id, author_profile_id, …) pero aquí es solo una
+  -- clave de un objeto jsonb, nunca un identificador SQL.
+  v_owner_text := to_jsonb(new) ->> v_owner_column;
 
   if v_owner_text is null then
     return new;  -- sin autor identificable: no hay a quién limitar
@@ -416,36 +418,61 @@ begin
 end;
 $$;
 
-revoke all on function public.tg_rate_limit() from public, anon, authenticated;
+-- NOTA deliberada: no se revoca EXECUTE de tg_rate_limit() aunque sea una función
+-- SECURITY DEFINER. Es una función de trigger: PostgreSQL no vuelve a comprobar el
+-- privilegio EXECUTE cuando el trigger se dispara, pero revocarlo no aporta nada
+-- (invocarla por RPC falla siempre con "can only be called as a trigger") y
+-- cualquier duda al respecto se pagaría con inserts rotos. Se prioriza no romper
+-- la escritura.
 
--- Cuotas: (acción, columna de autor, unidad, límite normal, límite cuenta nueva)
-do $do$
-declare
-  cfg text[][] := array[
-    ['comment',          'author_profile_id',    'hour', '10', '3', 'comments'],
-    ['publication',      'owner_profile_id',     'day',  '5',  '2', 'publications'],
-    ['sighting',         'reporter_profile_id',  'hour', '10', '3', 'sightings'],
-    ['adoption_request', 'requester_profile_id', 'day',  '10', '3', 'adoption_requests'],
-    ['report',           'reporter_id',          'hour', '3',  '1', 'reports']
-  ];
-  i int;
-  r text[];
-  trig_name text;
-begin
-  for i in 1 .. array_length(cfg, 1) loop
-    r := cfg[i];
-    trig_name := r[6] || '_rate_limit';
+-- ── Triggers de cuota, uno por tabla ────────────────────────────────────────
+--
+-- A propósito NO se genera con un bucle sobre un array bidimensional. Una
+-- versión anterior lo hacía (`cfg text[][]` + `r := cfg[i]` + `format('%I', r[6])`)
+-- y falló al aplicar con:
+--
+--   ERROR 22004: null values cannot be formatted as an SQL identifier
+--
+-- porque el 6.º elemento del slice llegó NULL y `format('%I', NULL)` no admite
+-- nulos. Con sentencias explícitas el alineamiento de argumentos se ve a simple
+-- vista y no depende de la posición de un subíndice.
+--
+-- Orden de TG_ARGV: (acción, columna de autor, unidad, límite, límite cuenta nueva)
 
-    execute format('drop trigger if exists %I on public.%I', trig_name, r[6]);
-    execute format(
-      'create trigger %I before insert on public.%I for each row execute function public.tg_rate_limit(%L, %L, %L, %L, %L)',
-      trig_name, r[6], r[1], r[2], r[3], r[4], r[5]
-    );
+-- comments: 10/hora (3/hora si la cuenta tiene menos de 24 h)
+drop trigger if exists comments_rate_limit on public.comments;
+create trigger comments_rate_limit
+  before insert on public.comments
+  for each row
+  execute function public.tg_rate_limit('comment', 'author_profile_id', 'hour', '10', '3');
 
-    raise notice 'rate limit aplicado: %.% -> %/%', r[6], trig_name, r[4], r[3];
-  end loop;
-end
-$do$;
+-- publications: 5/día (2/día si la cuenta tiene menos de 24 h)
+drop trigger if exists publications_rate_limit on public.publications;
+create trigger publications_rate_limit
+  before insert on public.publications
+  for each row
+  execute function public.tg_rate_limit('publication', 'owner_profile_id', 'day', '5', '2');
+
+-- sightings: 10/hora (3/hora si la cuenta tiene menos de 24 h)
+drop trigger if exists sightings_rate_limit on public.sightings;
+create trigger sightings_rate_limit
+  before insert on public.sightings
+  for each row
+  execute function public.tg_rate_limit('sighting', 'reporter_profile_id', 'hour', '10', '3');
+
+-- adoption_requests: 10/día (3/día si la cuenta tiene menos de 24 h)
+drop trigger if exists adoption_requests_rate_limit on public.adoption_requests;
+create trigger adoption_requests_rate_limit
+  before insert on public.adoption_requests
+  for each row
+  execute function public.tg_rate_limit('adoption_request', 'requester_profile_id', 'day', '10', '3');
+
+-- reports: 3/hora (1/hora si la cuenta tiene menos de 24 h)
+drop trigger if exists reports_rate_limit on public.reports;
+create trigger reports_rate_limit
+  before insert on public.reports
+  for each row
+  execute function public.tg_rate_limit('report', 'reporter_id', 'hour', '3', '1');
 
 comment on function public.tg_rate_limit() is
   'Rate limit por auth.uid() en la BD. Lanza SQLSTATE 53400 con detalle RATE_LIMIT_EXCEEDED.';
@@ -608,25 +635,10 @@ create policy "pet owner can insert"
 -- 7. DB-03 · Limpieza de privilegios en funciones expuestas
 -- ════════════════════════════════════════════════════════════════════════════
 --
--- Las funciones de búsqueda son SECURITY INVOKER (RLS sigue aplicando), pero no
--- hay razón para dejar EXECUTE a PUBLIC por defecto. Se deja explícito.
-
-do $do$
-declare
-  fn text;
-  fns text[] := array[
-    'public.search_publications',
-    'public.search_similar_publications_by_text',
-    'public.search_similar_images',
-    'public.calculate_structured_match_score'
-  ];
-begin
-  foreach fn in array fns loop
-    if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-               where n.nspname || '.' || p.proname = fn) then
-      execute format('revoke all on function %s from public', fn);
-      execute format('grant execute on function %s to authenticated, service_role', fn);
-    end if;
-  end loop;
-end
-$do$;
+-- Este ajuste vive en la migración 0013, que lo hace con las firmas EXACTAS de
+-- cada función (incluidos los tipos de argumento). Aquí se intentó con el nombre
+-- a secas y un bucle dinámico; se retiró para no duplicar lógica y porque una
+-- firma equivocada se omitía en silencio dejando el REVOKE sin aplicar.
+--
+-- Se deja constancia para que quede claro que el trabajo no se ha perdido: lo
+-- aplica 0013_db_authority_resto.sql (sección 5).

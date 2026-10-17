@@ -650,8 +650,40 @@ inútil.
 de una publicación para editar fallaba. Se eliminó la columna del `select` y del
 tipo.
 
-### Cambio de contrato que afecta al frontend
+### Errores de SQL detectados al aplicar las migraciones
 
+Las migraciones se validan estáticamente, pero dos fallos solo aparecieron al
+ejecutarlas en Supabase. Ambos están corregidos y **cubiertos por el validador**
+para que no vuelvan a pasar:
+
+| Error | Causa | Corrección |
+|-------|-------|------------|
+| `42601: syntax error at or near "select"` | `create trigger … after select`: PostgreSQL **no** tiene triggers sobre SELECT | Eliminado el trigger y la función asociada; la cuota de contacto se aplica dentro de `reveal_publication_contact()` (0013) |
+| `22004: null values cannot be formatted as an SQL identifier` | Un bloque `DO` recorría un array bidimensional `cfg text[][]` y hacía `format('%I', r[6])`; el 6.º elemento llegó `NULL` | Sustituido por **5 sentencias `create trigger` explícitas**, sin arrays ni bucles dinámicos. El autor de la fila se resuelve con `to_jsonb(new) ->> columna`, sin SQL dinámico |
+
+Además, al revisarlo se encontró un **fallo silencioso**: la 0013 revocaba
+privilegios con firmas inventadas (`search_publications` con 9 argumentos cuando
+tiene 11; `search_similar_publications_by_text(text, …)` cuando el primero es
+`vector`). El `exception when undefined_function` las omitía sin avisar, así que
+el `REVOKE` **nunca se aplicaba**. Ahora las firmas son exactas, el aviso es un
+`WARNING` visible y el validador compara cada `GRANT`/`REVOKE` contra las firmas
+declaradas en todo el repositorio.
+
+Reglas añadidas a `scripts/validate-sql.mjs`:
+
+1. Evento de cada `create trigger` contra la allowlist `INSERT/UPDATE/DELETE/TRUNCATE`.
+2. `TRUNCATE` + `FOR EACH ROW` (combinación rechazada por PostgreSQL).
+3. Arrays bidimensionales (`array[[…]]`), que se desalinean en silencio.
+4. `GRANT`/`REVOKE` sin firma sobre funciones con sobrecarga.
+5. `GRANT`/`REVOKE` con firma que no casa con ninguna declarada (número de
+   argumentos y tipo del primero).
+6. Sintaxis de otros motores (`auto_increment`, `unsigned`, `ENGINE`, `ifnull`,
+   `limit N,M`).
+
+Cada regla tiene su test con un fixture roto (20 tests en esa suite), así que el
+validador no puede degradarse sin que la CI lo note.
+
+### Cambio de contrato que afecta al frontend
 | Antes | Ahora |
 |-------|-------|
 | `getPublicationBySlug()` devolvía `contact_phone`/`contact_whatsapp`/`contact_mode` | No los devuelve (no se mostraban en la UI) |
