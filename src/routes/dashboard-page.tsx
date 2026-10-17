@@ -20,7 +20,17 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
   const [publications, setPublications] = useState<MyPublication[]>([]);
-  const [loading, setLoading] = useState(true);
+  /**
+   * Solo el PRIMER cargamento oculta la interfaz.
+   *
+   * Era la pieza que faltaba: el `return` temprano con el loader se disparaba en
+   * cada recarga, así que la página entera —incluidas las pestañas y el panel de
+   * adopciones— se desmontaba y volvía a montarse. Al remontarse, el panel pedía
+   * otra vez sus datos (cada consulta llama a `auth.getUser()`), y si eso refrescaba
+   * el token, Supabase emitía `TOKEN_REFRESHED` → nueva sesión → nuevo objeto
+   * `user` → el efecto se re-ejecutaba. Ese era el bucle infinito.
+   */
+  const [initialLoading, setInitialLoading] = useState(true);
   const [stats, setStats] = useState({ active: 0, resolved: 0, total: 0 });
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -29,32 +39,27 @@ export function DashboardPage() {
   /**
    * Carga las publicaciones y las estadísticas.
    *
-   * `silent` evita mostrar el loader de página completa cuando la recarga es en
-   * segundo plano (por ejemplo, tras resolver o borrar una publicación): si no,
-   * el dashboard desaparece y reaparece, que es lo que provocaba el parpadeo.
+   * No toca ningún estado de "cargando" global: la interfaz solo se oculta con
+   * `initialLoading`, en el primer render. Así, recargar datos nunca desmonta la
+   * página ni sus pestañas.
    */
-  const loadData = useCallback(
-    async (options?: { silent?: boolean }) => {
-      if (!user) return;
+  const loadData = useCallback(async () => {
+    if (!user) return;
 
-      if (!options?.silent) setLoading(true);
-
-      try {
-        const data = await getMyPublications();
-        setPublications(data);
-        setStats({
-          active: data.filter((p) => p.status === 'ACTIVE').length,
-          resolved: data.filter((p) => p.status === 'RESOLVED').length,
-          total: data.length,
-        });
-      } catch (error) {
-        console.error('Error loading publications:', error);
-      } finally {
-        if (!options?.silent) setLoading(false);
-      }
-    },
-    [user]
-  );
+    try {
+      const data = await getMyPublications();
+      setPublications(data);
+      setStats({
+        active: data.filter((p) => p.status === 'ACTIVE').length,
+        resolved: data.filter((p) => p.status === 'RESOLVED').length,
+        total: data.length,
+      });
+    } catch (error) {
+      console.error('Error loading publications:', error);
+    } finally {
+      setInitialLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -65,30 +70,34 @@ export function DashboardPage() {
   /**
    * Se carga UNA vez por usuario.
    *
-   * Antes incluía `activeTab` en las dependencias, así que cada cambio de pestaña
-   * volvía a pedir las publicaciones y activaba el loader global. Con la pestaña
-   * nueva de adopciones eso se veía como un parpadeo continuo: la página entera se
-   * desmontaba para mostrar el loader y volvía a montarse. Las publicaciones no
-   * dependen de la pestaña activa.
+   * La dependencia es `userId` (una cadena estable), no el objeto `user`: cualquier
+   * refresco de token de Supabase crea una sesión nueva con un `user` nuevo, y con
+   * el objeto en las dependencias el efecto se re-ejecutaba para siempre.
    */
-  useEffect(() => {
-    if (user) {
-      void loadData();
-      void loadProfileData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  const userId = user?.id;
 
-  const loadProfileData = async () => {
-    if (!user) return;
+  const loadProfileData = useCallback(async () => {
+    if (!userId) return;
+
     try {
-      const profile = await getProfile(user.id);
+      const profile = await getProfile(userId);
       setAvatarUrl(profile.avatar_url ?? getOAuthAvatarUrl(user) ?? null);
     } catch (error) {
       console.error('Error loading profile:', error);
       setAvatarUrl(getOAuthAvatarUrl(user));
     }
-  };
+    // `user` se usa solo como respaldo del avatar; no se incluye para no recrear
+    // la función con cada refresco de sesión.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      void loadData();
+      void loadProfileData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const handleAvatarUpload = async (file: File) => {
     if (!user) return;
@@ -153,7 +162,13 @@ export function DashboardPage() {
     }
   };
 
-  if (authLoading || loading) {
+  // Sin sesión no se pinta nada: el efecto de arriba ya está redirigiendo a
+  // /auth/login. Se comprueba ANTES del loader para que, si no hay usuario, no se
+  // quede un spinner eterno (initialLoading solo se apaga al cargar datos, y sin
+  // usuario no se cargan).
+  if (!authLoading && !user) return null;
+
+  if (authLoading || initialLoading) {
     return (
       <section className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <PawLoader size="lg" />
@@ -162,6 +177,8 @@ export function DashboardPage() {
     );
   }
 
+  // A estas alturas `user` existe (si no, ya se habría salido antes). El chequeo
+  // está aquí para que TypeScript lo estreche en todo el JSX siguiente.
   if (!user) return null;
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [

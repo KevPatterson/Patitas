@@ -130,7 +130,7 @@ export async function getMyAdoptionRequests(): Promise<AdoptionRequest[]> {
       created_at,
       updated_at,
       resolved_at,
-      publication:publications!publication_id(
+      publication:publications!publication_id!inner(
         id,
         slug,
         title,
@@ -207,7 +207,7 @@ export async function getReceivedAdoptionRequests(): Promise<AdoptionRequest[]> 
       updated_at,
       resolved_at,
       requester:profiles!requester_profile_id(username, full_name, avatar_url),
-      publication:publications!publication_id(
+      publication:publications!publication_id!inner(
         id,
         slug,
         title,
@@ -343,9 +343,17 @@ export async function countPendingRequests(): Promise<number> {
     return 0;
   }
 
+  /**
+   * El filtro por el dueño de la publicación necesita el embed con `!inner`.
+   *
+   * En PostgREST, filtrar por un recurso embebido (`publication.owner_profile_id`)
+   * solo afecta a las filas padre si el embed es `!inner`; sin él la consulta no se
+   * resuelve y devuelve error. Además el recurso debe aparecer en el `select`,
+   * incluso con `head: true` (que solo omite el cuerpo de la respuesta).
+   */
   const { count, error } = await supabase
     .from('adoption_requests')
-    .select('id', { count: 'exact', head: true })
+    .select('id, publication:publications!inner(owner_profile_id)', { count: 'exact', head: true })
     .eq('publication.owner_profile_id', user.id)
     .eq('status', 'PENDING');
 

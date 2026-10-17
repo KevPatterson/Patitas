@@ -23,8 +23,13 @@ export function NotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
+  // Dependencia estable: el objeto `user` cambia de identidad en cada refresco de
+  // token de Supabase, y con él en las dependencias el efecto se re-ejecutaba sin
+  // parar (el mismo problema que tenía el panel de adopciones).
+  const userId = user?.id;
+
   const loadNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
     
     setLoading(true);
     try {
@@ -39,7 +44,7 @@ export function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     setPageMeta({
@@ -50,10 +55,10 @@ export function NotificationsPage() {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (userId) {
       void loadNotifications();
     }
-  }, [user, loadNotifications]);
+  }, [userId, loadNotifications]);
 
   /**
    * Tiempo real (tarea 5.6).
@@ -82,7 +87,10 @@ export function NotificationsPage() {
     });
 
     return unsubscribe;
-  }, [user]);
+    // `userId` (cadena) en lugar de `user` (objeto): así el canal no se
+    // resuscribe en cada refresco de token.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {

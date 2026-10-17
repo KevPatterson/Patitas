@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, X, MessageSquare, Clock, CheckCircle2, XCircle, Ban } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -79,7 +79,21 @@ export function AdoptionRequestsPanel() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notesById, setNotesById] = useState<Record<string, string>>({});
 
+  /**
+   * Evita cargas solapadas.
+   *
+   * Cada consulta de adopciones llama a `auth.getUser()`, que es una petición de
+   * red y puede refrescar el token. Si dos cargas se solapan (por un remontaje o
+   * por pulsar «Actualizar» dos veces), las respuestas pueden llegar en cualquier
+   * orden y dejar la lista parpadeando. Con esta bandera, una carga en curso hace
+   * que las siguientes se ignoren hasta que termine.
+   */
+  const inFlight = useRef(false);
+
   const load = useCallback(async () => {
+    if (inFlight.current) return;
+
+    inFlight.current = true;
     setLoading(true);
     setError(null);
 
@@ -98,6 +112,7 @@ export function AdoptionRequestsPanel() {
           : 'No pudimos cargar tus solicitudes de adopción.'
       );
     } finally {
+      inFlight.current = false;
       setLoading(false);
     }
   }, []);
