@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- Migración 0014 — Las subidas pasan obligatoriamente por /api/uploads
+-- Migración 0015 — Las subidas pasan obligatoriamente por /api/uploads
 -- ════════════════════════════════════════════════════════════════════════════
 --
 -- Problema: aunque el cliente reenco Dee la imagen y quite el EXIF, un usuario

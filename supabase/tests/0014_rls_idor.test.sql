@@ -198,7 +198,7 @@ select throws_ok(
   'ubicación: un usuario no puede leer el secreto del difuminado'
 );
 
--- La función de difuminado se revocó a `authenticated` en la 0012 (solo la usan
+-- La función de difuminado se revocó a `authenticated` en la 0013 (solo la usan
 -- los triggers SECURITY DEFINER), así que aquí se comprueba el permiso…
 select throws_ok(
   $$select fuzzed_lat from public.fuzz_coordinates_deterministic(
@@ -223,7 +223,7 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub":"22222222-bbbb-4bbb-8bbb-222222222222","role":"authenticated"}';
 
 -- ════════════════════════════════════════════════════════════════════════════
--- 5. Datos de contacto (DB-06 cerrado del todo en 0013)
+-- 5. Datos de contacto (DB-06 cerrado del todo en 0014)
 -- ════════════════════════════════════════════════════════════════════════════
 
 select throws_ok(

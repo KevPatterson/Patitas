@@ -210,7 +210,7 @@ export async function updateProfile(userId: string, updates: {
 /**
  * Sube el avatar del usuario.
  *
- * Desde la Fase 3 el cliente ya no escribe en Storage (migración 0014): la imagen
+ * Desde la Fase 3 el cliente ya no escribe en Storage (migración 0015): la imagen
  * se comprime en el navegador, se envía a `/api/uploads?action=avatar`, donde se
  * quita el EXIF con sharp, se rechaza si lleva GPS y se guarda con un nombre uuid
  * generado en servidor. El servidor actualiza también `profiles.avatar_url`.

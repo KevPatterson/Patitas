@@ -361,7 +361,7 @@ patitas/
 │   │   ├── 0002_storage_policies.sql
 │   │   ├── ...
 │   │   ├── 0011_external_sources.sql
-│   │   └── 0011_fix_resolve_policy.sql
+│   │   └── 0012_fix_resolve_policy.sql
 │   └── config.toml
 │
 ├── docs/                     # Documentación
@@ -438,7 +438,7 @@ patitas/
 ### Protección de datos sensibles
 
 - **`publications.contact_phone` / `contact_whatsapp` / `contact_email`**: sin
-  `SELECT` ni para `anon` ni para `authenticated` (migraciones 0012 y 0013). Se
+  `SELECT` ni para `anon` ni para `authenticated` (migraciones 0013 y 0014). Se
   obtienen **solo** con `reveal_publication_contact()`, que comprueba quién pide,
   aplica una cuota de **30 revelaciones cada 24 h** y registra cada acceso en
   `contact_reveals` y `audit_logs`. El dueño y los moderadores no consumen cuota.
@@ -454,7 +454,7 @@ patitas/
 
 Hay **dos capas**, porque la arquitectura permite hablar directo con Supabase:
 
-**1. En la base de datos** (migración 0012) — no se puede saltar con la anon key:
+**1. En la base de datos** (migración 0013) — no se puede saltar con la anon key:
 
 | Tabla | Límite normal | Cuenta con < 24 h |
 |-------|---------------|-------------------|

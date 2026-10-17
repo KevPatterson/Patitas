@@ -11,7 +11,7 @@ import {
  * Subida de imágenes de publicación.
  *
  * Cambio de la Fase 3: la escritura en Storage ya no la hace el cliente. Desde la
- * migración 0014 no hay política de INSERT para `authenticated`, así que subir con
+ * migración 0015 no hay política de INSERT para `authenticated`, así que subir con
  * `supabase.storage.upload()` devuelve "new row violates row-level security
  * policy". Todo pasa por `/api/uploads`, que:
  *

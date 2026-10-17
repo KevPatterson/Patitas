@@ -172,7 +172,7 @@ describe('validador de migraciones SQL', () => {
   });
 
   /**
-   * Regresión real: la migración 0012 llegó a aplicarse con
+   * Regresión real: la migración 0013 llegó a aplicarse con
    * `create trigger ... after select`, que PostgreSQL rechaza con
    * `42601: syntax error at or near "select"`. El validador debe detectarlo antes
    * de que llegue a la base de datos.
@@ -294,7 +294,7 @@ describe('validador de migraciones SQL', () => {
   });
 
   /**
-   * Regresión real: la 0013 revocaba privilegios con firmas inventadas
+   * Regresión real: la 0014 revocaba privilegios con firmas inventadas
    * (9 args en vez de 11; `text` en vez de `vector`) y el `exception` las omitía
    * en silencio, así que el REVOKE nunca se aplicaba.
    */

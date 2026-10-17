@@ -135,7 +135,7 @@ export async function createPublication(input: CreatePublicationInput) {
   return data;
 }
 // La subida y el borrado de imágenes viven en su propio módulo porque ahora pasan
-// por /api/uploads (el cliente ya no escribe en Storage, ver migración 0014).
+// por /api/uploads (el cliente ya no escribe en Storage, ver migración 0015).
 export {
   uploadPublicationImages,
   deletePublicationImages,

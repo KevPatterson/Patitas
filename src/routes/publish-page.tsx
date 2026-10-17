@@ -106,7 +106,7 @@ export function PublishPage() {
             setIsEditing(true);
 
             // Los datos de contacto ya no se pueden leer con un SELECT (migración
-            // 0013): se piden a la función autorizada. Para el dueño no consume
+            // 0014): se piden a la función autorizada. Para el dueño no consume
             // cuota ni registra revelación.
             const contact = await getPublicationContact(publication.id);
 

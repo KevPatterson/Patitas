@@ -1,4 +1,4 @@
--- Migración 0011: Corregir política RLS para resolvePublication
+-- Migración 0012: Corregir política RLS para resolvePublication
 -- El error "more than one row returned by a subquery used as an expression" (código 21000)
 -- ocurre porque la subconsulta en WITH CHECK es ambigua.
 

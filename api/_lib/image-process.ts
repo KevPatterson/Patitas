@@ -12,7 +12,7 @@ import {
  * Por qué aquí y no solo en el cliente: el cliente es controlable. Un usuario
  * puede subir la foto original con EXIF usando supabase-js sin pasar por la UI,
  * así que el saneado tiene que ocurrir en un punto que no pueda saltarse. Por eso
- * la migración 0014 retira los permisos de escritura sobre `storage.objects` a
+ * la migración 0015 retira los permisos de escritura sobre `storage.objects` a
  * `authenticated`: la única vía de subida es `/api/uploads`, que usa el service
  * role y **siempre** pasa por esta función.
  *

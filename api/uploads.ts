@@ -10,7 +10,7 @@ import { MAX_IMAGES } from '../src/lib/constants/labels';
 /**
  * POST /api/uploads?action=<publication-image|avatar|delete-image>
  *
- * Único camino de escritura en Storage desde la migración 0014: los permisos de
+ * Único camino de escritura en Storage desde la migración 0015: los permisos de
  * INSERT/UPDATE/DELETE sobre `storage.objects` se retiran a `authenticated`, así
  * que subir directamente con supabase-js deja de funcionar y esta función (con
  * service role) pasa a ser obligatoria.

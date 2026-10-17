@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- Pruebas pgTAP de la migración 0012 (la BD como autoridad)
+-- Pruebas pgTAP de la migración 0013 (la BD como autoridad)
 -- ════════════════════════════════════════════════════════════════════════════
 --
 -- Objetivo: demostrar que un usuario NORMAL (o un anónimo con la anon key) NO
@@ -249,8 +249,8 @@ select has_table(
 );
 
 -- Regresión: PostgreSQL NO permite triggers sobre SELECT. Una versión anterior de
--- la 0012 intentaba crear `publications_contact_reveal_quota ... after select` y la
--- migración fallaba con 42601. La cuota se aplica en la función RPC de la 0013.
+-- la 0013 intentaba crear `publications_contact_reveal_quota ... after select` y la
+-- migración fallaba con 42601. La cuota se aplica en la función RPC de la 0014.
 select ok(
   not exists (
     select 1 from pg_trigger where tgname = 'publications_contact_reveal_quota'

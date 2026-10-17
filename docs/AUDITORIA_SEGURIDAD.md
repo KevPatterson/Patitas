@@ -558,13 +558,13 @@ crearse a mano. En el proyecto de producción:
    permite censurar cualquier publicación de forma anónima. **Prioridad 1 de la
    Fase 1.**
 4. **Los datos de contacto son descargables en masa** (DB-06). Requiere migración
-   nueva (0012+), no se puede arreglar desde `/api`.
+   nueva (0013+), no se puede arreglar desde `/api`.
 5. **Dos migraciones comparten el número `0011`**
-   (`0011_external_sources.sql` y `0011_fix_resolve_policy.sql`). `supabase db
+   (`0011_external_sources.sql` y `0012_fix_resolve_policy.sql`). `supabase db
    reset` las aplica por orden alfabético, lo cual es determinista pero frágil.
    **No se renombran** (regla 3: no tocar migraciones 0001–0010; renombrar una
    0011 ya aplicada rompería el historial de esquema). Las nuevas migraciones
-   empiezan en **0012**.
+   empiezan en **0013**.
 6. **`api/` no se ejecuta en CI**: el type-check es estático. No hay tests de
    endpoints. La Fase 7 añade Playwright.
 
@@ -598,7 +598,7 @@ Fase 0.
 | DB-03 sin `REVOKE EXECUTE` | 🟠 Media | `EXECUTE` para PUBLIC | `REVOKE ALL ... FROM public` + `GRANT` explícito |
 | API-10 service role en `src/` | — | No existía | **Con test**: `src/lib/__tests__/secrets.test.ts` falla si reaparece |
 | AI-01 proveedor IA sin dependencia | 🟠 Media | `TESSERACT` por defecto, imposible | `providerAvailable()` → 503 accionable; `MOCK` por defecto; `provider_is_real` en las respuestas |
-| DB-12 sin tests pgTAP | 🔴 Alta | 0 pruebas | `supabase/tests/0012_db_authority.test.sql` |
+| DB-12 sin tests pgTAP | 🔴 Alta | 0 pruebas | `supabase/tests/0013_db_authority.test.sql` |
 
 ### Pendiente para fases siguientes
 
@@ -621,10 +621,10 @@ un anuncio pueda contactar al dueño, y no hay forma de distinguir "contactar" d
 ## 8. Estado tras la Fase 2 (resto de la autoridad en la BD)
 
 La Fase 1 adelantó buena parte de la Fase 2 (rate limiting en BD, difuminado
-determinista, políticas RLS, `pg_temp`, `REVOKE`). La migración **0013** cierra lo
+determinista, políticas RLS, `pg_temp`, `REVOKE`). La migración **0014** cierra lo
 que faltaba.
 
-### Corregido en 0013
+### Corregido en 0014
 
 | Hallazgo | Sev. | Antes | Cómo se corrigió |
 |----------|------|-------|------------------|
@@ -633,7 +633,7 @@ que faltaba.
 | DB-11 listado de Storage | 🟠 Media | `anon` podía listar todos los objetos de `pet-images` y `avatars` | Se elimina la política pública de `pet-images` (las URLs públicas no pasan por RLS, las imágenes siguen viéndose) y `avatars` pasa a listarse solo en la carpeta propia |
 | DB-07 `microchip_private` | 🟠 Media | Protegido solo por RLS de fila | `REVOKE SELECT (microchip_private) FROM anon, authenticated` |
 | MIME del bucket | 🟠 Media | `pet-images` aceptaba `image/gif` | Se quita GIF: solo JPEG/PNG/WebP, coherente con la validación por magic bytes |
-| 2.3 `search_path` | 🟡 Baja | Solo las funciones de la 0012 lo fijaban | `ALTER FUNCTION ... SET search_path = public, pg_temp` en **todas** las funciones de `public`, sin redefinir cuerpos |
+| 2.3 `search_path` | 🟡 Baja | Solo las funciones de la 0013 lo fijaban | `ALTER FUNCTION ... SET search_path = public, pg_temp` en **todas** las funciones de `public`, sin redefinir cuerpos |
 | 2.3 funciones de búsqueda | 🟡 Baja | `EXECUTE` para PUBLIC | `REVOKE ... FROM public, anon` + `GRANT` explícito a `authenticated`, `service_role` |
 
 **Verificado, no asumido**: `search_publications`, `search_similar_*` y
@@ -658,10 +658,10 @@ para que no vuelvan a pasar:
 
 | Error | Causa | Corrección |
 |-------|-------|------------|
-| `42601: syntax error at or near "select"` | `create trigger … after select`: PostgreSQL **no** tiene triggers sobre SELECT | Eliminado el trigger y la función asociada; la cuota de contacto se aplica dentro de `reveal_publication_contact()` (0013) |
+| `42601: syntax error at or near "select"` | `create trigger … after select`: PostgreSQL **no** tiene triggers sobre SELECT | Eliminado el trigger y la función asociada; la cuota de contacto se aplica dentro de `reveal_publication_contact()` (0014) |
 | `22004: null values cannot be formatted as an SQL identifier` | Un bloque `DO` recorría un array bidimensional `cfg text[][]` y hacía `format('%I', r[6])`; el 6.º elemento llegó `NULL` | Sustituido por **5 sentencias `create trigger` explícitas**, sin arrays ni bucles dinámicos. El autor de la fila se resuelve con `to_jsonb(new) ->> columna`, sin SQL dinámico |
 
-Además, al revisarlo se encontró un **fallo silencioso**: la 0013 revocaba
+Además, al revisarlo se encontró un **fallo silencioso**: la 0014 revocaba
 privilegios con firmas inventadas (`search_publications` con 9 argumentos cuando
 tiene 11; `search_similar_publications_by_text(text, …)` cuando el primero es
 `vector`). El `exception when undefined_function` las omitía sin avisar, así que
@@ -692,7 +692,7 @@ validador no puede degradarse sin que la CI lo note.
 
 ### Pruebas añadidas
 
-- `supabase/tests/0013_rls_idor.test.sql`: simula `authenticated` con el JWT de cada
+- `supabase/tests/0014_rls_idor.test.sql`: simula `authenticated` con el JWT de cada
   usuario y comprueba, **sin pasar por /api**, que no se puede leer ni tocar lo de
   otro, escalar el rol, leer notificaciones ajenas, insertar en nombre de otro,
   saltarse la cuota de contacto, editar ubicaciones ajenas ni listar Storage. Y que
@@ -722,7 +722,7 @@ del usuario).
 
 ### La solución
 
-La migración **0014** retira las políticas de `INSERT`/`UPDATE`/`DELETE` sobre
+La migración **0015** retira las políticas de `INSERT`/`UPDATE`/`DELETE` sobre
 `storage.objects` para `authenticated`. Con RLS activo, sin política no hay
 escritura: **la única vía es `/api/uploads`**, que usa el service role y ejecuta
 siempre el mismo saneado.
