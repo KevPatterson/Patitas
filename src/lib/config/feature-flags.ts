@@ -19,6 +19,18 @@ export const FEATURE_FLAGS = {
   
   /** Habilitar OCR real (requiere proveedor configurado) */
   realOcr: import.meta.env.VITE_REAL_OCR_ENABLED === 'true',
+
+  /**
+   * Funciones de IA en la UI (coincidencias, duplicados, autocompletado por OCR).
+   *
+   * Desactivadas por defecto (tarea 5.4): mientras el proveedor configurado sea
+   * `MOCK`, los resultados son inventados y presentarlos como reales engaña al
+   * usuario. El endpoint `/api/ai` sigue disponible para administración y pruebas,
+   * pero la interfaz no muestra esos paneles hasta que haya un proveedor real.
+   *
+   * Se activa con `VITE_AI_ENABLED=true`.
+   */
+  ai: import.meta.env.VITE_AI_ENABLED === 'true',
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

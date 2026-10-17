@@ -12,6 +12,7 @@ import { PawLoader } from '../components/ui/paw-loader';
 import { ImageDataExtractor } from '../components/ai/image-data-extractor';
 import { FacebookImportWizard } from '../components/import/FacebookImportWizard';
 import { createLocation, createPublication, uploadPublicationImages, createPet, deletePublicationImages } from '../lib/supabase/publications';
+import { isFeatureEnabled } from '../lib/config/feature-flags';
 import type { UploadProgress } from '../lib/supabase/publication-images';
 import { updatePublication } from '../lib/supabase/my-publications';
 import { getPublicationById, getPublicationContact } from '../lib/supabase/publication-search';
@@ -700,10 +701,14 @@ export function PublishPage() {
             <div className="space-y-4">
               {/* Acciones de IA: Extracción de imagen + Importar Facebook */}
               <div className="space-y-3">
-                <ImageDataExtractor 
-                  onDataExtracted={handleAIDataExtracted}
-                  disabled={submitting}
-                />
+                {/* Autocompletado por IA: oculto si la IA está desactivada
+                    (tarea 5.4). Con el proveedor mock los datos serían inventados. */}
+                {isFeatureEnabled('ai') && (
+                  <ImageDataExtractor
+                    onDataExtracted={handleAIDataExtracted}
+                    disabled={submitting}
+                  />
+                )}
                 
                 <div className="border-2 border-dashed border-purple/20 rounded-2xl p-4 bg-purple/5">
                   <div className="flex items-center justify-between">

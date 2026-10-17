@@ -12,6 +12,7 @@ import { ForgotPasswordPage } from '../routes/auth/forgot-password-page';
 import { ResetPasswordPage } from '../routes/auth/reset-password-page';
 import { SearchPage } from '../routes/search-page';
 import { MapPage } from '../routes/map-page';
+import { AdminPublicationPage } from '../routes/admin-publication-page';
 import { PublishPage } from '../routes/publish-page';
 import { ProfilePage } from '../routes/profile-page';
 import { PublicationPage } from '../routes/publication-page';
@@ -82,6 +83,8 @@ export default function App() {
         <Route path="/perfil/:username" element={<ProfilePage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        {/* Resolutor por id: las colas de administración conocen el uuid, no el slug. */}
+        <Route path="/admin/publicaciones/:id" element={<AdminPublicationPage />} />
         <Route path="/notificaciones" element={<NotificationsPage />} />
         <Route path="/como-funciona" element={<HowItWorksPage />} />
         <Route path="*" element={<NotFound />} />

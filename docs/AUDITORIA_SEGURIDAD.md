@@ -770,3 +770,57 @@ documentación y artefactos.
 - una imagen pequeña no se amplía;
 - los avatares salen ≤512 px y ≤300 KB;
 - PNG y WebP de entrada se aceptan y salen como WebP.
+
+---
+
+## 10. Fase 5 — Funcionalidades incompletas
+
+Esta fase no es de seguridad, pero dos de sus cambios sí cierran huecos reales.
+
+### 5.2 Adopciones: la notificación estaba rota
+
+`updateAdoptionRequestStatus` insertaba la notificación **desde el cliente**. Desde
+que la migración 0013 restringió la inserción en `notifications` al service role,
+ese `insert` fallaba en silencio: el solicitante nunca sabía si le habían aceptado
+la adopción.
+
+La migración **0017** lo corrige y añade lo que faltaba de la tarea:
+
+| Cambio | Detalle |
+|--------|---------|
+| Notificación por trigger | `adoption_requests_notify_status` avisa al solicitante en `ACCEPTED`, `REJECTED` y `CANCELLED` |
+| Notas del dueño | Columna `owner_notes` (máx. 1000) |
+| Sin duplicados | Índice único parcial en `(publication_id, requester_profile_id)` para `PENDING`/`ACCEPTED` |
+| Sin autosolicitud | Trigger `validate_adoption_request` (23514 `OWN_PUBLICATION`) |
+
+Las tres reglas viven en la base de datos, así que también se aplican si alguien
+llama a la API de Supabase directamente.
+
+### 5.4 IA simulada: dejar de presentar resultados falsos
+
+`VITE_AI_ENABLED` (por defecto `false`) oculta en la UI las coincidencias,
+la alerta de duplicados y el autocompletado por OCR. Con `AI_PROVIDER=MOCK` los
+resultados son inventados y no deben parecer reales. El endpoint `/api/ai` sigue
+disponible para pruebas y administración.
+
+### 5.3 y 5.7
+
+- Nuevo visor de **`audit_logs`** en el panel de administración (pestaña
+  «Auditoría»). Las acciones se registraban pero no se podían consultar. La
+  lectura la autoriza la RLS de moderadores, así que un usuario normal ve cero
+  filas aunque llame a la API.
+- **Enlace roto corregido**: las colas de administración enlazaban a
+  `/admin/publications/<id>`, una ruta que no existía (404). Ahora existe
+  `/admin/publicaciones/:id`, que resuelve el slug y redirige a la página pública,
+  con un estado de error con salida si la publicación no está disponible.
+- Se verificaron **todos** los enlaces internos literales y dinámicos contra las
+  rutas registradas en `App.tsx`: no queda ninguno sin destino.
+
+### 5.1 y 5.6
+
+- **Mapa**: ya estaba implementado con React Leaflet (marcadores, clustering y
+  filtros), así que **no se oculta** ni se marca como «próximamente»; se mantiene
+  tal cual.
+- **Notificaciones**: la página cargaba una vez y no escuchaba cambios. Ahora se
+  suscribe a `postgres_changes` filtrando por `profile_id`, con el botón de
+  recarga como respaldo si Realtime falla.

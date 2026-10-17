@@ -137,7 +137,7 @@ export function DuplicateReview() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-navy/60">Publicación A:</span>
                   <a
-                    href={`/admin/publications/${dup.publication_a_id}`}
+                    href={`/admin/publicaciones/${dup.publication_a_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-purple hover:underline inline-flex items-center gap-1"
@@ -149,7 +149,7 @@ export function DuplicateReview() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-navy/60">Publicación B:</span>
                   <a
-                    href={`/admin/publications/${dup.publication_b_id}`}
+                    href={`/admin/publicaciones/${dup.publication_b_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-purple hover:underline inline-flex items-center gap-1"

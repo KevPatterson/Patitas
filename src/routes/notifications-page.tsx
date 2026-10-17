@@ -11,6 +11,7 @@ import {
   markAllAsRead, 
   deleteNotification, 
   getUnreadCount,
+  subscribeToNotifications,
   type Notification 
 } from '../lib/supabase/notifications';
 import { setPageMeta } from '../lib/seo/page-meta';
@@ -53,6 +54,35 @@ export function NotificationsPage() {
       void loadNotifications();
     }
   }, [user, loadNotifications]);
+
+  /**
+   * Tiempo real (tarea 5.6).
+   *
+   * La página cargaba una vez al entrar y no se enteraba de nada nuevo: había que
+   * recargar a mano para ver una coincidencia o un comentario. Se suscribe a
+   * `postgres_changes` filtrando por el propio `profile_id` (la RLS también lo
+   * garantiza, pero el filtro evita tráfico innecesario).
+   *
+   * Si Realtime falla o no está disponible, el usuario sigue teniendo el botón de
+   * recargar de la propia página: no se depende del canal para funcionar.
+   */
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = subscribeToNotifications(user.id, (notification) => {
+      setNotifications((prev) => {
+        // Evita duplicar si el INSERT llega mientras se está recargando la lista.
+        if (prev.some((item) => item.id === notification.id)) return prev;
+        return [notification, ...prev];
+      });
+
+      if (!notification.is_read) {
+        setUnreadCount((prev) => prev + 1);
+      }
+    });
+
+    return unsubscribe;
+  }, [user]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
