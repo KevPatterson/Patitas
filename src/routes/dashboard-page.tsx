@@ -26,23 +26,35 @@ export function DashboardPage() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const data = await getMyPublications();
-      setPublications(data);
-      setStats({
-        active: data.filter((p) => p.status === 'ACTIVE').length,
-        resolved: data.filter((p) => p.status === 'RESOLVED').length,
-        total: data.length,
-      });
-    } catch (error) {
-      console.error('Error loading publications:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+  /**
+   * Carga las publicaciones y las estadísticas.
+   *
+   * `silent` evita mostrar el loader de página completa cuando la recarga es en
+   * segundo plano (por ejemplo, tras resolver o borrar una publicación): si no,
+   * el dashboard desaparece y reaparece, que es lo que provocaba el parpadeo.
+   */
+  const loadData = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!user) return;
+
+      if (!options?.silent) setLoading(true);
+
+      try {
+        const data = await getMyPublications();
+        setPublications(data);
+        setStats({
+          active: data.filter((p) => p.status === 'ACTIVE').length,
+          resolved: data.filter((p) => p.status === 'RESOLVED').length,
+          total: data.length,
+        });
+      } catch (error) {
+        console.error('Error loading publications:', error);
+      } finally {
+        if (!options?.silent) setLoading(false);
+      }
+    },
+    [user]
+  );
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -50,13 +62,22 @@ export function DashboardPage() {
     }
   }, [authLoading, user, navigate]);
 
+  /**
+   * Se carga UNA vez por usuario.
+   *
+   * Antes incluía `activeTab` en las dependencias, así que cada cambio de pestaña
+   * volvía a pedir las publicaciones y activaba el loader global. Con la pestaña
+   * nueva de adopciones eso se veía como un parpadeo continuo: la página entera se
+   * desmontaba para mostrar el loader y volvía a montarse. Las publicaciones no
+   * dependen de la pestaña activa.
+   */
   useEffect(() => {
     if (user) {
       void loadData();
       void loadProfileData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, activeTab]);
+  }, [user]);
 
   const loadProfileData = async () => {
     if (!user) return;
