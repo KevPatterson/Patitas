@@ -437,15 +437,16 @@ patitas/
 
 ### Protección de datos sensibles
 
-- **`publications.contact_phone` / `contact_whatsapp` / `contact_email`**: `anon`
-  (sin cuenta) **no puede leerlos** desde la migración 0012
-  (`REVOKE SELECT (contact_*) FROM anon`). Un usuario autenticado sí, pero con
-  **cuota de 30 revelaciones cada 24 h** y registro en `contact_reveals`. Se
-  elimina así el scraping masivo de teléfonos.
-- **`pets.microchip_private`**: oculto a `anon` por la política de fila de `pets`
-  (dueño o moderador).
+- **`publications.contact_phone` / `contact_whatsapp` / `contact_email`**: sin
+  `SELECT` ni para `anon` ni para `authenticated` (migraciones 0012 y 0013). Se
+  obtienen **solo** con `reveal_publication_contact()`, que comprueba quién pide,
+  aplica una cuota de **30 revelaciones cada 24 h** y registra cada acceso en
+  `contact_reveals` y `audit_logs`. El dueño y los moderadores no consumen cuota.
+- **`pets.microchip_private`**: oculto por RLS de fila **y** sin permiso de columna
+  para `anon`/`authenticated`.
 - **`profiles.phone` y `locations.exact_lat/lng`**: esas columnas no existen.
-  Solo hay `locations.approximate_lat/lng`, ya difuminadas.
+  Solo hay `locations.approximate_lat/lng`, ya difuminadas, y `locations` solo lo
+  puede editar el dueño de la publicación que apunte a esa ubicación.
 - **Service role key**: nunca expuesta al cliente (sin prefijo `VITE_`). Un test
   de CI (`src/lib/__tests__/secrets.test.ts`) falla si aparece en `src/`.
 
