@@ -1,3 +1,4 @@
+import { safeLinkUrl } from '../../lib/utils/safe-url';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, Eye, Edit, Star, Image, Globe, Shield, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase/client';
@@ -175,9 +176,9 @@ export function PendingReviewQueue() {
                     <div className="flex items-center gap-2 text-xs text-navy/60">
                       <span>Post original:</span>
                       <a
-                        href={post.source_url}
+                        href={safeLinkUrl(post.source_url) ?? undefined}
                         target="_blank"
-                        rel="noopener noreferrer"
+                        rel="noopener noreferrer nofollow ugc"
                         className="hover:underline text-blue-600 truncate max-w-xs inline-block"
                       >
                         {post.external_id}
@@ -338,7 +339,10 @@ export function PendingReviewQueue() {
                 )}
                 <Button
                   variant="ghost"
-                  onClick={() => window.open(post.source_url, '_blank')}
+                  onClick={() => {
+                    const target = safeLinkUrl(post.source_url);
+                    if (target) window.open(target, '_blank', 'noopener,noreferrer');
+                  }}
                   className="h-9 px-4 text-sm gap-2"
                 >
                   <Eye className="size-4" />

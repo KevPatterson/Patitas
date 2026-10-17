@@ -1,3 +1,4 @@
+import { safeLinkUrl } from '../../lib/utils/safe-url';
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ExternalLink, Image, Loader2, AlertCircle, CheckCircle, X, Globe } from 'lucide-react';
@@ -485,7 +486,7 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
       {extractedData.sourceUrl && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <p className="text-sm font-medium text-blue-800 mb-1">Fuente original</p>
-          <a href={extractedData.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline text-sm">
+          <a href={safeLinkUrl(extractedData.sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer nofollow ugc" className="flex items-center gap-2 text-blue-600 hover:underline text-sm">
             <ExternalLink className="size-3.5" />
             Ver post en Facebook
           </a>

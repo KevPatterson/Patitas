@@ -1,3 +1,4 @@
+import { safeLinkUrl } from '../../lib/utils/safe-url';
 import { useState } from 'react';
 import { Flag, AlertTriangle, X } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -108,7 +109,7 @@ export function PublicationTakedownButton({
               {isImported && sourceUrl && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
                   <p className="text-xs font-medium text-blue-800 mb-1">Publicación importada</p>
-                  <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                  <a href={safeLinkUrl(sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer nofollow ugc" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
                     <span>Ver fuente original →</span>
                   </a>
                 </div>

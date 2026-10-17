@@ -1,3 +1,4 @@
+import { safeLinkUrl, safeMailtoHref } from '../../lib/utils/safe-url';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase/client';
 import { Button } from '../ui/button';
@@ -188,7 +189,7 @@ export function TakedownQueue() {
                             )}
                           </div>
                           {pub.source_url && (
-                            <a href={pub.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                            <a href={safeLinkUrl(pub.source_url) ?? undefined} target="_blank" rel="noopener noreferrer nofollow ugc" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
                               <Eye className="size-3" /> Ver fuente
                             </a>
                           )}
@@ -208,7 +209,7 @@ export function TakedownQueue() {
                     <td className="px-4 py-3">
                       <div className="text-sm text-navy/70">
                         {request.contact_email ? (
-                          <a href={`mailto:${request.contact_email}`} className="flex items-center gap-1 hover:underline">
+                          <a href={safeMailtoHref(request.contact_email) ?? undefined} className="flex items-center gap-1 hover:underline">
                             <Mail className="size-3.5" />
                             {request.contact_email}
                           </a>
