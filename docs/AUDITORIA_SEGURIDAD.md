@@ -707,3 +707,66 @@ validador no puede degradarse sin que la CI lo note.
 | AI-03 auto-publicación guiada por salida del LLM | 8 | El HMAC ya cubre el contenido; falta cola de moderación obligatoria |
 | FE-* frontend y despliegue (CSP, JSON-LD, callback, dominio) | 4 | Sin verificar |
 | Verificación de dueño / antiestafa | 8 | Producto, no seguridad de plataforma |
+
+---
+
+## 9. Fase 3 — Uploads y privacidad de imágenes
+
+### El problema de fondo
+
+El cliente subía las imágenes **directamente a Supabase Storage** con la anon key.
+En Storage no hay forma de inspeccionar los bytes de un objeto, así que ninguna
+validación de servidor podía aplicarse: el MIME lo declaraba el cliente y el EXIF
+viajaba intacto. Reencodear en el navegador no es una garantía (el navegador es
+del usuario).
+
+### La solución
+
+La migración **0014** retira las políticas de `INSERT`/`UPDATE`/`DELETE` sobre
+`storage.objects` para `authenticated`. Con RLS activo, sin política no hay
+escritura: **la única vía es `/api/uploads`**, que usa el service role y ejecuta
+siempre el mismo saneado.
+
+| Tarea | Estado | Detalle |
+|-------|--------|---------|
+| 3.1 Quitar EXIF (incluido GPS) | **Hecha** | Cliente: reencode con `canvas` → WebP (elimina metadatos). Servidor: `sharp` reencodea otra vez y **rechaza** si quedaba GPS |
+| 3.2 Magic bytes, solo JPEG/PNG/WebP, dimensiones máximas | **Hecha** | `detectImage()` rechaza SVG, GIF y ejecutables renombrados; salida limitada a 1600 px de lado |
+| 3.3 Compresión a 1600 px / ≤1 MB + progreso + reintento | **Hecha** | `compressImage()` (calidades 0.82→0.42), barra de progreso en el wizard, 2 reintentos con espera creciente |
+| 3.4 Nombre generado en servidor | **Hecha** | `<publicationId>/<uuid>.webp`; además un `CHECK` **NOT VALID** en `publication_images` que solo admite ese patrón en filas nuevas |
+| 3.5 Avatares con reglas propias | **Hecha** | Mismo pipeline, 512 px de lado y 300 KB de objetivo |
+
+### Detalles que importan
+
+- **Se rechaza, no se limpia.** Si la imagen trae GPS, la API responde 400 con un
+  mensaje que pide volver a guardarla sin ubicación. Limpiar en silencio ocultaría
+  al usuario que su foto llevaba sus coordenadas.
+- **Defensa en profundidad.** Después de reencodear se vuelve a comprobar el
+  resultado: si apareciera EXIF, el archivo no se sube.
+- **Sin objetos huérfanos.** Si el `INSERT` en `publication_images` falla después
+  de subir, el objeto se borra.
+- **El borrado también pasa por la API**, que comprueba que el primer segmento del
+  path sea una publicación del usuario (o su propio uid en avatares). Antes el
+  cliente borraba directamente con `storage.remove()`.
+- **`sharp` pasó de `devDependencies` a `dependencies`**: es código de producción.
+
+### Bug de despliegue encontrado y corregido
+
+`.vercelignore` excluía `api/ai/*.ts` con el comentario *"importados dinámicamente
+por api/ai.ts"*. Eso rompía justo lo que decía proteger: si el módulo no se
+despliega, el `await import()` del router falla y **todos los endpoints de IA
+respondían 500 en producción**. Además Vercel no puede incluir en el bundle un
+archivo ignorado. Se eliminaron esas exclusiones; ahora solo se ignora
+documentación y artefactos.
+
+### Pruebas
+
+`api/__tests__/image-process.test.ts` (12 tests, con `sharp` real):
+
+- una imagen con GPS en EXIF se **rechaza** con código `GPS_METADATA`;
+- una imagen con EXIF pero sin GPS se acepta y **la salida no contiene EXIF**
+  (verificado con `sharp.metadata()` y con el buscador de bloques APP1);
+- SVG, `.php` renombrado y GIF se rechazan;
+- una imagen de 3000×1200 sale con el lado largo ≤1600 px y ≤1 MB;
+- una imagen pequeña no se amplía;
+- los avatares salen ≤512 px y ≤300 KB;
+- PNG y WebP de entrada se aceptan y salen como WebP.

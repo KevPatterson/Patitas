@@ -1,14 +1,27 @@
-# Excluir helpers internos de IA (importados dinámicamente por api/ai.ts)
-api/ai/calculate-matches.ts
-api/ai/create-match.ts
-api/ai/detect-duplicates.ts
-api/ai/extract-from-image.ts
-api/ai/process-job.ts
-api/ai/process-publication.ts
+# ════════════════════════════════════════════════════════════════════════════
+# .vercelignore — qué NO se sube al despliegue
+# ════════════════════════════════════════════════════════════════════════════
+#
+# OJO: este archivo antes excluía los handlers de `api/ai/*.ts` con el comentario
+# "importados dinámicamente por api/ai.ts". Eso era un error: si el archivo no se
+# despliega, el `await import('./ai/calculate-matches')` de `api/ai.ts` falla en
+# tiempo de ejecución, así que **todos los endpoints de IA respondían 500 en
+# producción**. Además, Vercel no puede incluir en el bundle un módulo que se ha
+# ignorado.
+#
+# Por eso ya no se excluye ningún archivo de `api/`: los handlers de IA se
+# despliegan, tanto para el router `/api/ai?action=…` como por si se invocan
+# directamente. Vercel comparte el bundle entre funciones, así que el coste es
+# mínimo.
 
-# Excluir folders vacíos
-api/publications/
-api/uploads/
-
-# Documentación
+# Documentación interna del backend (no es una función).
 api/README.md
+
+# Artefactos locales y de herramientas.
+node_modules/
+dist/
+coverage/
+.vercel/
+supabase/.temp/
+*.tsbuildinfo
+.vscode/
