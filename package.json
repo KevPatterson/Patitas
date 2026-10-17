@@ -11,6 +11,7 @@
     "typecheck": "tsc -b",
     "format": "prettier --write .",
     "test": "vitest run",
+    "validate:sql": "node scripts/validate-sql.mjs",
     "seed:test": "node scripts/seed-test-publications.mjs"
   },
   "dependencies": {
