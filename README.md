@@ -437,37 +437,45 @@ patitas/
 
 ### Protección de datos sensibles
 
-- **Estado real hoy**: la protección es **solo RLS a nivel de fila**. No existen
-  `GRANT`/`REVOKE` por columna en ninguna migración.
-- **`pets.microchip_private`**: oculto a `anon` únicamente por la política de
-  fila de `pets` (dueño o moderador).
-- **`profiles.phone` y `locations.exact_lat/lng`**: esas columnas **no existen**;
-  solo hay `locations.approximate_lat/lng`, ya difuminadas.
-- **⚠️ `publications.contact_phone` / `contact_whatsapp` / `contact_email`**:
-  legibles por cualquiera (incluido `anon`) en publicaciones `ACTIVE`/`RESOLVED`.
-  Sin límite de revelaciones. Ver hallazgos DB-06 y DB-07 en
-  [docs/AUDITORIA_SEGURIDAD.md](./docs/AUDITORIA_SEGURIDAD.md) — se corrige en Fase 2.
+- **`publications.contact_phone` / `contact_whatsapp` / `contact_email`**: `anon`
+  (sin cuenta) **no puede leerlos** desde la migración 0012
+  (`REVOKE SELECT (contact_*) FROM anon`). Un usuario autenticado sí, pero con
+  **cuota de 30 revelaciones cada 24 h** y registro en `contact_reveals`. Se
+  elimina así el scraping masivo de teléfonos.
+- **`pets.microchip_private`**: oculto a `anon` por la política de fila de `pets`
+  (dueño o moderador).
+- **`profiles.phone` y `locations.exact_lat/lng`**: esas columnas no existen.
+  Solo hay `locations.approximate_lat/lng`, ya difuminadas.
 - **Service role key**: nunca expuesta al cliente (sin prefijo `VITE_`). Un test
-  de CI falla si aparece en `src/` (Fase 1).
+  de CI (`src/lib/__tests__/secrets.test.ts`) falla si aparece en `src/`.
 
 ### Rate limiting
 
-> **⚠️ Limitación conocida**: hoy el almacén es un `Map` **en memoria** por
-> instancia de función y la clave es la **IP leída de `x-forwarded-for[0]`**, un
-> header que el cliente puede falsificar. El límite efectivo es
-> `límite × nº de instancias` y se puede saltar cambiando el header.
+Hay **dos capas**, porque la arquitectura permite hablar directo con Supabase:
 
-Endpoints con rate limit (por IP):
+**1. En la base de datos** (migración 0012) — no se puede saltar con la anon key:
 
-- `/api/ai/*` (process-publication, calculate-matches, create-match, detect-duplicates, extract-from-image)
-- `/api/publications` (create, validate-upload)
-- `/api/admin/moderation`
-- `/api/import/*`
-- `/api/takedown`
-- `/api/ingest/external-post`
+| Tabla | Límite normal | Cuenta con < 24 h |
+|-------|---------------|-------------------|
+| `comments` | 10/hora | 3/hora |
+| `publications` | 5/día | 2/día |
+| `sightings` | 10/hora | 3/hora |
+| `adoption_requests` | 10/día | 3/día |
+| `reports` | 3/hora | 1/hora |
 
-La Fase 2 sustituye esto por rate limiting **en la base de datos**
-(triggers `BEFORE INSERT` por `auth.uid()`) y Redis distribuido para `/api`.
+El error usa SQLSTATE `53400` con `code: RATE_LIMIT_EXCEEDED` en el detalle, para
+que el frontend lo distinga de un fallo genérico.
+
+**2. En `/api`** — cuota por IP **y por usuario**:
+
+- IP real desde `x-real-ip` / `x-vercel-forwarded-for` (headers que Vercel
+  controla), **nunca** `x-forwarded-for[0]`.
+- Contador compartido en **Upstash Redis / Vercel KV**. Sin esas variables cae a
+  memoria por instancia y la respuesta lo delata con
+  `X-RateLimit-Backend: memory`.
+- Los endpoints de IA comparten un único cubo por usuario, así que no se puede
+  multiplicar la cuota rotando entre acciones.
+- `429` con `Retry-After` y cabeceras `X-RateLimit-*`.
 
 ### Headers de seguridad (Vercel)
 
@@ -485,16 +493,17 @@ Pendiente (Fase 4): migrar `routes` → `rewrites`, añadir CSP, HSTS y COOP.
 ### Privacidad de ubicación
 
 1. Usuario ingresa ubicación (provincia, municipio, coordenadas opcionales)
-2. **Trigger automático** difumina coordenadas con ±0.003° de ruido (~330 m)
+2. La entrada se redondea a una rejilla de ~1,1 km y se le aplica un
+   desplazamiento de ±0,003° (~330 m)
 3. El cliente nunca recibe la coordenada exacta (no se almacena)
 4. Mapa muestra ubicación aproximada
 
-> **⚠️ El difuminado usa `random()`**, no un hash con secreto. Cualquier usuario
-> autenticado puede volver a guardar la misma ubicación muchas veces y **promediar**
-> el ruido para recuperar el punto real (con 50 muestras el error baja de ~330 m a
-> ~27 m). Ver hallazgo DB-04 en
-> [docs/AUDITORIA_SEGURIDAD.md](./docs/AUDITORIA_SEGURIDAD.md) — se corrige en Fase 2
-> con un desplazamiento determinista derivado de un secreto de BD.
+El desplazamiento es **determinista**: se deriva de un secreto de servidor
+(`public.app_secret()`, guardado en la configuración de la BD y no accesible por
+PostgREST) y del id de la fila. Consecuencia práctica: guardar la misma ubicación
+50 veces devuelve **siempre el mismo punto**, así que ya no se puede promediar el
+ruido para recuperar la posición real. Volver a guardar una ubicación distinta
+(otra celda de la rejilla) sí produce otro desplazamiento.
 
 ---
 

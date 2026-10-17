@@ -567,3 +567,53 @@ crearse a mano. En el proyecto de producción:
    empiezan en **0012**.
 6. **`api/` no se ejecuta en CI**: el type-check es estático. No hay tests de
    endpoints. La Fase 7 añade Playwright.
+
+---
+
+## 7. Estado tras la Fase 1 (críticos + riesgos pendientes de Fase 0)
+
+La Fase 1 se amplió para cubrir también los riesgos que quedaron abiertos tras la
+Fase 0.
+
+### Corregido
+
+| Hallazgo | Sev. | Antes | Cómo se corrigió |
+|----------|------|-------|------------------|
+| API-04 `takedown` censura anónima | 🔴 Crítica | Un anónimo ocultaba cualquier publicación | Exige sesión; oculta de inmediato solo si eres dueño o moderador; si no, queda `PENDING` para revisión |
+| DB-06 contacto legible en masa | 🔴 Alta | `anon` descargaba teléfonos y emails | `REVOKE SELECT (contact_*) FROM anon` + cuota 30/24 h + auditoría en `contact_reveals` |
+| DB-04 fuzzing promediable | 🔴 Alta | `random()` en cada guardado | `fuzz_coordinates_deterministic()` con secreto de BD y rejilla de ~1,1 km; idempotente en UPDATE |
+| API-06 rate limit evadible | 🔴 Alta | `Map` en memoria + `x-forwarded-for[0]` | Upstash/Vercel KV + `x-real-ip`/`x-vercel-forwarded-for` + cuota por usuario |
+| DB-01 sin rate limit en BD | 🔴 Alta | Solo en `/api` (saltable con la anon key) | Triggers `BEFORE INSERT` en 5 tablas con cuota por `auth.uid()` y límite estricto < 24 h |
+| API-02 IDOR en IA | 🔴 Alta | Cualquiera leía publicaciones ajenas | `canManagePublication()` en `calculate-matches` y `detect-duplicates` |
+| API-03 `create-match` con scores del cliente | 🔴 Alta | Scores inventados, sin comprobar propiedad | Recálculo con `calculate_structured_match_score`, propiedad de A o B, umbral mínimo |
+| API-05 SSRF | 🔴 Alta | `fetch(imageUrl)` arbitrario | `url-guard` (DNS + rangos privados + sin redirects); el proveedor recibe bytes, no URLs |
+| API-07 HMAC no cubre el contenido | 🔴 Alta | `raw_text`/`image_paths` sin firmar | `canonicalIngestPayload()` firma todo. Además se alineó el formato con el worker: **antes ninguna firma podía validar** |
+| DB-08 políticas `using(true)` | 🔴 Alta | Un anónimo insertaba notificaciones | `TO service_role` en notifications, external_sources y takedown_requests |
+| DB-14 inserción con autor NULL | 🔴 Alta | Se podía comentar sin cuenta | `with check (autor = auth.uid())` en comments, sightings, reports y pets |
+| API-01 moderación sin Zod | 🟠 Media | Solo se comprobaba presencia de campos | Zod con enum cerrado, UUID y `reason` ≤ 500; auditoría obligatoria |
+| API-08 fuga de errores | 🟠 Media | `error.message` llegaba al cliente | `internalError()` registra en servidor; el cliente ve un mensaje genérico |
+| API-11 validación ausente | 🔴 Alta | 11 endpoints sin validar | Zod en todos los endpoints con body |
+| API-09 comparación no timing-safe | 🟡 Baja | `!==` con el secreto | `safeEqual()` con `timingSafeEqual` |
+| DB-02 `search_path` sin `pg_temp` | 🟡 Baja | `search_path = public` | `public, pg_temp` en las 3 funciones `SECURITY DEFINER` |
+| DB-03 sin `REVOKE EXECUTE` | 🟠 Media | `EXECUTE` para PUBLIC | `REVOKE ALL ... FROM public` + `GRANT` explícito |
+| API-10 service role en `src/` | — | No existía | **Con test**: `src/lib/__tests__/secrets.test.ts` falla si reaparece |
+| AI-01 proveedor IA sin dependencia | 🟠 Media | `TESSERACT` por defecto, imposible | `providerAvailable()` → 503 accionable; `MOCK` por defecto; `provider_is_real` en las respuestas |
+| DB-12 sin tests pgTAP | 🔴 Alta | 0 pruebas | `supabase/tests/0012_db_authority.test.sql` |
+
+### Pendiente para fases siguientes
+
+| Hallazgo | Fase | Nota |
+|----------|------|------|
+| DB-11 buckets de Storage públicos | 2 | Listado anónimo de imágenes |
+| DB-05 `locations` UPDATE abierto | 2 | Mitigado por el fuzzing determinista, pero cualquier autenticado aún edita cualquier fila |
+| DB-07 grants por columna (resto) | 2 | Solo se revocaron las de contacto |
+| AI-03 auto-publicación guiada por LLM | 8 | El HMAC ya cubre el contenido; falta cola de moderación obligatoria |
+| FE-* (frontend y despliegue) | 4 | Sin verificar en profundidad |
+
+### Riesgo residual aceptado conscientemente
+
+`publications.contact_*` sigue siendo legible por **cualquier usuario con cuenta**,
+con cuota y registro. Cerrarlo del todo implica mover la lectura a una función
+`SECURITY DEFINER` y cambiar el frontend; se difiere a la Fase 2 porque hoy la UI
+no muestra esos datos a terceros. La barrera actual (anon bloqueado, 30
+revelaciones al día y auditoría) elimina el scraping masivo, que era el riesgo real.
