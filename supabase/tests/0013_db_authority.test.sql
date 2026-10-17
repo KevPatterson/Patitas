@@ -57,27 +57,60 @@ values (
 on conflict (id) do nothing;
 
 -- ════════════════════════════════════════════════════════════════════════════
--- 1. DB-06 · Los datos de contacto NO son legibles por anon
+-- 1. DB-06 · Los datos de contacto no son LEGIBLES por anon ni por authenticated
 -- ════════════════════════════════════════════════════════════════════════════
+--
+-- OJO con `col_privs_are(..., array[]::text[])`: eso exige que el rol no tenga
+-- NINGÚN privilegio sobre la columna, y aquí INSERT y UPDATE se conservan a
+-- propósito (el cliente sigue creando y editando publicaciones, y sus formularios
+-- envían contacto). Lo que debe estar prohibido es SELECT. Por eso se comprueba
+-- `privilege_type = 'SELECT'` explícitamente.
 
-select col_privs_are(
-  'public', 'publications', 'contact_phone', 'anon', array[]::text[],
-  'DB-06: anon no tiene privilegio de columna sobre contact_phone'
+select ok(
+  not has_column_privilege('anon', 'public.publications', 'contact_phone', 'SELECT'),
+  'DB-06: anon no puede hacer SELECT sobre contact_phone'
 );
 
-select col_privs_are(
-  'public', 'publications', 'contact_whatsapp', 'anon', array[]::text[],
-  'DB-06: anon no tiene privilegio de columna sobre contact_whatsapp'
+select ok(
+  not has_column_privilege('anon', 'public.publications', 'contact_whatsapp', 'SELECT'),
+  'DB-06: anon no puede hacer SELECT sobre contact_whatsapp'
 );
 
-select col_privs_are(
-  'public', 'publications', 'contact_email', 'anon', array[]::text[],
-  'DB-06: anon no tiene privilegio de columna sobre contact_email'
+select ok(
+  not has_column_privilege('anon', 'public.publications', 'contact_email', 'SELECT'),
+  'DB-06: anon no puede hacer SELECT sobre contact_email'
 );
 
-select col_privs_are(
-  'public', 'publications', 'contact_phone', 'authenticated', array['SELECT'],
-  'DB-06: authenticated sí puede leer contact_phone (con cuota y registro)'
+select ok(
+  not has_column_privilege('authenticated', 'public.publications', 'contact_phone', 'SELECT'),
+  'DB-06: authenticated no puede hacer SELECT sobre contact_phone (solo por la RPC)'
+);
+
+select ok(
+  not has_column_privilege('authenticated', 'public.publications', 'contact_whatsapp', 'SELECT'),
+  'DB-06: authenticated no puede hacer SELECT sobre contact_whatsapp'
+);
+
+select ok(
+  not has_column_privilege('authenticated', 'public.publications', 'contact_email', 'SELECT'),
+  'DB-06: authenticated no puede hacer SELECT sobre contact_email'
+);
+
+-- El camino legítimo: `reveal_publication_contact()` (SECURITY DEFINER).
+select ok(
+  has_function_privilege('authenticated', 'public.reveal_publication_contact(uuid)', 'EXECUTE'),
+  'DB-06: el contacto sí se puede obtener por la función autorizada'
+);
+
+-- Se conserva el resto de la fila: modo de contacto y escritura.
+select ok(
+  has_column_privilege('anon', 'public.publications', 'contact_mode', 'SELECT'),
+  'DB-06: contact_mode sigue siendo legible (no es PII)'
+);
+
+select ok(
+  has_column_privilege('authenticated', 'public.publications', 'contact_phone', 'UPDATE'),
+  'DB-06: se conserva UPDATE para que el dueño pueda editar su publicación'
 );
 
 -- ════════════════════════════════════════════════════════════════════════════

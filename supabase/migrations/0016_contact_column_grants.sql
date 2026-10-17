@@ -118,6 +118,23 @@ comment on column public.pets.microchip_private is
 --
 -- Se deja como WARNING (no como excepción) para no bloquear la migración si el
 -- entorno tiene particularidades, pero deja constancia en el log de `db push`.
+--
+-- IMPORTANTE: hay que filtrar por `privilege_type = 'SELECT'`.
+-- `information_schema.column_privileges` lista TODOS los tipos de privilegio, y
+-- los de INSERT/UPDATE (que se conservan a propósito, porque el cliente sigue
+-- creando y editando publicaciones) aparecen expandidos a todas las columnas. Sin
+-- el filtro, esta comprobación avisaría de una fuga que no existe.
+--
+-- Consulta de verificación manual equivalente:
+--
+--   select column_name, privilege_type, grantee
+--     from information_schema.column_privileges
+--    where table_name = 'publications'
+--      and column_name like 'contact%'
+--    order by column_name, privilege_type, grantee;
+--
+--   -> contact_mode: INSERT, REFRESH?, SELECT, UPDATE
+--   -> contact_phone / contact_whatsapp / contact_email: ninguna fila con SELECT
 
 do $do$
 declare
@@ -128,12 +145,13 @@ begin
    where table_schema = 'public'
      and table_name = 'publications'
      and column_name in ('contact_phone', 'contact_whatsapp', 'contact_email')
+     and privilege_type = 'SELECT'
      and grantee in ('anon', 'authenticated');
 
   if v_leaks > 0 then
-    raise warning 'Todavía hay % privilegios sobre columnas de contacto: revisa los GRANT del proyecto', v_leaks;
+    raise warning 'Todavía hay % privilegios de SELECT sobre columnas de contacto: revisa los GRANT del proyecto', v_leaks;
   else
-    raise notice 'OK: anon y authenticated no tienen privilegios sobre contact_phone/contact_whatsapp/contact_email';
+    raise notice 'OK: anon y authenticated no tienen SELECT sobre contact_phone/contact_whatsapp/contact_email';
   end if;
 end
 $do$;
