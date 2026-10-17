@@ -824,3 +824,81 @@ disponible para pruebas y administración.
 - **Notificaciones**: la página cargaba una vez y no escuchaba cambios. Ahora se
   suscribe a `postgres_changes` filtrando por `profile_id`, con el botón de
   recarga como respaldo si Realtime falla.
+---
+
+## 11. Fase 6 — SEO, compartir y rendimiento
+
+### 6.3 Code splitting: el cambio con más impacto
+
+Antes todo el sitio viajaba en **un único `index.js` de 1.104 KB** (307 KB gzip):
+la portada descargaba también el panel de administración, el editor de
+publicaciones y **Leaflet completo**, aunque el visitante no fuese a usarlos.
+
+Ahora cada ruta es un chunk propio (`React.lazy` + `Suspense` con el `PawLoader`
+como fallback) y los vendors van separados para que el navegador los conserve
+entre despliegues.
+
+| Métrica | Antes | Después |
+|---------|-------|---------|
+| JS de entrada | 1.104 KB en 1 archivo | **37 KB** + vendors (React 217, Supabase 218, router 37, iconos 20) |
+| CSS | 87 KB en 1 archivo | **71 KB** + 16 KB de Leaflet (solo en `/mapa`) |
+| Peso inicial (gzip) | ~327 KB | **~173 KB** |
+| Leaflet | en el bundle inicial | **153 KB diferidos**, solo al abrir `/mapa` |
+| Código diferido | — | **602 KB en 38 chunks** |
+
+Las rutas pesadas que ya no se descargan al entrar: `/admin` (70 KB),
+`/publicar` (59 KB), `/p/:slug` (53 KB), `/dashboard` (19 KB).
+
+### 6.1 Open Graph por publicación
+
+El problema: al compartir `…/p/mi-perro` en WhatsApp, el crawler no ejecuta
+JavaScript y solo veía el `index.html` genérico, así que la tarjeta mostraba el
+título del sitio.
+
+Solución: una regla en `vercel.json` con `has` sobre el `user-agent` reescribe
+`/p/:slug` a `/api/og?slug=:slug` **solo para crawlers** (WhatsApp,
+facebookexternalhit, Twitterbot, TelegramBot, Slack, Discord, LinkedIn,
+Pinterest, Reddit, Skype, VK, Iframely, Embedly). Se eligió declarativo en vez de
+Edge Middleware para que, si la condición falla, los humanos sigan recibiendo la
+SPA sin ningún riesgo de romper el enrutado.
+
+`/api/og` devuelve HTML mínimo con `og:title`, `og:description`, `og:image`,
+`og:url` y `twitter:card`, leyendo **solo columnas públicas**: ni contacto ni
+coordenadas, porque ese enlace se pega en grupos de desconocidos. Cachea 1 h en
+CDN y responde `noindex` cuando la publicación ya no está activa.
+
+### 6.2 Sitemap, robots y canonical
+
+- `public/robots.txt`: bloquea `/dashboard`, `/admin`, `/notificaciones`,
+  `/auth/`, `/api/` y las búsquedas con parámetros (generan URLs infinitas).
+- `/api/sitemap.xml` (rewrite desde `/sitemap.xml`): solo publicaciones
+  `ACTIVE` y no borradas, hasta 5000 URLs, ordenadas por `updated_at`, con las
+  rutas estáticas incluidas. 1 h de caché en CDN.
+- `setPageMeta` ahora soporta `noindex` y normaliza a absoluto el canonical y
+  `og:image` (los crawlers no aceptan rutas relativas). La etiqueta `robots` se
+  pone y se **quita** según la ruta, para que no se quede pegada al navegar.
+- Las publicaciones resueltas/ocultas se marcan `noindex` desde la página.
+
+### 6.5 Movimiento reducido
+
+Ya existía un bloque `@media (prefers-reduced-motion: reduce)` que anula
+animaciones, transiciones, `scroll-behavior` y transformaciones. Se mantiene y se
+documenta: cubre el requisito sin necesidad de un modo ligero aparte.
+
+### 6.6 Service worker
+
+Estrategia Network First con fallback a caché. Se añadió el guard que faltaba:
+**solo se cachean GET**. Antes cualquier respuesta 200 del mismo origen entraba en
+la caché, incluida la de un POST. Sigue sin cachear nada de otro origen (Supabase
+auth/REST/Storage van firmadas con el token del usuario) ni `/api/`.
+
+### 6.4 y 6.7 — pendientes
+
+- **6.4**: hay `loading="lazy"` en las listas nuevas, pero falta `width`/`height`
+  y `srcset` de forma sistemática. No se hizo porque exige conocer las
+  dimensiones reales de cada imagen (hoy no se guardan en `publication_images`).
+  Propuesta: añadir `width`/`height` a la tabla al subir (ya se calculan en
+  `/api/uploads`) y generar miniaturas con las transformaciones de Supabase.
+- **6.7**: la auditoría Lighthouse no se puede ejecutar desde este entorno. Hay
+  que lanzarla contra el deploy con las instrucciones del apartado de pasos
+  manuales.

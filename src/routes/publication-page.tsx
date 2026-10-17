@@ -165,6 +165,9 @@ export function PublicationPage() {
       description: publication.description.slice(0, 155),
       canonicalPath: `/p/${publication.slug}`,
       image,
+      // Solo se indexa lo público y vigente: una publicación resuelta, oculta o
+      // eliminada no debe posicionarse en buscadores (tarea 6.2).
+      noindex: publication.status !== 'ACTIVE',
     });
 
     // Agregar structured data para publicaciones perdidas/encontradas
