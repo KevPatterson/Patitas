@@ -84,16 +84,45 @@ export type ModerationResult = {
   categories?: Record<string, number>;
 };
 
+/**
+ * Imagen ya descargada y validada por el endpoint.
+ *
+ * Cambio de Fase 1 (hallazgo API-05): antes los proveedores recibían una URL y
+ * hacían `fetch(imageUrl)` por su cuenta, así que un atacante podía apuntar a
+ * `http://169.254.169.254/` (metadatos de nube) o a servicios internos. Ahora la
+ * descarga ocurre UNA vez en el endpoint, con `fetchRemoteImage` (allowlist,
+ * bloqueo de IPs privadas, sin redirecciones, con timeout y tamaño máximo), y al
+ * proveedor solo le llegan bytes.
+ */
+export type ImagePayload = {
+  /** Contenido de la imagen. */
+  bytes: Uint8Array;
+  /** Tipo MIME real, deducido de los magic bytes. */
+  mimeType: string;
+  /** URL de origen, solo para trazabilidad y para APIs que exigen un URI. */
+  sourceUrl?: string;
+};
+
+/** Codifica los bytes en base64 sin depender del tamaño del búfer. */
+export function toBase64(payload: ImagePayload): string {
+  return Buffer.from(payload.bytes).toString('base64');
+}
+
+/** Data URI listo para las APIs que aceptan contenido inline. */
+export function toDataUri(payload: ImagePayload): string {
+  return `data:${payload.mimeType};base64,${toBase64(payload)}`;
+}
+
 export interface IAIProvider {
   /**
    * Extraer texto de una imagen (OCR)
    */
-  extractTextFromImage(imageUrl: string): Promise<OCRResult>;
+  extractTextFromImage(image: ImagePayload): Promise<OCRResult>;
 
   /**
    * Analizar imagen con Computer Vision
    */
-  analyzeImage(imageUrl: string, prompt?: string): Promise<VisionResult>;
+  analyzeImage(image: ImagePayload, prompt?: string): Promise<VisionResult>;
 
   /**
    * Analizar texto (clasificación, extracción de entidades, etc.)
@@ -108,12 +137,12 @@ export interface IAIProvider {
   /**
    * Generar embedding de imagen
    */
-  generateImageEmbedding(imageUrl: string): Promise<ImageEmbeddingResult>;
+  generateImageEmbedding(image: ImagePayload): Promise<ImageEmbeddingResult>;
 
   /**
-   * Moderar contenido
+   * Moderar contenido. La imagen es opcional y también llega ya descargada.
    */
-  moderateContent(text: string, imageUrl?: string): Promise<ModerationResult>;
+  moderateContent(text: string, image?: ImagePayload): Promise<ModerationResult>;
 }
 
 /**
@@ -142,7 +171,7 @@ export function getAIProvider(): IAIProvider {
  */
 function getMockProvider(): IAIProvider {
   return {
-    async extractTextFromImage(_imageUrl: string): Promise<OCRResult> {
+    async extractTextFromImage(_image: ImagePayload): Promise<OCRResult> {
       // Simular delay
       await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -160,7 +189,7 @@ function getMockProvider(): IAIProvider {
       };
     },
 
-    async analyzeImage(_imageUrl: string, _prompt?: string): Promise<VisionResult> {
+    async analyzeImage(_image: ImagePayload, _prompt?: string): Promise<VisionResult> {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       return {
@@ -190,7 +219,7 @@ function getMockProvider(): IAIProvider {
       };
     },
 
-    async generateImageEmbedding(_imageUrl: string): Promise<ImageEmbeddingResult> {
+    async generateImageEmbedding(_image: ImagePayload): Promise<ImageEmbeddingResult> {
       await new Promise((resolve) => setTimeout(resolve, 400));
 
       // Generar embedding mock de 512 dimensiones
@@ -202,7 +231,7 @@ function getMockProvider(): IAIProvider {
       };
     },
 
-    async moderateContent(_text: string, _imageUrl?: string): Promise<ModerationResult> {
+    async moderateContent(_text: string, _image?: ImagePayload): Promise<ModerationResult> {
       await new Promise((resolve) => setTimeout(resolve, 200));
 
       return {
@@ -246,7 +275,7 @@ function getTesseractProvider(): IAIProvider {
   };
 
   return {
-    async extractTextFromImage(imageUrl: string): Promise<OCRResult> {
+    async extractTextFromImage(image: ImagePayload): Promise<OCRResult> {
       try {
         const Tesseract = await getTesseract();
         
@@ -254,7 +283,8 @@ function getTesseractProvider(): IAIProvider {
           logger: (m: import('tesseract.js').LoggerMessage) => console.log('Tesseract:', m),
         });
 
-        const { data } = await worker.recognize(imageUrl);
+        // Se le pasan los bytes ya descargados y validados, nunca una URL.
+        const { data } = await worker.recognize(Buffer.from(image.bytes));
         
         await worker.terminate();
 
@@ -282,7 +312,7 @@ function getTesseractProvider(): IAIProvider {
       }
     },
 
-    async analyzeImage(_imageUrl: string, _prompt?: string): Promise<VisionResult> {
+    async analyzeImage(_image: ImagePayload, _prompt?: string): Promise<VisionResult> {
       // Tesseract es solo OCR, no tiene Computer Vision
       // Usar Google Vision si está disponible o retornar resultado básico
       return {
@@ -295,11 +325,11 @@ function getTesseractProvider(): IAIProvider {
       throw new Error('Tesseract no soporta embeddings. Use GOOGLE_VISION o CLOUDFLARE provider.');
     },
 
-    async generateImageEmbedding(_imageUrl: string): Promise<ImageEmbeddingResult> {
+    async generateImageEmbedding(_image: ImagePayload): Promise<ImageEmbeddingResult> {
       throw new Error('Tesseract no soporta embeddings. Use GOOGLE_VISION o CLOUDFLARE provider.');
     },
 
-    async moderateContent(_text: string, _imageUrl?: string): Promise<ModerationResult> {
+    async moderateContent(_text: string, _image?: ImagePayload): Promise<ModerationResult> {
       throw new Error('Tesseract no soporta moderación. Use GOOGLE_VISION o CLOUDFLARE provider.');
     },
 
@@ -335,11 +365,15 @@ function getGoogleVisionProvider(): IAIProvider {
   };
 
   return {
-    async extractTextFromImage(imageUrl: string): Promise<OCRResult> {
+    async extractTextFromImage(image: ImagePayload): Promise<OCRResult> {
       try {
         const client = await getVisionClient();
         
-        const [result] = await client.textDetection(imageUrl);
+        // Contenido inline: se evita pasar una URL que Google descargaría por su
+        // cuenta (y que permitía SSRF a través suyo).
+        const [result] = await client.textDetection({
+          image: { content: Buffer.from(image.bytes) },
+        });
         const detections = result.textAnnotations;
 
         if (!detections || detections.length === 0) {
@@ -382,13 +416,13 @@ function getGoogleVisionProvider(): IAIProvider {
       }
     },
 
-    async analyzeImage(imageUrl: string, _prompt?: string): Promise<VisionResult> {
+    async analyzeImage(image: ImagePayload, _prompt?: string): Promise<VisionResult> {
       try {
         const client = await getVisionClient();
         
         // Obtener múltiples tipos de anotaciones
         const [result] = await client.annotateImage({
-          image: { source: { imageUri: imageUrl } },
+          image: { content: Buffer.from(image.bytes) },
           features: [
             { type: 'LABEL_DETECTION', maxResults: 20 },
             { type: 'OBJECT_LOCALIZATION', maxResults: 10 },
@@ -440,17 +474,19 @@ function getGoogleVisionProvider(): IAIProvider {
       throw new Error('Google Vision no soporta embeddings de texto directamente. Use CLOUDFLARE provider o implemente usando Cloud Natural Language API.');
     },
 
-    async generateImageEmbedding(_imageUrl: string): Promise<ImageEmbeddingResult> {
+    async generateImageEmbedding(_image: ImagePayload): Promise<ImageEmbeddingResult> {
       throw new Error('Google Vision no soporta embeddings de imagen directamente. Use CLOUDFLARE provider o implemente usando Vertex AI.');
     },
 
-    async moderateContent(text: string, imageUrl?: string): Promise<ModerationResult> {
+    async moderateContent(text: string, image?: ImagePayload): Promise<ModerationResult> {
       try {
         const client = await getVisionClient();
         
-        // Si hay imagen, usar Safe Search
-        if (imageUrl) {
-          const [result] = await client.safeSearchDetection(imageUrl);
+        // Si hay imagen, usar Safe Search (contenido inline, no una URL).
+        if (image) {
+          const [result] = await client.safeSearchDetection({
+            image: { content: Buffer.from(image.bytes) },
+          });
           const safeSearch = result.safeSearchAnnotation;
 
           if (!safeSearch) {
@@ -560,10 +596,10 @@ function getCloudflareProvider(): IAIProvider {
   const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run`;
 
   return {
-    async extractTextFromImage(imageUrl: string): Promise<OCRResult> {
-      const imageResponse = await fetch(imageUrl);
-      const imageBuffer = await imageResponse.arrayBuffer();
-      const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+    async extractTextFromImage(image: ImagePayload): Promise<OCRResult> {
+      // Los bytes llegan ya descargados y validados por el endpoint: aquí no se
+      // hace ningún fetch a una URL controlada por el usuario (hallazgo API-05).
+      const imageBase64 = toBase64(image);
 
       // Cloudflare AI no tiene OCR directo, usar vision model
       const response = await fetch(`${baseUrl}/@cf/llava-hf/llava-1.5-7b-hf`, {
@@ -593,10 +629,8 @@ function getCloudflareProvider(): IAIProvider {
       };
     },
 
-    async analyzeImage(imageUrl: string, prompt?: string): Promise<VisionResult> {
-      const imageResponse = await fetch(imageUrl);
-      const imageBuffer = await imageResponse.arrayBuffer();
-      const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+    async analyzeImage(image: ImagePayload, prompt?: string): Promise<VisionResult> {
+      const imageBase64 = toBase64(image);
 
       const analysisPrompt = prompt || 
         'Analyze this image of a pet. Identify: species (dog/cat/other), breed if visible, color, size (small/medium/large), age estimation, visible features (collar, tags, distinctive marks). Respond in JSON format with keys: species, breed, color, size, age, features.';
@@ -655,10 +689,8 @@ function getCloudflareProvider(): IAIProvider {
       };
     },
 
-    async generateImageEmbedding(imageUrl: string): Promise<ImageEmbeddingResult> {
-      const imageResponse = await fetch(imageUrl);
-      const imageBuffer = await imageResponse.arrayBuffer();
-      const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+    async generateImageEmbedding(image: ImagePayload): Promise<ImageEmbeddingResult> {
+      const imageBase64 = toBase64(image);
 
       const response = await fetch(`${baseUrl}/@cf/microsoft/resnet-50`, {
         method: 'POST',
@@ -684,7 +716,7 @@ function getCloudflareProvider(): IAIProvider {
       };
     },
 
-    async moderateContent(text: string, _imageUrl?: string): Promise<ModerationResult> {
+    async moderateContent(text: string, _image?: ImagePayload): Promise<ModerationResult> {
       // Cloudflare no tiene modelo de moderación específico, usar LLM
       const response = await fetch(`${baseUrl}/@cf/meta/llama-3-8b-instruct`, {
         method: 'POST',

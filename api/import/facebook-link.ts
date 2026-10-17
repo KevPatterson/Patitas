@@ -1,15 +1,36 @@
 import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
-import { checkRateLimit, extractToken, verifyAuth } from '../_lib/rate-limit-utils';
-import { facebookLinkImportSchema, extractOpenGraphMetadata, FACEBOOK_IMPORT_CONSTANTS } from '../../src/lib/validations/facebook-import';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
+import { limitByIp, limitByUser } from '../_lib/rate-limit-utils';
+import { assertSafeRemoteUrl, fetchRemoteImage } from '../_lib/url-guard';
+import { toImagePayload } from '../_lib/image-guard';
+import { aiProviderIsReal, AI_ENABLED } from '../_lib/env';
+import {
+  facebookLinkImportSchema,
+  extractOpenGraphMetadata,
+  FACEBOOK_IMPORT_CONSTANTS,
+} from '../../src/lib/validations/facebook-import';
 import { getAIProvider } from '../_lib/ai-provider';
 
-function json(res: VercelResponse, statusCode: number, body: unknown) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.status(statusCode).json(body);
-}
+/**
+ * POST /api/import/facebook-link — importa metadatos Open Graph de un enlace.
+ *
+ * Ya tenía dos buenas defensas: `redirect: 'manual'` y límite de tamaño de la
+ * respuesta. Faltaban dos agujeros del hallazgo API-05:
+ *
+ *   1. La URL que envía el usuario se validaba solo con la allowlist de dominios
+ *      de Facebook (en `facebookLinkImportSchema`), sin resolver DNS: un dominio
+ *      permitido que resuelva a una IP privada (o un registro DNS malicioso)
+ *      pasaba.
+ *   2. El `og:image` extraído del HTML remoto se mandaba al proveedor de IA tal
+ *      cual, así que **el HTML de un tercero** elegía la URL que el servidor
+ *      descargaba. Ese era el vector más grave.
+ *
+ * Ahora la URL de entrada y la de `og:image` pasan por el mismo guard, y al
+ * proveedor solo le llegan bytes verificados.
+ */
 
-interface FacebookImportResponse {
+type FacebookImportResponse = {
   success: boolean;
   data?: {
     title: string | null;
@@ -17,52 +38,50 @@ interface FacebookImportResponse {
     image_url: string | null;
     extracted?: Record<string, unknown>;
     confidence?: number;
+    provider_is_real?: boolean;
   };
   error?: string;
   suggestion?: 'UPLOAD_SCREENSHOT';
-}
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
-  
-  if (req.method !== 'POST') {
-    return json(res, 405, { error: 'Method not allowed' });
+
+  if (rejectMethod(req, res, 'POST')) return;
+
+  const ipLimit = await limitByIp(req, res, 'facebook-import-ip', 20, 3600_000);
+  if (!ipLimit.ok) return;
+
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
-  
-  // Rate limiting: 10 imports por hora por IP
-  if (!checkRateLimit(req, res, 'facebook-import-link', 10, 3600_000)) {
-    return;
+
+  const userLimit = await limitByUser(res, 'facebook-import-user', auth.user.id, 10, 3600_000);
+  if (!userLimit.ok) return;
+
+  const parsed = parseBody(req, facebookLinkImportSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
-  
-  const token = extractToken(req);
-  const { user, error: authError } = await verifyAuth(token, supabaseAdmin);
-  
-  if (authError || !user) {
-    return json(res, 401, { error: authError || 'Unauthorized' });
+
+  const url = parsed.data.url;
+
+  // Guard completo antes de descargar nada: esquema, resolución DNS y bloqueo de
+  // rangos privados. La allowlist de dominios de Facebook ya la aplicó el schema.
+  const safeUrl = await assertSafeRemoteUrl(url);
+
+  if (!safeUrl.ok) {
+    return fail(res, 400, 'INVALID_INPUT', safeUrl.reason, { suggestion: 'UPLOAD_SCREENSHOT' });
   }
-  
-  let payload: { url?: string } = {};
-  
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch {
-    return json(res, 400, { error: 'Invalid JSON body' });
-  }
-  
-  const validation = facebookLinkImportSchema.safeParse(payload);
-  if (!validation.success) {
-    return json(res, 400, { error: 'Validation failed', details: validation.error.flatten() });
-  }
-  
-  const url = validation.data.url;
-  
-  // Fetch con protección SSRF
+
   let html: string;
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FACEBOOK_IMPORT_CONSTANTS.REQUEST_TIMEOUT_MS);
-    
-    const response = await fetch(url, {
+
+    const response = await fetch(safeUrl.url, {
       method: 'GET',
       headers: {
         'User-Agent': FACEBOOK_IMPORT_CONSTANTS.USER_AGENT,
@@ -72,111 +91,116 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       redirect: 'manual', // No seguir redirecciones
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
-    
+
     if (response.status >= 300 && response.status < 400) {
-      // Redirección - no seguir por seguridad SSRF
-      return json(res, 400, { 
+      return json(res, 400, {
+        success: false,
         error: 'Redirección detectada. Por seguridad no seguimos redirecciones. Intenta con la URL final o sube una captura.',
         suggestion: 'UPLOAD_SCREENSHOT',
-      });
+      } satisfies FacebookImportResponse);
     }
-    
+
     if (!response.ok) {
-      return json(res, 400, { 
+      return json(res, 400, {
+        success: false,
         error: `No se pudo acceder al enlace (${response.status}). Facebook puede requerir login.`,
         suggestion: 'UPLOAD_SCREENSHOT',
-      });
+      } satisfies FacebookImportResponse);
     }
-    
-    // Verificar content-type
+
     const contentType = response.headers.get('content-type') ?? '';
     if (!contentType.includes('text/html')) {
-      return json(res, 400, { 
+      return json(res, 400, {
+        success: false,
         error: 'La URL no devuelve HTML. Puede ser un enlace directo a imagen/video.',
         suggestion: 'UPLOAD_SCREENSHOT',
-      });
+      } satisfies FacebookImportResponse);
     }
-    
+
     // Leer con límite de tamaño
     const reader = response.body?.getReader();
     if (!reader) {
-      return json(res, 500, { error: 'No se pudo leer la respuesta' });
+      return fail(res, 502, 'INTERNAL', 'No se pudo leer la respuesta remota');
     }
-    
+
     let receivedSize = 0;
     const chunks: Uint8Array[] = [];
-    
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      
+
       chunks.push(value);
       receivedSize += value.length;
-      
+
       if (receivedSize > FACEBOOK_IMPORT_CONSTANTS.MAX_RESPONSE_SIZE) {
-        reader.cancel('Response too large');
-        return json(res, 400, { error: 'Respuesta demasiado grande' });
+        void reader.cancel('Response too large');
+        return fail(res, 400, 'INVALID_INPUT', 'La página remota es demasiado grande');
       }
     }
-    
-    const buffer = Buffer.concat(chunks);
-    html = buffer.toString('utf-8');
-    
+
+    html = Buffer.concat(chunks).toString('utf-8');
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      return json(res, 408, { error: 'Timeout accediendo al enlace' });
+      return fail(res, 408, 'INTERNAL', 'El enlace tardó demasiado en responder');
     }
-    console.error('Error fetching Facebook URL:', error);
-    return json(res, 500, { error: 'Error accediendo al enlace' });
+    return internalError(res, 'facebook-link/fetch', error);
   }
-  
-  // Extraer metadatos Open Graph
+
   const metadata = extractOpenGraphMetadata(html);
-  
-  // Verificar si tenemos datos mínimos útiles
   const hasUsefulData = metadata.title || metadata.description || metadata.image;
-  
+
   if (!hasUsefulData) {
     return json(res, 200, {
       success: false,
       error: 'No se pudieron extraer datos públicos del enlace. Facebook puede requerir login o el post no tiene metadatos abiertos.',
       suggestion: 'UPLOAD_SCREENSHOT',
-    } as FacebookImportResponse);
+    } satisfies FacebookImportResponse);
   }
-  
-  // Si hay imagen, intentar extraer más datos con IA (opcional)
+
+  // Imagen de Open Graph: es contenido controlado por un tercero, así que pasa
+  // por el mismo guard y por la verificación de magic bytes.
   let extractedData: Record<string, unknown> | undefined;
-  let confidence = 0.5; // Base confidence para metadatos OG
-  
-  if (metadata.image) {
+  let confidence = 0.5;
+
+  if (metadata.image && AI_ENABLED) {
     try {
-      const provider = getAIProvider();
-      const visionResult = await provider.analyzeImage(metadata.image, 
-        'Analiza esta imagen de una mascota. Extrae: especie, raza, color, tamaño, sexo, collar, placa, características visibles. Responde en JSON.'
-      );
-      
-      if (visionResult.description) {
-        // Parsear descripción de vision
-        const lowerDesc = visionResult.description.toLowerCase();
-        extractedData = {
-          vision_description: visionResult.description,
-          labels: visionResult.labels,
-          objects: visionResult.objects,
-        };
-        
-        // Boost confidence si vision detecta cosas relevantes
-        const petKeywords = ['dog', 'cat', 'perro', 'gato', 'pet', 'mascota', 'animal'];
-        const hasPetContent = petKeywords.some(kw => lowerDesc.includes(kw));
-        if (hasPetContent) confidence = Math.min(0.8, confidence + 0.2);
+      const download = await fetchRemoteImage(metadata.image, { maxBytes: 8 * 1024 * 1024 });
+
+      if (download.ok) {
+        const payload = toImagePayload(new Uint8Array(download.bytes), metadata.image);
+
+        if (payload.ok) {
+          const provider = getAIProvider();
+          const visionResult = await provider.analyzeImage(
+            payload.image,
+            'Analiza esta imagen de una mascota. Extrae: especie, raza, color, tamaño, sexo, collar, placa, características visibles. Responde en JSON.'
+          );
+
+          if (visionResult.description) {
+            const lowerDesc = visionResult.description.toLowerCase();
+
+            extractedData = {
+              vision_description: visionResult.description,
+              labels: visionResult.labels,
+              objects: visionResult.objects,
+            };
+
+            const petKeywords = ['dog', 'cat', 'perro', 'gato', 'pet', 'mascota', 'animal'];
+            if (petKeywords.some((kw) => lowerDesc.includes(kw))) {
+              confidence = Math.min(0.8, confidence + 0.2);
+            }
+          }
+        }
       }
     } catch (error) {
-      console.warn('Error en vision AI para Facebook import:', error);
+      console.warn('[facebook-link] visión no disponible para el og:image', error);
     }
   }
-  
-  const response: FacebookImportResponse = {
+
+  return json(res, 200, {
     success: true,
     data: {
       title: metadata.title,
@@ -184,8 +208,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       image_url: metadata.image,
       extracted: extractedData,
       confidence,
+      provider_is_real: aiProviderIsReal(),
     },
-  };
-  
-  return json(res, 200, response);
+  } satisfies FacebookImportResponse);
 }

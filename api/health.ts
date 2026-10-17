@@ -1,62 +1,68 @@
 import type { VercelRequest, VercelResponse } from './types/vercel';
 import { supabaseAdmin } from './_lib/supabase-admin';
+import { IS_PRODUCTION } from './_lib/env';
 
 /**
- * Health check endpoint
- * GET /api/health
- * 
- * Verifica el estado de la API y sus dependencias críticas
+ * GET /api/health — health check.
+ *
+ * Hallazgo API-08: este endpoint es público y devolvía `error.message` de
+ * Postgres/Supabase, lo que expone nombres de tablas, columnas y políticas. Ahora
+ * solo responde `ok`/`error` y el detalle se registra en los logs del servidor.
+ *
+ * Se añade también la comprobación de método, que no existía: respondía a
+ * cualquier verbo.
  */
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
-  const checks: Record<string, { status: string; details?: string }> = {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.setHeader('Allow', 'GET, HEAD');
+    return res.status(405).json({ error: 'Método no permitido', code: 'INVALID_INPUT' });
+  }
+
+  const checks: Record<string, { status: 'ok' | 'error' }> = {
     api: { status: 'ok' },
-    database: { status: 'unknown' },
-    storage: { status: 'unknown' },
+    database: { status: 'ok' },
+    storage: { status: 'ok' },
   };
 
   let overallStatus = 'ok';
 
-  // Check database connection
+  // Base de datos: solo se informa del estado, nunca del error.
   try {
-    const { error } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .limit(1)
-      .maybeSingle();
+    const { error } = await supabaseAdmin.from('profiles').select('id').limit(1).maybeSingle();
 
-    checks.database.status = error ? 'error' : 'ok';
     if (error) {
-      checks.database.details = 'Database query failed';
+      console.error('[health] base de datos no responde', error);
+      checks.database.status = 'error';
       overallStatus = 'degraded';
     }
   } catch (error) {
+    console.error('[health] excepción en base de datos', error);
     checks.database.status = 'error';
-    checks.database.details = error instanceof Error ? error.message : 'Unknown error';
     overallStatus = 'degraded';
   }
 
-  // Check storage (basic)
+  // Storage
   try {
     const { data, error } = await supabaseAdmin.storage.listBuckets();
-    checks.storage.status = error || !data ? 'error' : 'ok';
-    if (error) {
-      checks.storage.details = 'Storage unavailable';
+
+    if (error || !data) {
+      console.error('[health] storage no responde', error);
+      checks.storage.status = 'error';
       overallStatus = 'degraded';
     }
   } catch (error) {
+    console.error('[health] excepción en storage', error);
     checks.storage.status = 'error';
-    checks.storage.details = error instanceof Error ? error.message : 'Unknown error';
     overallStatus = 'degraded';
   }
 
-  const statusCode = overallStatus === 'ok' ? 200 : 503;
-
-  res.status(statusCode).json({
+  return res.status(overallStatus === 'ok' ? 200 : 503).json({
     status: overallStatus,
     service: 'patitas-api',
     timestamp: new Date().toISOString(),
     checks,
+    ...(IS_PRODUCTION ? {} : { environment: 'non-production' }),
   });
 }

@@ -1,50 +1,64 @@
+import { z } from 'zod';
 import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
-import { checkRateLimit, extractToken, verifyAuth } from '../_lib/rate-limit-utils';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
+import { limitAiByUser, limitByIp } from '../_lib/rate-limit-utils';
+import { canManagePublication, getActor, loadPublication } from '../_lib/authz';
 
 /**
- * Endpoint para detectar posibles duplicados de una publicación
- * POST /api/ai/detect-duplicates
- * 
- * Body: {
- *   publicationId: string;
- *   threshold?: number; // Default: 0.7
- * }
- * 
- * Retorna publicaciones que podrían ser duplicados
+ * POST /api/ai/detect-duplicates — busca publicaciones duplicadas de una dada.
+ *
+ * Hallazgo API-02 (IDOR): igual que `calculate-matches`, no comprobaba la
+ * propiedad: cualquiera podía leer metadatos de publicaciones ajenas **y además
+ * escribir** filas en `duplicate_detections` en su nombre. Se exige dueño o
+ * moderador, se valida el body con Zod y se aplica cuota por usuario.
  */
+
+const detectSchema = z.object({
+  publicationId: z.string().uuid('El identificador de la publicación no es válido'),
+  threshold: z.number().min(0).max(1).optional(),
+});
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (rejectMethod(req, res, 'POST')) return;
+
+  const ipLimit = await limitByIp(req, res, 'ai-duplicates-ip', 60, 3600_000);
+  if (!ipLimit.ok) return;
+
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
 
-  // Rate limiting
-  if (!checkRateLimit(req, res, 'ai-detect-duplicates', 20, 3600_000)) {
-    return;
+  const userLimit = await limitAiByUser(res, auth.user.id);
+  if (!userLimit.ok) return;
+
+  const parsed = parseBody(req, detectSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
 
-  const token = extractToken(req);
-  const { user, error: authError } = await verifyAuth(token, supabaseAdmin);
+  const threshold = parsed.data.threshold ?? 0.7;
+  const publicationId = parsed.data.publicationId;
 
-  if (authError || !user) {
-    return res.status(401).json({ error: authError || 'Unauthorized' });
+  const ownership = await loadPublication(supabaseAdmin, publicationId);
+
+  if (!ownership) {
+    return fail(res, 404, 'NOT_FOUND', 'Publicación no encontrada');
   }
 
-  let payload: { publicationId?: string; threshold?: number } = {};
+  const actor = await getActor(supabaseAdmin, auth.user.id);
 
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+  if (!canManagePublication(actor, ownership)) {
+    return fail(
+      res,
+      403,
+      'FORBIDDEN',
+      'Solo el dueño de la publicación puede analizar duplicados'
+    );
   }
-
-  if (!payload.publicationId) {
-    return res.status(400).json({ error: 'Missing publicationId' });
-  }
-
-  const threshold = payload.threshold ?? 0.7;
 
   // Obtener la publicación
   const { data: publication, error: pubError } = await supabaseAdmin
@@ -61,12 +75,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       location:locations(province, municipality),
       publication_images(id, storage_path)
     `)
-    .eq('id', payload.publicationId)
+    .eq('id', publicationId)
     .is('deleted_at', null)
     .single();
 
   if (pubError || !publication) {
-    return res.status(404).json({ error: 'Publication not found' });
+    return fail(res, 404, 'NOT_FOUND', 'Publicación no encontrada');
   }
 
   // Buscar publicaciones similares (misma especie, mismo tipo, creadas recientemente)
@@ -85,16 +99,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .eq('species', publication.species)
     .in('status', ['ACTIVE', 'RESOLVED'])
     .is('deleted_at', null)
-    .neq('id', payload.publicationId)
+    .neq('id', publicationId)
     .gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()) // Últimos 90 días
     .limit(50);
 
   if (candidatesError) {
-    return res.status(500).json({ error: 'Failed to fetch candidates' });
+    return internalError(res, 'detect-duplicates/candidates', candidatesError);
   }
 
   if (!candidates || candidates.length === 0) {
-    return res.status(200).json({ ok: true, duplicates: [] });
+    return json(res, 200, { ok: true, duplicates: [] });
   }
 
   // Calcular similitud para cada candidato
@@ -142,7 +156,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Ordenar por probabilidad descendente
   duplicates.sort((a, b) => b.duplicateProbability - a.duplicateProbability);
 
-  return res.status(200).json({
+  return json(res, 200, {
     ok: true,
     duplicates,
     totalCandidates: candidates.length,

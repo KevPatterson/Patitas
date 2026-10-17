@@ -1,70 +1,95 @@
+import { z } from 'zod';
 import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
-import { checkRateLimit, extractToken, verifyAuth } from '../_lib/rate-limit-utils';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
+import { limitAiByUser, limitByIp } from '../_lib/rate-limit-utils';
+import { fetchRemoteImage } from '../_lib/url-guard';
+import { toImagePayload } from '../_lib/image-guard';
+import { aiProviderIsReal, AI_ENABLED, providerAvailable } from '../_lib/env';
 import { getAIProvider } from '../_lib/ai-provider';
 
 /**
- * Endpoint para extraer información de una imagen
- * POST /api/ai/extract-from-image
- * 
- * Body: {
- *   imageUrl: string; // URL pública de la imagen
- * }
- * 
- * Retorna atributos extraídos de la imagen (especie, raza, color, texto OCR, etc.)
- * Para autocompletar el formulario de publicación
+ * POST /api/ai/extract-from-image — OCR + Computer Vision para autocompletar el
+ * formulario de publicación.
+ *
+ * Hallazgo API-05 (SSRF): antes se aceptaba `imageUrl` tal cual y el proveedor
+ * hacía `fetch(imageUrl)`. Permitía alcanzar `http://169.254.169.254/` (metadatos
+ * de nube) y servicios internos. Ahora:
+ *
+ *   1. `fetchRemoteImage` valida esquema, resuelve DNS, bloquea IPs privadas,
+ *      no sigue redirecciones y aplica timeout y tamaño máximo.
+ *   2. `toImagePayload` verifica los magic bytes (JPEG/PNG/WebP) y rechaza SVG.
+ *   3. Al proveedor solo le llegan bytes, nunca una URL.
+ *
+ * Además: cuota por usuario (no solo por IP) y errores sin filtrar detalles.
  */
+
+const extractSchema = z.object({
+  imageUrl: z.string().url('La URL de la imagen no es válida').max(2048),
+});
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (rejectMethod(req, res, 'POST')) return;
+
+  const ipLimit = await limitByIp(req, res, 'ai-extract-ip', 60, 3600_000);
+  if (!ipLimit.ok) return;
+
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
 
-  // Rate limiting: 30 extracciones por hora
-  if (!checkRateLimit(req, res, 'ai-extract-image', 30, 3600_000)) {
-    return;
+  // Cuota por usuario, compartida con el resto de la IA (no se puede rotar).
+  const userLimit = await limitAiByUser(res, auth.user.id, true);
+  if (!userLimit.ok) return;
+
+  const parsed = parseBody(req, extractSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
 
-  const token = extractToken(req);
-  const { user, error: authError } = await verifyAuth(token, supabaseAdmin);
-
-  if (authError || !user) {
-    return res.status(401).json({ error: authError || 'Unauthorized' });
+  if (!AI_ENABLED) {
+    return fail(res, 503, 'INTERNAL', 'El análisis de imágenes por IA está desactivado temporalmente.');
   }
 
-  let payload: { imageUrl?: string } = {};
+  const providerStatus = providerAvailable();
 
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+  if (!providerStatus.ok) {
+    return fail(res, 503, 'INTERNAL', providerStatus.reason);
   }
 
-  if (!payload.imageUrl) {
-    return res.status(400).json({ error: 'Missing imageUrl' });
+  const download = await fetchRemoteImage(parsed.data.imageUrl, { maxBytes: 8 * 1024 * 1024 });
+
+  if (!download.ok) {
+    return fail(res, 400, 'INVALID_INPUT', download.reason);
+  }
+
+  const payload = toImagePayload(new Uint8Array(download.bytes), parsed.data.imageUrl);
+
+  if (!payload.ok) {
+    return fail(res, 400, 'INVALID_INPUT', payload.reason);
   }
 
   try {
     const provider = getAIProvider();
 
-    // Ejecutar OCR y Vision en paralelo
+    // OCR y Vision en paralelo. Los fallos individuales no tumban la respuesta.
     const [ocrResult, visionResult] = await Promise.all([
-      provider.extractTextFromImage(payload.imageUrl).catch(() => null),
-      provider.analyzeImage(payload.imageUrl, 
-        'Analyze this image related to a pet (lost, found, or adoption). Extract: species (dog/cat/other), breed, color, size (small/medium/large), sex if visible, distinctive features (collar, tags, marks), and any visible text like phone numbers, locations, dates. Respond in JSON format.'
-      ).catch(() => null),
+      provider.extractTextFromImage(payload.image).catch(() => null),
+      provider
+        .analyzeImage(
+          payload.image,
+          'Analyze this image related to a pet (lost, found, or adoption). Extract: species (dog/cat/other), breed, color, size (small/medium/large), sex if visible, distinctive features (collar, tags, marks), and any visible text like phone numbers, locations, dates. Respond in JSON format.'
+        )
+        .catch(() => null),
     ]);
 
-    // Procesar OCR para extraer información estructurada
     const extractedFromOCR = ocrResult ? extractStructuredDataFromText(ocrResult.text) : {};
-
-    // Procesar Vision para extraer atributos visuales
     const extractedFromVision = visionResult ? extractAttributesFromVision(visionResult) : {};
 
-    // Combinar resultados
     const combined = {
-      // Datos visuales (prioridad a vision)
       species: extractedFromVision.species || extractedFromOCR.species || null,
       breed: extractedFromVision.breed || extractedFromOCR.breed || null,
       color: extractedFromVision.color || extractedFromOCR.color || null,
@@ -75,7 +100,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       plate: extractedFromVision.plate || false,
       characteristics: extractedFromVision.characteristics || null,
 
-      // Datos de OCR (solo de texto)
       phone: extractedFromOCR.phone || null,
       whatsapp: extractedFromOCR.whatsapp || null,
       location: extractedFromOCR.location || null,
@@ -86,7 +110,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       reward: extractedFromOCR.reward || null,
       petName: extractedFromOCR.petName || null,
 
-      // Metadata
       ocrText: ocrResult?.text || null,
       visionDescription: visionResult?.description || null,
       confidence: {
@@ -95,16 +118,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     };
 
-    return res.status(200).json({
+    return json(res, 200, {
       ok: true,
       extracted: combined,
+      // La UI debe poder avisar de que esto es una demostración, no IA real.
+      provider_is_real: aiProviderIsReal(),
+      disclaimer: aiProviderIsReal()
+        ? null
+        : 'Resultados de demostración: el proveedor de IA configurado no es real.',
     });
   } catch (error) {
-    console.error('Error extracting from image:', error);
-    return res.status(500).json({
-      error: 'Failed to extract information from image',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    });
+    return internalError(res, 'ai/extract-from-image', error);
   }
 }
 
@@ -131,14 +155,12 @@ function extractStructuredDataFromText(text: string): {
   const result: Record<string, string> = {};
   const lowerText = text.toLowerCase();
 
-  // Detectar especie
   if (lowerText.includes('perro') || lowerText.includes('dog')) {
     result.species = 'DOG';
   } else if (lowerText.includes('gato') || lowerText.includes('cat')) {
     result.species = 'CAT';
   }
 
-  // Detectar tamaño
   if (lowerText.includes('pequeño') || lowerText.includes('small')) {
     result.size = 'SMALL';
   } else if (lowerText.includes('mediano') || lowerText.includes('medium')) {
@@ -147,14 +169,12 @@ function extractStructuredDataFromText(text: string): {
     result.size = 'LARGE';
   }
 
-  // Detectar sexo
   if (lowerText.includes('macho') || lowerText.includes('male')) {
     result.sex = 'MALE';
   } else if (lowerText.includes('hembra') || lowerText.includes('female')) {
     result.sex = 'FEMALE';
   }
 
-  // Detectar color
   const colors = ['negro', 'black', 'blanco', 'white', 'marrón', 'brown', 'dorado', 'golden', 'gris', 'gray'];
   for (const color of colors) {
     if (lowerText.includes(color)) {
@@ -163,41 +183,36 @@ function extractStructuredDataFromText(text: string): {
     }
   }
 
-  // Extraer teléfono (formato cubano: 5xxxxxxx o +53xxxxxxxx)
+  // Teléfono cubano: 5xxxxxxx o +53xxxxxxxx
   const phoneRegex = /(?:\+?53\s?)?([5]\d{7})/g;
   const phoneMatch = text.match(phoneRegex);
   if (phoneMatch) {
     result.phone = phoneMatch[0].replace(/\s/g, '');
-    result.whatsapp = result.phone; // Asumir que es WhatsApp también
+    result.whatsapp = result.phone;
   }
 
-  // Extraer recompensa
   const rewardRegex = /(?:recompensa|reward)[\s:]*(?:\$|CUP|USD)?(\d+)/i;
   const rewardMatch = text.match(rewardRegex);
   if (rewardMatch) {
     result.reward = `$${rewardMatch[1]}`;
   }
 
-  // Extraer fecha (formatos: DD/MM/YYYY, DD-MM-YYYY, DD de mes)
   const dateRegex = /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})|(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/i;
   const dateMatch = text.match(dateRegex);
   if (dateMatch) {
     result.date = dateMatch[0];
   }
 
-  // Extraer hora
   const timeRegex = /(\d{1,2}):(\d{2})\s?(am|pm|AM|PM)?/;
   const timeMatch = text.match(timeRegex);
   if (timeMatch) {
     result.time = timeMatch[0];
   }
 
-  // Detectar provincias cubanas
   const provinces = ['pinar del río', 'artemisa', 'la habana', 'mayabeque', 'matanzas', 'cienfuegos', 'villa clara', 'sancti spíritus', 'ciego de ávila', 'camagüey', 'las tunas', 'holguín', 'granma', 'santiago de cuba', 'guantánamo', 'isla de la juventud'];
   for (const province of provinces) {
     if (lowerText.includes(province)) {
-      // Capitalizar
-      result.province = province.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      result.province = province.split(' ').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       break;
     }
   }
@@ -223,17 +238,15 @@ function extractAttributesFromVision(visionResult: {
   characteristics?: string;
 } {
   const result: Record<string, string | boolean> = {};
-  const labels = visionResult.labels.map(l => l.label.toLowerCase());
+  const labels = visionResult.labels.map((l) => l.label.toLowerCase());
   const description = (visionResult.description || '').toLowerCase();
 
-  // Detectar especie
   if (labels.includes('dog') || labels.includes('perro') || description.includes('dog') || description.includes('perro')) {
     result.species = 'DOG';
   } else if (labels.includes('cat') || labels.includes('gato') || description.includes('cat') || description.includes('gato')) {
     result.species = 'CAT';
   }
 
-  // Detectar características visuales
   if (labels.includes('collar') || description.includes('collar')) {
     result.collar = true;
   }
@@ -242,14 +255,13 @@ function extractAttributesFromVision(visionResult: {
     result.plate = true;
   }
 
-  // Detectar color
   const colorMap: Record<string, string> = {
-    'brown': 'Marrón',
-    'black': 'Negro',
-    'white': 'Blanco',
-    'golden': 'Dorado',
-    'gray': 'Gris',
-    'grey': 'Gris',
+    brown: 'Marrón',
+    black: 'Negro',
+    white: 'Blanco',
+    golden: 'Dorado',
+    gray: 'Gris',
+    grey: 'Gris',
   };
 
   for (const [englishColor, spanishColor] of Object.entries(colorMap)) {
@@ -259,23 +271,21 @@ function extractAttributesFromVision(visionResult: {
     }
   }
 
-  // Detectar tamaño
   if (labels.includes('small') || description.includes('small')) {
     result.size = 'SMALL';
   } else if (labels.includes('large') || description.includes('large')) {
     result.size = 'LARGE';
   } else {
-    result.size = 'MEDIUM'; // Default
+    result.size = 'MEDIUM';
   }
 
-  // Extraer características descriptivas
   if (visionResult.description) {
-    const features = [];
-    
+    const features: string[] = [];
+
     if (description.includes('collar')) features.push('usa collar');
     if (description.includes('friendly')) features.push('aspecto amigable');
     if (description.includes('outdoor')) features.push('fotografiado al aire libre');
-    
+
     if (features.length > 0) {
       result.characteristics = features.join(', ');
     }

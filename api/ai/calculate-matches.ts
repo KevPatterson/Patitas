@@ -1,63 +1,78 @@
+import { z } from 'zod';
 import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
-import { checkRateLimit, extractToken, verifyAuth } from '../_lib/rate-limit-utils';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
+import { limitAiByUser, limitByIp } from '../_lib/rate-limit-utils';
+import { canManagePublication, getActor, loadPublication } from '../_lib/authz';
 
 /**
- * Endpoint para calcular matches para una publicación
- * POST /api/ai/calculate-matches
- * 
- * Body: {
- *   publicationId: string;
- *   minScore?: number; // Default: 60
- *   limit?: number; // Default: 10
- * }
- * 
- * Calcula matches estructurados y devuelve candidatos
+ * POST /api/ai/calculate-matches — candidatos de coincidencia para una publicación.
+ *
+ * Hallazgo API-02 (IDOR de lectura): el endpoint **no comprobaba la propiedad**.
+ * Cualquier usuario autenticado podía pasar el UUID de una publicación ajena y
+ * recibir sus metadatos y los de sus candidatas (provincia, municipio, color,
+ * tamaño). Ahora se exige ser dueño de la publicación o moderador.
+ *
+ * Además el body se valida con Zod y se aplica cuota por usuario.
  */
+
+const calculateSchema = z.object({
+  publicationId: z.string().uuid('El identificador de la publicación no es válido'),
+  minScore: z.number().min(0).max(100).optional(),
+  limit: z.number().int().min(1).max(50).optional(),
+});
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (rejectMethod(req, res, 'POST')) return;
+
+  const ipLimit = await limitByIp(req, res, 'ai-calculate-ip', 60, 3600_000);
+  if (!ipLimit.ok) return;
+
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
 
-  // Rate limiting: 30 cálculos por hora
-  if (!checkRateLimit(req, res, 'ai-calculate-matches', 30, 3600_000)) {
-    return;
+  const userLimit = await limitAiByUser(res, auth.user.id);
+  if (!userLimit.ok) return;
+
+  const parsed = parseBody(req, calculateSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
 
-  const token = extractToken(req);
-  const { user, error: authError } = await verifyAuth(token, supabaseAdmin);
+  const minScore = parsed.data.minScore ?? 60;
+  const limit = parsed.data.limit ?? 10;
 
-  if (authError || !user) {
-    return res.status(401).json({ error: authError || 'Unauthorized' });
+  // Autorización ANTES de leer nada de la publicación.
+  const ownership = await loadPublication(supabaseAdmin, parsed.data.publicationId);
+
+  if (!ownership) {
+    return fail(res, 404, 'NOT_FOUND', 'Publicación no encontrada');
   }
 
-  let payload: { publicationId?: string; minScore?: number; limit?: number } = {};
+  const actor = await getActor(supabaseAdmin, auth.user.id);
 
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+  if (!canManagePublication(actor, ownership)) {
+    return fail(
+      res,
+      403,
+      'FORBIDDEN',
+      'Solo el dueño de la publicación puede calcular sus coincidencias'
+    );
   }
 
-  if (!payload.publicationId) {
-    return res.status(400).json({ error: 'Missing publicationId' });
-  }
-
-  const minScore = payload.minScore ?? 60;
-  const limit = payload.limit ?? 10;
-
-  // Obtener la publicación
   const { data: publication, error: pubError } = await supabaseAdmin
     .from('publications')
     .select('id, type, species, breed, sex, size, color, event_date, location:locations(province, municipality)')
-    .eq('id', payload.publicationId)
+    .eq('id', parsed.data.publicationId)
     .is('deleted_at', null)
     .single();
 
   if (pubError || !publication) {
-    return res.status(404).json({ error: 'Publication not found' });
+    return fail(res, 404, 'NOT_FOUND', 'Publicación no encontrada');
   }
 
   // Buscar candidatos complementarios
@@ -77,11 +92,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .eq('species', publication.species)
     .in('status', ['ACTIVE'])
     .is('deleted_at', null)
-    .neq('id', payload.publicationId)
+    .neq('id', parsed.data.publicationId)
     .limit(100);
 
   if (candidatesError) {
-    return res.status(500).json({ error: 'Failed to fetch candidates' });
+    return internalError(res, 'calculate-matches/candidates', candidatesError);
   }
 
   if (!candidates || candidates.length === 0) {
@@ -98,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   for (const candidate of candidates) {
     try {
       const { data: score } = await supabaseAdmin.rpc('calculate_structured_match_score', {
-        pub_a_id: payload.publicationId,
+        pub_a_id: parsed.data.publicationId,
         pub_b_id: candidate.id,
       });
 
@@ -145,7 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   matches.sort((a, b) => b.score - a.score);
   const topMatches = matches.slice(0, limit);
 
-  return res.status(200).json({
+  return json(res, 200, {
     ok: true,
     matches: topMatches,
     totalCandidates: candidates.length,

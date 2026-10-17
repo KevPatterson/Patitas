@@ -1,152 +1,171 @@
+import { z } from 'zod';
 import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
-import { checkRateLimit, extractToken, verifyAuth } from '../_lib/rate-limit-utils';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
+import { limitByIp, limitByUser } from '../_lib/rate-limit-utils';
+import { canManagePublication, getActor, loadPublication, writeAuditLog } from '../_lib/authz';
+
+/**
+ * POST /api/takedown — solicitud de retirada de contenido.
+ *
+ * Hallazgo API-04 (crítico): antes la autenticación era opcional "por diseño" y,
+ * tras crear la solicitud, el endpoint ocultaba la publicación con
+ * `.update({ status: 'HIDDEN' })` **sin comprobar quién la pedía**. Un anónimo
+ * que conociera un UUID podía censurar cualquier publicación.
+ *
+ * Comportamiento nuevo:
+ *
+ *   - Se exige sesión. Sin JWT no hay solicitud (401).
+ *   - Si quien pide es el **dueño** de la publicación o un **moderador**, la
+ *     publicación se oculta de inmediato y queda pendiente de revisión (es
+ *     exactamente el caso legítimo: "esta foto mía está publicada sin permiso").
+ *   - En cualquier otro caso se registra la solicitud como `PENDING` y **no se
+ *     toca la publicación**: pasa a la cola de moderación. Así se conserva la vía
+ *     de denuncia de copyright sin dar un botón de censura a cualquiera.
+ *   - Cada acción queda en `audit_logs` y el error del log ya no se ignora.
+ */
 
 const TAKEDOWN_REASONS = ['COPYRIGHT', 'PRIVACY', 'INACCURATE', 'OTHER'] as const;
-type TakedownReason = typeof TAKEDOWN_REASONS[number];
 
-function json(res: VercelResponse, statusCode: number, body: unknown) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.status(statusCode).json(body);
-}
+const takedownSchema = z.object({
+  publication_id: z.string().uuid('El identificador de la publicación no es válido'),
+  reason: z.enum(TAKEDOWN_REASONS),
+  contact_email: z.string().trim().email('El email de contacto no es válido').max(254).optional(),
+  details: z
+    .string()
+    .trim()
+    .max(2000, 'La descripción es demasiado larga (máximo 2000 caracteres)')
+    .optional(),
+});
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
-  
-  if (req.method !== 'POST') {
-    return json(res, 405, { error: 'Method not allowed' });
+
+  if (rejectMethod(req, res, 'POST')) return;
+
+  // Barrera por IP antes de tocar la base de datos (frena la fuerza bruta de UUIDs).
+  const ipLimit = await limitByIp(req, res, 'takedown-ip', 10, 3600_000);
+  if (!ipLimit.ok) return;
+
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
-  
-  // Rate limiting: 5 solicitudes por hora por IP
-  if (!checkRateLimit(req, res, 'takedown-create', 5, 3600_000)) {
-    return;
+
+  const parsed = parseBody(req, takedownSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
-  
-  // No requerimos autenticación obligatoria - cualquiera puede solicitar retirada
-  // Pero si hay token, validamos
-  const token = extractToken(req);
-  let userId: string | null = null;
-  
-  if (token) {
-    const { user, error: authError } = await verifyAuth(token, supabaseAdmin);
-    if (!authError && user) {
-      userId = user.id;
-    }
+
+  const { publication_id, reason, contact_email, details } = parsed.data;
+
+  const userLimit = await limitByUser(res, 'takedown-user', auth.user.id, 5, 3600_000);
+  if (!userLimit.ok) return;
+
+  const publication = await loadPublication(supabaseAdmin, publication_id);
+
+  if (!publication) {
+    return fail(res, 404, 'NOT_FOUND', 'Publicación no encontrada');
   }
-  
-  let payload: Partial<{ 
-    publication_id: string; 
-    reason: TakedownReason; 
-    contact_email?: string;
-    details?: string;
-  }> = {};
-  
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch {
-    return json(res, 400, { error: 'Invalid JSON body' });
-  }
-  
-  // Validaciones
-  if (!payload.publication_id) {
-    return json(res, 400, { error: 'publication_id requerido' });
-  }
-  
-  if (!payload.reason || !TAKEDOWN_REASONS.includes(payload.reason)) {
-    return json(res, 400, { error: 'Motivo inválido. Permitidos: COPYRIGHT, PRIVACY, INACCURATE, OTHER' });
-  }
-  
-  if (payload.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.contact_email)) {
-    return json(res, 400, { error: 'Email de contacto inválido' });
-  }
-  
-  // Verificar que la publicación existe y está publicada
-  const { data: publication, error: pubError } = await supabaseAdmin
-    .from('publications')
-    .select('id, slug, title, status, is_imported, source_url, owner_profile_id')
-    .eq('id', payload.publication_id)
-    .is('deleted_at', null)
-    .single();
-  
-  if (pubError || !publication) {
-    return json(res, 404, { error: 'Publicación no encontrada' });
-  }
-  
+
   if (publication.status !== 'ACTIVE' && publication.status !== 'RESOLVED') {
-    return json(res, 400, { error: 'La publicación no está activa' });
+    return fail(res, 400, 'INVALID_INPUT', 'La publicación no está activa');
   }
-  
-  // Verificar si ya hay una solicitud pendiente para esta publicación
-  const { data: existingRequest } = await supabaseAdmin
+
+  const actor = await getActor(supabaseAdmin, auth.user.id);
+
+  if (!actor) {
+    return fail(res, 403, 'FORBIDDEN', 'Tu perfil no está disponible todavía');
+  }
+
+  // ¿Puede este usuario ocultar la publicación por sí mismo?
+  const canHide = canManagePublication(actor, publication);
+
+  const { data: existingRequest, error: existingError } = await supabaseAdmin
     .from('takedown_requests')
-    .select('id, status')
-    .eq('publication_id', payload.publication_id)
+    .select('id')
+    .eq('publication_id', publication_id)
     .eq('status', 'PENDING')
     .maybeSingle();
-  
-  if (existingRequest) {
-    return json(res, 409, { error: 'Ya existe una solicitud de retirada pendiente para esta publicación' });
+
+  if (existingError) {
+    return internalError(res, 'takedown/existing', existingError);
   }
-  
-  // Crear solicitud de retirada (guardar previous_status en la propia solicitud)
+
+  if (existingRequest) {
+    return fail(
+      res,
+      409,
+      'CONFLICT',
+      'Ya existe una solicitud de retirada pendiente para esta publicación'
+    );
+  }
+
   const { data: takedown, error: takedownError } = await supabaseAdmin
     .from('takedown_requests')
     .insert({
-      publication_id: payload.publication_id,
-      reason: payload.reason,
-      contact_email: payload.contact_email ?? null,
+      publication_id,
+      reason,
+      contact_email: contact_email ?? null,
       status: 'PENDING',
-      review_notes: payload.details ?? null,
+      review_notes: details ?? null,
       previous_status: publication.status,
     })
     .select('id, created_at')
     .single();
 
   if (takedownError || !takedown) {
-    console.error('Error creando takedown request:', takedownError);
-    return json(res, 500, { error: 'Error creando solicitud' });
+    return internalError(res, 'takedown/insert', takedownError);
   }
 
-  // OCULTAR LA PUBLICACIÓN INMEDIATAMENTE (cambiar status a HIDDEN)
-  await supabaseAdmin
-    .from('publications')
-    .update({ 
-      status: 'HIDDEN',
-    })
-    .eq('id', payload.publication_id);
-  
-  // Registrar en audit_logs
-  await supabaseAdmin.from('audit_logs').insert({
-    action: 'TAKEDOWN_REQUESTED',
-    entity_type: 'publication',
-    entity_id: payload.publication_id,
+  // Solo se oculta si quien lo pide tiene autoridad sobre la publicación.
+  if (canHide) {
+    const { error: hideError } = await supabaseAdmin
+      .from('publications')
+      .update({ status: 'HIDDEN' })
+      .eq('id', publication_id);
+
+    if (hideError) {
+      return internalError(res, 'takedown/hide', hideError);
+    }
+  }
+
+  const audited = await writeAuditLog(supabaseAdmin, {
+    actorProfileId: actor.id,
+    action: canHide ? 'TAKEDOWN_REQUESTED_AND_HIDDEN' : 'TAKEDOWN_REQUESTED',
+    entityType: 'publication',
+    entityId: publication_id,
     metadata: {
       takedown_request_id: takedown.id,
-      reason: payload.reason,
-      requested_by_user_id: userId,
-      contact_email: payload.contact_email ?? null,
+      reason,
       publication_slug: publication.slug,
-      was_imported: publication.is_imported,
-      source_url: publication.source_url,
+      auto_hidden: canHide,
+      requested_by_role: actor.role,
     },
   });
-  
-  // Si es una publicación importada, actualizar external_posts
-  if (publication.is_imported) {
-    await supabaseAdmin
-      .from('external_posts')
-      .update({ status: 'TAKEN_DOWN' })
-      .eq('publication_id', payload.publication_id);
+
+  if (publication.ownerProfileId === actor.id || actor.role === 'ADMIN') {
+    // El dueño y los admins ven si la auditoría falló: es información relevante.
+    if (!audited) {
+      return fail(
+        res,
+        500,
+        'INTERNAL',
+        'La solicitud se registró pero no se pudo auditar. Avisa al equipo.'
+      );
+    }
   }
-  
+
   return json(res, 201, {
     success: true,
     takedown_id: takedown.id,
-    message: 'Solicitud de retirada creada. La publicación ha sido ocultada pendiente de revisión.',
+    auto_hidden: canHide,
+    message: canHide
+      ? 'Solicitud registrada. La publicación se ha ocultado pendiente de revisión.'
+      : 'Solicitud registrada. Un moderador la revisará y decidirá si se retira el contenido.',
     publication: {
       id: publication.id,
       slug: publication.slug,
-      title: publication.title,
     },
   });
 }

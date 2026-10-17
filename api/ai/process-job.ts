@@ -1,58 +1,70 @@
+import { z } from 'zod';
 import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
 import { getAIProvider } from '../_lib/ai-provider';
+import { loadOwnStorageImage } from '../_lib/image-guard';
+import { fail, parseBody, rejectMethod } from '../_lib/http';
+import { limitByIp } from '../_lib/rate-limit-utils';
+import { AI_ENABLED, INTERNAL_API_KEY } from '../_lib/env';
+import { safeEqual } from '../_lib/authz';
 
 /**
- * Endpoint para procesar un job de IA específico
- * POST /api/ai/process-job
- * 
- * Body: {
- *   jobId: string;
- * }
- * 
- * Este endpoint es llamado por un worker/cron para procesar jobs pendientes
+ * POST /api/ai/process-job — procesa un job de IA concreto. Lo invoca el
+ * worker/cron, nunca el navegador.
+ *
+ * Hallazgo API-09: la API key se comparaba con `authHeader !== \`Bearer ${apiKey}\``,
+ * una comparación que corta en el primer byte distinto y por tanto filtra
+ * información por temporización. Ahora se usa una comparación de tiempo constante.
+ *
+ * El body además se valida con Zod.
  */
+
+const processJobSchema = z.object({
+  jobId: z.string().uuid('El identificador del job no es válido'),
+});
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (rejectMethod(req, res, 'POST')) return;
+
+  const ipLimit = await limitByIp(req, res, 'process-job-ip', 120, 60_000);
+  if (!ipLimit.ok) return;
+
+  // Autorización interna con comparación de tiempo constante.
+  const apiKey = INTERNAL_API_KEY;
+  const authHeader = req.headers.authorization ?? '';
+  const expected = apiKey ? `Bearer ${apiKey}` : '';
+
+  if (!apiKey || !safeEqual(authHeader, expected)) {
+    return fail(res, 401, 'UNAUTHORIZED', 'No autorizado');
   }
 
-  // Verificar autorización (solo llamadas internas o con API key)
-  const authHeader = req.headers.authorization;
-  const apiKey = process.env.INTERNAL_API_KEY;
-
-  if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (!AI_ENABLED) {
+    return fail(res, 503, 'INTERNAL', 'El procesamiento con IA está desactivado');
   }
 
-  let payload: { jobId?: string } = {};
-
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+  const parsed = parseBody(req, processJobSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
 
-  if (!payload.jobId) {
-    return res.status(400).json({ error: 'Missing jobId' });
-  }
+  const jobId = parsed.data.jobId;
 
   // Obtener el job
   const { data: job, error: jobError } = await supabaseAdmin
     .from('ai_processing_jobs')
     .select('*')
-    .eq('id', payload.jobId)
+    .eq('id', jobId)
     .single();
 
   if (jobError || !job) {
-    return res.status(404).json({ error: 'Job not found' });
+    return fail(res, 404, 'NOT_FOUND', 'Job no encontrado');
   }
 
   // Verificar que el job esté pendiente o en estado de reintento
   if (job.status !== 'PENDING' && job.status !== 'FAILED') {
-    return res.status(400).json({ error: `Job status is ${job.status}, cannot process` });
+    return fail(res, 409, 'CONFLICT', `El job está en estado ${job.status} y no se puede procesar`);
   }
 
   // Actualizar estado a PROCESSING
@@ -167,7 +179,10 @@ async function processOCRJob(publicationId: string) {
     const imageUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/pet-images/${image.storage_path}`;
 
     try {
-      const ocrResult = await provider.extractTextFromImage(imageUrl);
+      const prepared = await loadOwnStorageImage(imageUrl);
+      if (!prepared.ok) throw new Error(prepared.reason);
+
+      const ocrResult = await provider.extractTextFromImage(prepared.image);
 
       // Guardar resultado en la base de datos
       const { error: insertError } = await supabaseAdmin
@@ -225,7 +240,10 @@ async function processVisionJob(publicationId: string) {
     const imageUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/pet-images/${image.storage_path}`;
 
     try {
-      const visionResult = await provider.analyzeImage(imageUrl);
+      const prepared = await loadOwnStorageImage(imageUrl);
+      if (!prepared.ok) throw new Error(prepared.reason);
+
+      const visionResult = await provider.analyzeImage(prepared.image);
 
       // Crear registro de vision result
       const { data: visionRecord, error: visionError } = await supabaseAdmin
@@ -354,7 +372,10 @@ async function processImageEmbeddingJob(publicationId: string) {
     }
 
     const imageUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/pet-images/${firstImage.storage_path}`;
-    const embeddingResult = await provider.generateImageEmbedding(imageUrl);
+    const prepared = await loadOwnStorageImage(imageUrl);
+    if (!prepared.ok) throw new Error(prepared.reason);
+
+    const embeddingResult = await provider.generateImageEmbedding(prepared.image);
 
     await supabaseAdmin
       .from('ai_image_embeddings')
@@ -371,7 +392,10 @@ async function processImageEmbeddingJob(publicationId: string) {
   }
 
   const imageUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/pet-images/${images.storage_path}`;
-  const embeddingResult = await provider.generateImageEmbedding(imageUrl);
+  const prepared = await loadOwnStorageImage(imageUrl);
+  if (!prepared.ok) throw new Error(prepared.reason);
+
+  const embeddingResult = await provider.generateImageEmbedding(prepared.image);
 
   await supabaseAdmin
     .from('ai_image_embeddings')
