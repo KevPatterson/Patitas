@@ -168,6 +168,25 @@ export function detectImage(bytes: Uint8Array, maxBytes = MAX_IMAGE_BYTES): Dete
 }
 
 /**
+ * Predicados de tipo para los resultados de este módulo.
+ *
+ * Hacen falta porque TypeScript solo estrecha uniones con discriminante booleano
+ * si `strictNullChecks` está activo, y Vercel compila `api/` con su propia
+ * configuración. Los predicados funcionan con `strict` y sin él.
+ */
+function isDetectedImageFailure(
+  detected: DetectedImage
+): detected is { ok: false; reason: string } {
+  return detected.ok === false;
+}
+
+function isDetectedImageOk(
+  detected: DetectedImage
+): detected is { ok: true; mimeType: ImageMime; width: number | null; height: number | null } {
+  return detected.ok === true;
+}
+
+/**
  * Convierte bytes ya descargados en el payload que consume el proveedor de IA.
  * Devuelve el motivo si el contenido no es una imagen aceptada.
  */
@@ -178,7 +197,13 @@ export function toImagePayload(
 ): { ok: true; image: ImagePayload } | { ok: false; reason: string } {
   const detected = detectImage(bytes, maxBytes);
 
-  if (!detected.ok) return detected;
+  if (isDetectedImageFailure(detected)) {
+    return { ok: false, reason: detected.reason };
+  }
+
+  if (!isDetectedImageOk(detected)) {
+    return { ok: false, reason: 'No se pudo determinar el tipo de la imagen' };
+  }
 
   return {
     ok: true,
@@ -202,7 +227,9 @@ export async function loadOwnStorageImage(
     trustedHosts: [],
   });
 
-  if (!download.ok) return download;
+  if (download.ok === false) {
+    return { ok: false, reason: download.reason };
+  }
 
   return toImagePayload(new Uint8Array(download.bytes), imageUrl);
 }

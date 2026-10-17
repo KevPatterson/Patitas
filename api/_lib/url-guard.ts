@@ -163,6 +163,19 @@ export async function assertSafeRemoteUrl(
 }
 
 /**
+ * Predicado de tipo en lugar de `if (!check.ok)`.
+ *
+ * TypeScript solo estrecha una unión por discriminante booleano cuando
+ * `strictNullChecks` está activo. Vercel compila `api/` con su propia
+ * configuración (no la del proyecto), así que sin `strict` el estrechamiento no
+ * ocurre y acceder a `.reason` / `.url` falla. Un predicado de tipo funciona en
+ * los dos modos.
+ */
+function isUrlCheckFailure(check: UrlCheck): check is { ok: false; reason: string } {
+  return check.ok === false;
+}
+
+/**
  * Descarga una URL remota aplicando el guard y límites de tiempo y tamaño.
  *
  * `redirect: 'manual'` es deliberado: una redirección es la forma clásica de
@@ -186,7 +199,9 @@ export async function fetchRemoteImage(
     trustedHosts: options.trustedHosts,
   });
 
-  if (!check.ok) return check;
+  if (isUrlCheckFailure(check)) {
+    return { ok: false, reason: check.reason };
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
