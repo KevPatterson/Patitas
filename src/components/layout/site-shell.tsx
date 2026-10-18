@@ -13,13 +13,17 @@ interface DevTeamMember {
   initials: string;
   role: string;
   github: string;
+  avatar?: string;
 }
 
 const devTeam: DevTeamMember[] = [
-  { name: 'Kev Patterson', initials: 'KP', role: 'Full Stack & DevOps', github: 'https://github.com/KevPatterson' },
-  { name: 'Ana María', initials: 'AM', role: 'Frontend & UX', github: 'https://github.com' },
-  { name: 'Carlos Ruiz', initials: 'CR', role: 'Backend & IA', github: 'https://github.com' },
-  { name: 'Luis Gómez', initials: 'LG', role: 'Mobile & Testing', github: 'https://github.com' },
+  { 
+    name: 'Kev Patterson', 
+    initials: 'KP', 
+    role: 'Full Stack & DevOps', 
+    github: 'https://github.com/KevPatterson',
+    avatar: 'https://github.com/KevPatterson.png'
+  },
 ];
 
 type SiteShellProps = {
@@ -322,40 +326,51 @@ export function SiteShell({ children }: SiteShellProps) {
 
           {/* Equipo de desarrollo */}
           <section className="my-8 md:my-0 md:flex-1 md:px-8 border-t border-b border-orange-900/30 py-8 md:py-0">
-            <h3 className="font-display text-xl font-extrabold text-cream mb-6 flex items-center gap-2">
+            <h3 className="font-display text-xl font-extrabold text-cream mb-6 flex items-center gap-2 justify-center md:justify-start">
               <span className="text-orange-300">🐾</span>
               Equipo de desarrollo
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex justify-center md:justify-start">
               {devTeam.map((member) => (
                 <article
                   key={member.name}
-                  className="group relative rounded-2xl bg-navy-light/50 border border-orange-900/30 p-4 transition-all duration-base hover:border-orange-600/50 hover:bg-navy-light/80 hover:-translate-y-1"
+                  className="group relative rounded-2xl bg-navy-light/50 border border-orange-900/30 p-6 max-w-xs transition-all duration-base hover:border-orange-600/50 hover:bg-navy-light/80 hover:-translate-y-1"
                 >
-                  <div className="relative mb-3">
-                    <div className="flex size-20 items-center justify-center rounded-2xl bg-linear-to-br from-orange-500 to-orange-700 text-cream font-display font-extrabold text-2xl shadow-lg">
-                      {member.initials}
-                    </div>
+                  <div className="relative mb-4 flex justify-center">
+                    {member.avatar ? (
+                      <img
+                        src={member.avatar}
+                        alt={`${member.name} - GitHub`}
+                        className="size-24 rounded-2xl border-2 border-orange-900/30 shadow-lg object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex size-24 items-center justify-center rounded-2xl bg-linear-to-br from-orange-500 to-orange-700 text-cream font-display font-extrabold text-3xl shadow-lg">
+                        {member.initials}
+                      </div>
+                    )}
                     <div className="absolute -bottom-2 -right-2 size-6 rounded-full bg-orange-400 flex items-center justify-center border-2 border-navy">
                       <PawPrint className="size-3 text-navy" strokeWidth={2.5} aria-hidden="true" />
                     </div>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 text-center md:text-left">
                     <h4 className="font-display font-bold text-cream group-hover:text-orange-300 transition-colors">
                       {member.name}
                     </h4>
                     <p className="text-xs text-cream/70">{member.role}</p>
                   </div>
-                  <a
-                    href={member.github}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-orange-300 hover:text-orange-100 transition-colors"
-                    aria-label={`Ver perfil de GitHub de ${member.name}`}
-                  >
-                    <ExternalLink className="size-4" aria-hidden="true" />
-                    GitHub
-                  </a>
+                  <div className="mt-4 flex justify-center md:justify-start">
+                    <a
+                      href={member.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-orange-300 hover:text-orange-100 transition-colors"
+                      aria-label={`Ver perfil de GitHub de ${member.name}`}
+                    >
+                      <ExternalLink className="size-4" aria-hidden="true" />
+                      GitHub
+                    </a>
+                  </div>
                 </article>
               ))}
             </div>
