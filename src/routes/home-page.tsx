@@ -415,7 +415,7 @@ export function HomePage() {
                     <defs>
                       <linearGradient id="paw-gradient" x1="60" y1="54" x2="60" y2="110" gradientUnits="userSpaceOnUse">
                         <stop offset="0%" stopColor="#ff8c42" />
-                        <stop offset="100%" stopColor="#f56e20" />
+                        <stop offset="100%" stopColor="#f0721f" />
                       </linearGradient>
                       <mask id="paw-mask-hero">
                         <rect width="120" height="120" fill="white" />
@@ -596,7 +596,7 @@ export function HomePage() {
                 <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#231942" strokeWidth="0.5"/>
+                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--color-orange-900)" strokeWidth="0.5" strokeOpacity="0.3"/>
                     </pattern>
                   </defs>
                   <rect width="100%" height="100%" fill="url(#grid)" />

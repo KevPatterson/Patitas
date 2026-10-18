@@ -4,7 +4,7 @@
   "description": "Plataforma comunitaria para reencontrar mascotas perdidas, reportar encontradas y promover adopciones responsables.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fef8f0",
+  "background_color": "#fff4ea",
   "theme_color": "#ff8c42",
   "icons": [
     {

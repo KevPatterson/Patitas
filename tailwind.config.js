@@ -5,32 +5,39 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Paleta Patitas Anime Edition
+        // Paleta Patitas Anime Edition - Monocromática Naranja
+        orange: {
+          50: '#fff4ea',
+          100: '#ffe6d1',
+          200: '#ffcfa8',
+          300: '#ffb078',
+          400: '#ff8c42',
+          500: '#f0721f',
+          600: '#d45a0f',
+          700: '#a8440a',
+          900: '#3d1d0b',
+        },
+        // Alias compatibilidad (nombres originales)
         navy: {
-          DEFAULT: '#1a2332',
-          light: '#2a3650',
-          dark: '#0f1621',
+          DEFAULT: '#3d1d0b',
+          light: '#5a2e16',
+          dark: '#2a1407',
         },
         cream: {
-          DEFAULT: '#fef8f0',
-          dark: '#f5eee3',
-        },
-        orange: {
-          DEFAULT: '#ff8c42',
-          light: '#ffaa6f',
-          dark: '#f56e20',
+          DEFAULT: '#fff4ea',
+          dark: '#ffe6d1',
         },
         turquoise: {
-          DEFAULT: '#4ecdc4',
-          light: '#7eddd6',
-          dark: '#3bb5ac',
+          DEFAULT: '#ffcfa8',
+          light: '#ffd9bb',
+          dark: '#ffb078',
         },
+        // Estados de mascotas (semánticos - NO cambian)
         purple: {
           DEFAULT: '#a78bfa',
           light: '#c4b5fd',
           dark: '#8b5cf6',
         },
-        // Estados de mascotas
         lost: {
           DEFAULT: '#ef4444',
           light: '#f87171',
@@ -47,11 +54,11 @@ export default {
           dark: '#8b5cf6',
         },
         // Legacy (compatibilidad)
-        ink: '#1a2332',
+        ink: '#3d1d0b',
         mamey: '#ff8c42',
         sol: '#ffc857',
-        espuma: '#4ecdc4',
-        arena: '#fef8f0',
+        espuma: '#ffcfa8',
+        arena: '#fff4ea',
         perdida: '#ef4444',
         encontrada: '#10b981',
         adopcion: '#a78bfa',

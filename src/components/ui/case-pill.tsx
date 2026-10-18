@@ -8,7 +8,7 @@ const toneClasses: Record<CasePillProps['tone'], string> = {
   found: 'bg-found text-white shadow-sm',
   abandoned: 'bg-orange text-white shadow-sm',
   adoption: 'bg-purple text-white shadow-sm',
-  sighting: 'bg-turquoise text-white shadow-sm',
+  sighting: 'bg-orange-200 text-[var(--color-orange-900)] shadow-sm',
 };
 
 export function CasePill({ label, tone }: CasePillProps) {

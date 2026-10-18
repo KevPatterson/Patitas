@@ -75,7 +75,7 @@ export function Logo({ variant = 'full', size = 40, className = '', animated = f
           </mask>
           <linearGradient id={`${maskId}-gradient`} x1="60" y1="54" x2="60" y2="110" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="#ff8c42" />
-            <stop offset="100%" stopColor="#f56e20" />
+            <stop offset="100%" stopColor="#f0721f" />
           </linearGradient>
         </defs>
         <path
@@ -93,7 +93,7 @@ export function Logo({ variant = 'full', size = 40, className = '', animated = f
             fontSize: textSize,
             lineHeight: 1,
             letterSpacing: '-0.02em',
-            background: 'linear-gradient(135deg, #231942 0%, #3d345e 100%)',
+            background: 'linear-gradient(135deg, #3d1d0b 0%, #5a2e16 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',

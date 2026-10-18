@@ -514,16 +514,35 @@ ruido para recuperar la posición real. Volver a guardar una ubicación distinta
 
 Identidad visual única inspirada en anime moderno con personalidad y cercanía.
 
-#### Paleta de colores
+#### Paleta de colores (Monocromática Naranja)
 
 ```css
---color-navy:      #1a2332  /* Estructura, texto principal */
---color-cream:     #fef8f0  /* Fondo cálido */
---color-orange:    #ff8c42  /* Acción, CTAs */
---color-turquoise: #4ecdc4  /* Comunidad, éxito */
---color-purple:    #a78bfa  /* Adopción, emocional */
+/* Escala naranja principal */
+--color-orange-50:  #fff4ea  /* Fondos, reemplaza cream */
+--color-orange-100: #ffe6d1  /* Superficies suaves, chips, hover nav */
+--color-orange-200: #ffcfa8  /* Reemplaza turquoise: comunidad/decorativos */
+--color-orange-300: #ffb078  /* Bordes, acentos suaves */
+--color-orange-400: #ff8c42  /* PRINCIPAL: CTAs, activos */
+--color-orange-500: #f0721f  /* Hover */
+--color-orange-600: #d45a0f  /* Sombras sólidas botones, pressed */
+--color-orange-700: #a8440a  /* Texto de acento, links */
+--color-orange-900: #3d1d0b  /* Reemplaza navy: texto principal y estructura */
+
+/* Alias compatibilidad */
+--color-navy:      #3d1d0b
+--color-cream:     #fff4ea
+--color-orange:    #ff8c42
+--color-turquoise: #ffcfa8
+
+/* Colores semánticos (NO cambian) */
+--color-purple:    #a78bfa  /* Adopción */
 --color-lost:      #ef4444  /* Urgente, perdidos */
 --color-found:     #10b981  /* Resuelto, encontrados */
+
+/* Superficies y texto específicos */
+--color-surface-card: #fffaf5
+--color-border-card:  #ffd9bb
+--color-text-secondary: #8a5a3c
 ```
 
 #### Tipografía

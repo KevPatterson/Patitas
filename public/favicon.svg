@@ -3,10 +3,10 @@
   <rect width="120" height="120" rx="24" fill="#FF8C42"/>
   
   <!-- 4 dedos -->
-  <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" fill="#231942"/>
-  <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" fill="#231942"/>
-  <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" fill="#231942"/>
-  <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" fill="#231942"/>
+  <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" fill="#3D1D0B"/>
+  <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" fill="#3D1D0B"/>
+  <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" fill="#3D1D0B"/>
+  <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" fill="#3D1D0B"/>
   
   <!-- Almohadilla con hueco transparente -->
   <defs>
@@ -15,5 +15,5 @@
       <circle cx="60" cy="75" r="8" fill="black"/>
     </mask>
   </defs>
-  <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" fill="#231942" mask="url(#paw-mask)"/>
+  <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" fill="#3D1D0B" mask="url(#paw-mask)"/>
 </svg>

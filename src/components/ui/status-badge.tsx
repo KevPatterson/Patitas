@@ -31,12 +31,12 @@ const toneByStatus: Record<string, string> = {
   ADOPTION: 'bg-purple text-white shadow-sm',
   abandonada: 'bg-orange text-white shadow-sm',
   ABANDONED: 'bg-orange text-white shadow-sm',
-  avistamiento: 'bg-turquoise text-white shadow-sm',
-  SIGHTING: 'bg-turquoise text-white shadow-sm',
-  activa: 'bg-turquoise/10 text-turquoise border border-turquoise/30',
-  ACTIVE: 'bg-turquoise/10 text-turquoise border border-turquoise/30',
-  resuelta: 'bg-navy text-cream shadow-sm',
-  RESOLVED: 'bg-navy text-cream shadow-sm',
+  avistamiento: 'bg-orange-200 text-[var(--color-orange-900)] shadow-sm',
+  SIGHTING: 'bg-orange-200 text-[var(--color-orange-900)] shadow-sm',
+  activa: 'bg-orange-100 text-[var(--color-orange-700)] border border-orange-200',
+  ACTIVE: 'bg-orange-100 text-[var(--color-orange-700)] border border-orange-200',
+  resuelta: 'bg-[var(--color-orange-900)] text-[var(--color-orange-50)] shadow-sm',
+  RESOLVED: 'bg-[var(--color-orange-900)] text-[var(--color-orange-50)] shadow-sm',
 };
 
 export function StatusBadge({ status, className = '' }: StatusBadgeProps) {

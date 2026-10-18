@@ -1,50 +1,60 @@
 @import 'tailwindcss';
 
 @theme inline {
-  /* Paleta Patitas Anime Edition */
-  /* Navy - Color principal estructural */
-  --color-navy: #1a2332;
-  --color-navy-light: #2a3650;
-  --color-navy-dark: #0f1621;
+  /* Paleta Patitas Anime Edition - Monocromática Naranja */
+  /* Orange Scale - Nueva paleta principal */
+  --color-orange-50: #fff4ea;
+  --color-orange-100: #ffe6d1;
+  --color-orange-200: #ffcfa8;
+  --color-orange-300: #ffb078;
+  --color-orange-400: #ff8c42;
+  --color-orange-500: #f0721f;
+  --color-orange-600: #d45a0f;
+  --color-orange-700: #a8440a;
+  --color-orange-900: #3d1d0b;
   
-  /* Cream - Fondo cálido */
-  --color-cream: #fef8f0;
-  --color-cream-dark: #f5eee3;
-  
-  /* Orange - Acento principal */
+  /* Alias compatibilidad (nombres originales) */
+  --color-navy: #3d1d0b;
+  --color-navy-light: #5a2e16;
+  --color-navy-dark: #2a1407;
+  --color-cream: #fff4ea;
+  --color-cream-dark: #ffe6d1;
   --color-orange: #ff8c42;
   --color-orange-light: #ffaa6f;
-  --color-orange-dark: #f56e20;
+  --color-orange-dark: #f0721f;
+  --color-turquoise: #ffcfa8;
+  --color-turquoise-light: #ffd9bb;
+  --color-turquoise-dark: #ffb078;
   
-  /* Turquoise - Acento secundario */
-  --color-turquoise: #4ecdc4;
-  --color-turquoise-light: #7eddd6;
-  --color-turquoise-dark: #3bb5ac;
-  
-  /* Purple - Adopción */
+  /* Purple - Adopción (semántico, NO cambia) */
   --color-purple: #a78bfa;
   --color-purple-light: #c4b5fd;
   --color-purple-dark: #8b5cf6;
   
-  /* Lost - Rojo/coral */
+  /* Lost - Rojo/coral (semántico, NO cambia) */
   --color-lost: #ef4444;
   --color-lost-light: #f87171;
   --color-lost-dark: #dc2626;
   
-  /* Found - Verde/turquesa */
+  /* Found - Verde/turquesa (semántico, NO cambia) */
   --color-found: #10b981;
   --color-found-light: #34d399;
   --color-found-dark: #059669;
   
   /* Colores legacy (compatibilidad) */
-  --color-ink: #1a2332;
+  --color-ink: #3d1d0b;
   --color-mamey: #ff8c42;
   --color-sol: #ffc857;
-  --color-espuma: #4ecdc4;
-  --color-arena: #fef8f0;
+  --color-espuma: #ffcfa8;
+  --color-arena: #fff4ea;
   --color-perdida: #ef4444;
   --color-encontrada: #10b981;
   --color-adopcion: #a78bfa;
+  
+  /* Superficies y texto específicos para la nueva paleta */
+  --color-surface-card: #fffaf5;
+  --color-border-card: #ffd9bb;
+  --color-text-secondary: #8a5a3c;
   
   /* Tipografía */
   --font-display: 'Baloo 2', cursive;
@@ -79,48 +89,48 @@
 
 @layer base {
   :root {
-    /* Tokens Patitas Anime Edition - Modo claro */
-    --background: 39 100% 97%;  /* cream */
-    --foreground: 220 24% 15%;  /* navy */
-    --card: 0 0% 100%;
-    --card-foreground: 220 24% 15%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 24% 15%;
-    --primary: 22 100% 63%;  /* orange */
-    --primary-foreground: 220 24% 15%;
-    --secondary: 177 51% 55%;  /* turquoise */
-    --secondary-foreground: 220 24% 15%;
-    --muted: 39 100% 97%;
-    --muted-foreground: 220 15% 45%;
+    /* Tokens Patitas Anime Edition - Monocromático Naranja - Modo claro */
+    --background: 38 100% 97%;  /* orange-50 */
+    --foreground: 24 35% 14%;  /* orange-900 */
+    --card: 40 100% 99%;  /* surface-card */
+    --card-foreground: 24 35% 14%;
+    --popover: 40 100% 99%;
+    --popover-foreground: 24 35% 14%;
+    --primary: 22 100% 63%;  /* orange-400 */
+    --primary-foreground: 24 35% 14%;  /* orange-900 for contrast on orange-400 */
+    --secondary: 32 100% 89%;  /* orange-200 */
+    --secondary-foreground: 24 35% 14%;
+    --muted: 38 100% 97%;
+    --muted-foreground: 24 25% 40%;
     --accent: 22 100% 63%;
-    --accent-foreground: 220 24% 15%;
+    --accent-foreground: 24 35% 14%;
     --destructive: 0 84% 60%;  /* lost red */
     --destructive-foreground: 0 0% 100%;
-    --border: 39 62% 93%;
-    --input: 39 62% 93%;
+    --border: 32 80% 88%;  /* orange-200 */
+    --input: 32 80% 88%;
     --ring: 22 100% 63%;
     --radius: 1rem;
   }
 
   .dark {
-    --background: 220 24% 15%;
-    --foreground: 39 100% 97%;
-    --card: 220 20% 18%;
-    --card-foreground: 39 100% 97%;
-    --popover: 220 20% 18%;
-    --popover-foreground: 39 100% 97%;
+    --background: 24 35% 14%;
+    --foreground: 38 100% 97%;
+    --card: 24 30% 18%;
+    --card-foreground: 38 100% 97%;
+    --popover: 24 30% 18%;
+    --popover-foreground: 38 100% 97%;
     --primary: 22 100% 63%;
-    --primary-foreground: 220 24% 15%;
-    --secondary: 177 51% 55%;
-    --secondary-foreground: 220 24% 15%;
-    --muted: 220 20% 24%;
-    --muted-foreground: 220 12% 72%;
+    --primary-foreground: 38 100% 97%;
+    --secondary: 32 80% 40%;
+    --secondary-foreground: 38 100% 97%;
+    --muted: 24 25% 24%;
+    --muted-foreground: 38 50% 72%;
     --accent: 22 100% 63%;
-    --accent-foreground: 220 24% 15%;
+    --accent-foreground: 38 100% 97%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 18% 26%;
-    --input: 220 18% 26%;
+    --border: 24 25% 26%;
+    --input: 24 25% 26%;
     --ring: 22 100% 63%;
   }
 }
@@ -168,8 +178,8 @@
 
 /* Panel suave con nueva estética */
 .soft-panel {
-  background: white;
-  border: 2px solid rgba(26, 35, 50, 0.08);
+  background: var(--color-surface-card);
+  border: 2px solid var(--color-border-card);
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-md);
   transition: all var(--duration-base) var(--ease-smooth);
@@ -252,7 +262,7 @@
 .hero-gradient {
   background: 
     radial-gradient(circle at 20% 20%, rgba(255, 140, 66, 0.15), transparent 40%),
-    radial-gradient(circle at 80% 10%, rgba(78, 205, 196, 0.12), transparent 35%),
+    radial-gradient(circle at 80% 10%, rgba(255, 207, 168, 0.12), transparent 35%),
     radial-gradient(circle at 50% 80%, rgba(167, 139, 250, 0.1), transparent 40%);
 }
 
@@ -588,13 +598,13 @@ html {
 
 .overflow-auto::-webkit-scrollbar-thumb,
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background: var(--color-turquoise);
+  background: var(--color-orange);
   border-radius: var(--radius-pill);
 }
 
 .overflow-auto::-webkit-scrollbar-thumb:hover,
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: var(--color-turquoise-dark);
+  background: var(--color-orange-dark);
 }
 
 /* ==================== FIN SCROLLBAR ==================== */
@@ -626,6 +636,8 @@ video {
   :root {
     --color-navy: #000000;
     --color-cream: #ffffff;
+    --color-orange-400: #cc7000;
+    --color-orange-900: #000000;
   }
 
   .soft-panel {

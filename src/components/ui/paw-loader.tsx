@@ -66,10 +66,10 @@ export function PawTrail({ className = '' }: { className?: string }) {
 
 export function FullPageLoader({ message = 'Cargando...' }: { message?: string }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-cream/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-cream)]/80 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-4 text-center">
         <PawLoader size="lg" />
-        <p className="font-display text-lg font-semibold text-navy">{message}</p>
+        <p className="font-display text-lg font-semibold text-[var(--color-navy)]">{message}</p>
       </div>
     </div>
   );
