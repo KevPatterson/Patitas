@@ -19,9 +19,9 @@ export default {
         },
         // Alias compatibilidad (nombres originales)
         navy: {
-          DEFAULT: '#3d1d0b',
-          light: '#5a2e16',
-          dark: '#2a1407',
+          DEFAULT: '#1a0d05',
+          light: '#3d1d0b',
+          dark: '#0d0703',
         },
         cream: {
           DEFAULT: '#fff4ea',
@@ -54,7 +54,7 @@ export default {
           dark: '#8b5cf6',
         },
         // Legacy (compatibilidad)
-        ink: '#3d1d0b',
+        ink: '#1a0d05',
         mamey: '#ff8c42',
         sol: '#ffc857',
         espuma: '#ffcfa8',
