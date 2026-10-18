@@ -301,10 +301,10 @@ export function SiteShell({ children }: SiteShellProps) {
         </div>
 
         <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-row items-start justify-between gap-2 sm:gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-4 sm:gap-6">
             {/* IZQUIERDA: Marca y descripción */}
-            <div className="space-y-1.5 text-left min-w-0 flex-1" style={{ minWidth: '110px' }}>
-              <div className="flex items-center gap-1.5">
+            <div className="space-y-1.5 text-left text-center sm:text-left min-w-0 w-full sm:flex-1">
+              <div className="flex items-center gap-1.5 justify-center sm:justify-start">
                 <Logo variant="mark" size={24} className="text-cream" />
                 <span style={{
                   fontFamily: '"Baloo 2", cursive',
@@ -317,16 +317,16 @@ export function SiteShell({ children }: SiteShellProps) {
                   patitas
                 </span>
               </div>
-              <p className="font-display text-sm leading-snug text-cream/90 whitespace-nowrap">
+              <p className="font-display text-sm leading-snug text-cream/90">
                 🐾 Cada patita merece volver a casa
               </p>
-              <p className="text-[10px] text-cream/60 whitespace-nowrap">
+              <p className="text-[10px] text-cream/60">
                 Plataforma comunitaria · Hecho con ❤️ en Cuba
               </p>
             </div>
 
             {/* CENTRO: Equipo de desarrollo */}
-            <section className="flex-shrink-0" aria-label="Equipo de desarrollo">
+            <section className="w-full sm:flex-shrink-0" aria-label="Equipo de desarrollo">
               <h3 className="font-display text-sm font-extrabold text-cream mb-1.5 text-center">
                 <span className="text-orange-300">🐾</span> Equipo
               </h3>
@@ -379,7 +379,7 @@ export function SiteShell({ children }: SiteShellProps) {
                         aria-label="Contactar por WhatsApp"
                       >
                         <svg className="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.472.099-.174.05-.371-.025-.52-.075-.149-.669-1.611-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.41.01-.61.01-.434.008-1.136.247-1.708 1.14-.57.893-1.11 2.076-1.25 2.396-.14.319-.057.621.1 1.14.15.52.655 1.784 1.685 3.53.72 1.256 1.158 1.885 1.836 2.09.567.175 1.053.247 1.32.197.168-.033.336-.13.52-.312.149-.15.447-.447 1.003-1.096 1.704-1.945 1.817-2.034 2.716-2.386.817-.312 1.282-.502 1.409-.531.15-.033.247-.05.41-.05.167 0 .266.024.35.068.15.075.782.81 1.003 1.054.24.273.48.562.633.736.129.149.169.247.104.372-.05.11-.217.173-.427.149-.21-.024-.536-.07-.804-.16-.266-.09-.546-.217-.77-.472z"/>
+                          <path d="M12.031 3.512c-4.684 0-8.482 3.798-8.482 8.482 0 .665.052 1.314.152 1.942L1.188 23.129l6.166-1.614c.632.101 1.28.152 1.942.152 4.684 0 8.482-3.798 8.482-8.482 0-4.684-3.798-8.482-8.482-8.482zm3.344 15.805c-.257.964-.946 1.745-1.892 1.986-.644.165-1.33.123-1.897-.054-.654-.206-1.26-.541-1.648-.984-.355-.393-.655-.905-.739-1.279-.094-.416-.013-.82.239-1.164.242-.33.533-.608.764-.737.242-.136.49-.15.718-.08.33.104.608.323.803.68.208.374.278.772.136 1.155-.134.368-.388.688-.69.952-.386.33-.84.503-1.336.434-.297-.041-.612-.165-.91-.38-.496-.35-1.277-1.469-2.198-3.264-.893-1.754-1.34-3.626-1.34-5.551 0-4.219 3.431-7.65 7.65-7.65s7.65 3.431 7.65 7.65c0 1.926-.448 3.797-1.34 5.551-.921 1.795-1.702 2.914-2.198 3.264-.298.215-.613.34-.91.38-.496.069-.95-.104-1.336-.434-.302-.264-.556-.584-.69-.952-.228-.357-.066-.576.08-.718.252-.344.543-.622.764-.737.252-.344.333-.748.239-1.164-.084-.374-.384-.886-.739-1.279-.388-.443-.994-.778-1.648-.984-.568-.177-1.253-.22-1.897.054-.946-.241-1.635-1.022-1.892-1.986zm"/>
                         </svg>
                       </a>
                     </div>
@@ -389,7 +389,7 @@ export function SiteShell({ children }: SiteShellProps) {
             </section>
 
             {/* DERECHA: Enlaces de navegación */}
-            <nav className="flex flex-col gap-1 text-xs font-semibold text-right min-w-0 flex-1" style={{ minWidth: '110px' }} aria-label="Enlaces del pie">
+            <nav className="flex flex-col gap-1 text-xs font-semibold text-center sm:text-right min-w-0 w-full sm:flex-1" aria-label="Enlaces del pie">
               <Link 
                 to="/buscar" 
                 className="text-cream/80 hover:text-orange transition-colors duration-base whitespace-nowrap"
