@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Bell, Search, MapPin, LogOut, User, PawPrint, ExternalLink, type LucideIcon } from 'lucide-react';
+import { Bell, Search, MapPin, LogOut, User, PawPrint, type LucideIcon } from 'lucide-react';
 import { signOut } from '../../lib/supabase/auth';
 import { useAuth } from '../../app/auth-context';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
@@ -18,9 +18,9 @@ interface DevTeamMember {
 
 const devTeam: DevTeamMember[] = [
   { 
-    name: 'Kev Patterson', 
+    name: 'Kevin Patterson', 
     initials: 'KP', 
-    role: 'Full Stack & DevOps', 
+    role: 'Founder & Full-stack Developer', 
     github: 'https://github.com/KevPatterson',
     avatar: 'https://github.com/KevPatterson.png'
   },
@@ -272,148 +272,143 @@ export function SiteShell({ children }: SiteShellProps) {
       </header>
 
       {/* Main content */}
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-24 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-24 lg:pb-16 sm:px-6 lg:px-8">
         {children}
       </main>
 
       {/* Footer rediseñado con personalidad */}
-      <footer className="relative border-t-2 border-orange-200 bg-navy text-cream overflow-hidden">
-        {/* Decoración de fondo */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-10 left-10 size-20">
-            <svg viewBox="0 0 120 120" fill="currentColor">
-              <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" />
-              <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" />
-              <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" />
-              <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" />
-              <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" />
-            </svg>
-          </div>
-          <div className="absolute bottom-10 right-20 size-16 transform rotate-12">
-            <svg viewBox="0 0 120 120" fill="currentColor">
-              <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" />
-              <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" />
-              <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" />
-              <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" />
-              <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" />
-            </svg>
-          </div>
-        </div>
+      <footer className="relative border-t-2 border-orange-200 bg-navy text-cream overflow-hidden" role="contentinfo">
 
-        <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-4 sm:gap-6">
-            {/* IZQUIERDA: Marca y descripción */}
-            <div className="space-y-1.5 text-left text-center sm:text-left min-w-0 w-full sm:flex-1">
-              <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-                <Logo variant="mark" size={24} className="text-cream" />
-                <span style={{
-                  fontFamily: '"Baloo 2", cursive',
-                  fontWeight: 800,
-                  fontSize: '1.125rem',
-                  lineHeight: 1,
-                  letterSpacing: '-0.02em',
-                  color: 'var(--color-cream)'
-                }}>
-                  patitas
-                </span>
-              </div>
-              <p className="font-display text-sm leading-snug text-cream/90">
-                🐾 Cada patita merece volver a casa
+        <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row items-start gap-8 lg:gap-12">
+            {/* ===== BRAND / IDENTITY ===== */}
+            <section className="w-full lg:w-64 lg:flex-shrink-0" aria-label="Identidad de Patitas">
+              <Link to="/" className="flex items-center gap-2 mb-4" aria-label="Patitas - Inicio">
+                <Logo className="size-8" aria-hidden="true" />
+                <span className="font-display font-bold text-xl text-cream">Patitas</span>
+              </Link>
+              <p className="text-cream/70 text-sm leading-relaxed mb-4">
+                Plataforma comunitaria para encontrar, publicar y gestionar mascotas perdidas, encontradas y en adopción en Cuba.
               </p>
-              <p className="text-[10px] text-cream/60">
-                Plataforma comunitaria · Hecho con ❤️ en Cuba
-              </p>
+            </section>
+
+            {/* ===== NAVIGATION COLUMNS ===== */}
+            <div className="w-full flex flex-wrap gap-8 lg:gap-12 lg:flex-1" role="navigation" aria-label="Enlaces principales">
+              <nav className="flex-1 min-w-[140px]" aria-label="Navegación principal">
+                <h3 className="font-display font-bold text-cream text-sm uppercase tracking-wider mb-3">Explorar</h3>
+                <ul className="space-y-2" role="list">
+                  <li><Link to="/buscar" className="text-cream/80 hover:text-orange transition-colors duration-base text-sm whitespace-nowrap">Buscar mascotas</Link></li>
+                  <li><Link to="/adopciones" className="text-cream/80 hover:text-purple transition-colors duration-base text-sm whitespace-nowrap">Adopciones</Link></li>
+                  <li><Link to="/mapa" className="text-cream/80 hover:text-turquoise transition-colors duration-base text-sm whitespace-nowrap">Mapa de casos</Link></li>
+                  <li><Link to="/publicar" className="text-cream/80 hover:text-cream transition-colors duration-base text-sm whitespace-nowrap font-medium">Publicar caso</Link></li>
+                </ul>
+              </nav>
+
+              <nav className="flex-1 min-w-[140px]" aria-label="Información y ayuda">
+                <h3 className="font-display font-bold text-cream text-sm uppercase tracking-wider mb-3">Información</h3>
+                <ul className="space-y-2" role="list">
+                  <li><Link to="/como-funciona" className="text-cream/80 hover:text-cream transition-colors duration-base text-sm whitespace-nowrap">Cómo funciona</Link></li>
+                  <li><Link to="/preguntas-frecuentes" className="text-cream/80 hover:text-cream transition-colors duration-base text-sm whitespace-nowrap">Preguntas frecuentes</Link></li>
+                  <li><Link to="/seguridad" className="text-cream/80 hover:text-cream transition-colors duration-base text-sm whitespace-nowrap">Consejos de seguridad</Link></li>
+                  <li><Link to="/contacto" className="text-cream/80 hover:text-cream transition-colors duration-base text-sm whitespace-nowrap">Contacto</Link></li>
+                </ul>
+              </nav>
+
+              <nav className="flex-1 min-w-[140px]" aria-label="Legal y políticas">
+                <h3 className="font-display font-bold text-cream text-sm uppercase tracking-wider mb-3">Legal</h3>
+                <ul className="space-y-2" role="list">
+                  <li><Link to="/privacidad" className="text-cream/80 hover:text-cream transition-colors duration-base text-sm whitespace-nowrap">Política de privacidad</Link></li>
+                  <li><Link to="/terminos" className="text-cream/80 hover:text-cream transition-colors duration-base text-sm whitespace-nowrap">Términos de uso</Link></li>
+                  <li><Link to="/cookies" className="text-cream/80 hover:text-cream transition-colors duration-base text-sm whitespace-nowrap">Política de cookies</Link></li>
+                  <li><Link to="/accesibilidad" className="text-cream/80 hover:text-cream transition-colors duration-base text-sm whitespace-nowrap">Declaración de accesibilidad</Link></li>
+                </ul>
+              </nav>
             </div>
 
-            {/* CENTRO: Equipo de desarrollo */}
-            <section className="w-full sm:flex-shrink-0" aria-label="Equipo de desarrollo">
-              <h3 className="font-display text-sm font-extrabold text-cream mb-1.5 text-center">
-                <span className="text-orange-300">🐾</span> Equipo
-              </h3>
-              <div className="flex justify-center">
+            {/* ===== DEV TEAM (Compact) ===== */}
+            <section className="w-full lg:w-56 lg:flex-shrink-0" aria-label="Equipo de desarrollo">
+              <h3 className="font-display font-bold text-cream text-sm uppercase tracking-wider mb-3 hidden lg:block">Equipo</h3>
+              <h3 className="font-display font-bold text-cream text-sm uppercase tracking-wider mb-3 lg:hidden">Equipo de desarrollo</h3>
+              <ul className="space-y-3" role="list">
                 {devTeam.map((member) => (
-                  <article
-                    key={member.name}
-                    className="group relative rounded-xl bg-navy-light/50 border border-orange-900/30 p-2.5 max-w-xs transition-all duration-base hover:border-orange-600/50 hover:bg-navy-light/80 hover:-translate-y-0.5"
-                  >
-                    <div className="relative mb-1.5 flex justify-center">
-                      {member.avatar ? (
-                        <img
-                          src={member.avatar}
-                          alt={`${member.name} - GitHub`}
-                          className="size-14 rounded-xl border border-orange-900/30 shadow-md object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex size-14 items-center justify-center rounded-xl bg-linear-to-br from-orange-500 to-orange-700 text-cream font-display font-extrabold text-lg shadow-md">
-                          {member.initials}
-                        </div>
-                      )}
-                      <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-orange-400 flex items-center justify-center border border-navy">
-                        <PawPrint className="size-1.5 text-navy" strokeWidth={2.5} aria-hidden="true" />
+                  <li key={member.github} className="flex flex-col items-start gap-2 p-3 rounded-xl bg-navy-light/50 hover:bg-navy-light transition-colors duration-base group">
+                    <div className="flex items-start gap-3 w-full">
+                      <div className="relative flex-shrink-0">
+                        {member.avatar ? (
+                          <img
+                            src={member.avatar}
+                            alt=""
+                            className="size-10 rounded-xl ring-2 ring-orange-500/30"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-orange-500 to-orange-700 text-cream font-display font-extrabold text-sm shadow-md">
+                            {member.initials}
+                          </div>
+                        )}
+                        <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-orange-400 flex items-center justify-center border border-navy" aria-hidden="true">
+                          <PawPrint className="size-1.5 text-navy" strokeWidth={2.5} />
+                        </span>
+                      </div>
+                      <div className="min-w-0 text-left flex-1">
+                        <a
+                          href={member.github}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-display font-semibold text-cream group-hover:text-orange-300 transition-colors text-sm truncate block"
+                          aria-label={`Ver perfil de GitHub de ${member.name}`}
+                        >
+                          {member.name}
+                        </a>
+                        <p className="text-[10px] text-cream/60 truncate">{member.role}</p>
                       </div>
                     </div>
-                    <div className="space-y-0 text-center">
-                      <h4 className="font-display font-bold text-cream group-hover:text-orange-300 transition-colors text-xs">
-                        {member.name}
-                      </h4>
-                      <p className="text-[9px] text-cream/70">{member.role}</p>
-                    </div>
-                    <div className="mt-1.5 flex justify-center gap-2">
+                    <div className="flex justify-center gap-3 w-full pt-1" aria-label="Redes del miembro">
                       <a
                         href={member.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-orange-300 hover:text-orange-100 transition-colors"
-                        aria-label={`Ver perfil de GitHub de ${member.name}`}
+                        className="flex size-8 items-center justify-center rounded-lg text-cream/50 hover:text-orange-300 hover:bg-orange-500/10 transition-colors duration-base"
+                        aria-label={`GitHub de ${member.name}`}
                       >
                         <svg className="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                          <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+                          <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z" />
                         </svg>
                       </a>
                       <a
                         href="https://wa.me/5356954200"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-green-400 hover:text-green-300 transition-colors"
+                        className="flex size-8 items-center justify-center rounded-lg text-cream/50 hover:text-green-400 hover:bg-green-500/10 transition-colors duration-base"
                         aria-label="Contactar por WhatsApp"
                       >
-                        <svg className="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                          <path d="M12.031 3.512c-4.684 0-8.482 3.798-8.482 8.482 0 .665.052 1.314.152 1.942L1.188 23.129l6.166-1.614c.632.101 1.28.152 1.942.152 4.684 0 8.482-3.798 8.482-8.482 0-4.684-3.798-8.482-8.482-8.482zm3.344 15.805c-.257.964-.946 1.745-1.892 1.986-.644.165-1.33.123-1.897-.054-.654-.206-1.26-.541-1.648-.984-.355-.393-.655-.905-.739-1.279-.094-.416-.013-.82.239-1.164.242-.33.533-.608.764-.737.242-.136.49-.15.718-.08.33.104.608.323.803.68.208.374.278.772.136 1.155-.134.368-.388.688-.69.952-.386.33-.84.503-1.336.434-.297-.041-.612-.165-.91-.38-.496-.35-1.277-1.469-2.198-3.264-.893-1.754-1.34-3.626-1.34-5.551 0-4.219 3.431-7.65 7.65-7.65s7.65 3.431 7.65 7.65c0 1.926-.448 3.797-1.34 5.551-.921 1.795-1.702 2.914-2.198 3.264-.298.215-.613.34-.91.38-.496.069-.95-.104-1.336-.434-.302-.264-.556-.584-.69-.952-.228-.357-.066-.576.08-.718.252-.344.543-.622.764-.737.252-.344.333-.748.239-1.164-.084-.374-.384-.886-.739-1.279-.388-.443-.994-.778-1.648-.984-.568-.177-1.253-.22-1.897.054-.946-.241-1.635-1.022-1.892-1.986zm"/>
+                        <svg className="size-4" viewBox="0 0 24 24" fill="currentColor" fillRule="evenodd" aria-hidden="true">
+                          <path d="M17.415 14.382c-.298-.149-1.759-.867-2.031-.967s-.47-.148-.669.15c-.198.297-.767.966-.94 1.164c-.174.199-.347.223-.644.075c-.297-.15-1.255-.463-2.39-1.475c-.883-.788-1.48-1.761-1.653-2.059c-.173-.297-.019-.458.13-.606c.134-.133.297-.347.446-.52s.198-.298.297-.497c.1-.198.05-.371-.025-.52c-.074-.149-.668-1.612-.916-2.207c-.241-.579-.486-.5-.668-.51c-.174-.008-.372-.01-.57-.01s-.52.074-.792.372c-.273.297-1.04 1.016-1.04 2.479c0 1.462 1.064 2.875 1.213 3.074s2.095 3.2 5.076 4.487c.71.306 1.263.489 1.694.625c.712.227 1.36.195 1.872.118c.57-.085 1.758-.719 2.006-1.413s.247-1.289.173-1.413s-.272-.198-.57-.347m-5.422 7.403h-.004a9.87 9.87 0 0 1-5.032-1.378l-.36-.214l-3.742.982l.999-3.648l-.235-.374a9.86 9.86 0 0 1-1.511-5.26c.002-5.45 4.436-9.884 9.889-9.884a9.8 9.8 0 0 1 6.988 2.899a9.82 9.82 0 0 1 2.892 6.992c-.002 5.45-4.436 9.885-9.884 9.885m8.412-18.297A11.82 11.82 0 0 0 11.992 0C5.438 0 .102 5.335.1 11.892a11.86 11.86 0 0 0 1.587 5.945L0 24l6.304-1.654a11.9 11.9 0 0 0 5.684 1.448h.005c6.554 0 11.89-5.335 11.892-11.893a11.82 11.82 0 0 0-3.48-8.413" clipRule="evenodd" />
                         </svg>
                       </a>
                     </div>
-                  </article>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </section>
+          </div>
 
-            {/* DERECHA: Enlaces de navegación */}
-            <nav className="flex flex-col gap-1 text-xs font-semibold text-center sm:text-right min-w-0 w-full sm:flex-1" aria-label="Enlaces del pie">
-              <Link 
-                to="/buscar" 
-                className="text-cream/80 hover:text-orange transition-colors duration-base whitespace-nowrap"
-              >
-                Buscar mascotas
-              </Link>
-              <Link 
-                to="/adopciones" 
-                className="text-cream/80 hover:text-purple transition-colors duration-base whitespace-nowrap"
-              >
-                Adopciones
-              </Link>
-              <Link 
-                to="/mapa" 
-                className="text-cream/80 hover:text-turquoise transition-colors duration-base whitespace-nowrap"
-              >
-                Mapa de casos
-              </Link>
-              <Link 
-                to="/como-funciona" 
-                className="text-cream/80 hover:text-cream transition-colors duration-base whitespace-nowrap"
-              >
-                Cómo funciona
-              </Link>
+          {/* ===== DIVIDER ===== */}
+          <div className="my-8 border-t border-orange-200/30" aria-hidden="true" />
+
+          {/* ===== BOTTOM BAR: COPYRIGHT + LEGAL LINKS ===== */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-cream/60">
+            <p className="text-center sm:text-left">
+              © {new Date().getFullYear()} Patitas. Hecho con{' '}
+              <span className="text-orange-400" aria-hidden="true">♥</span>{' '}
+              para la comunidad cubana.
+            </p>
+            <nav className="flex flex-wrap items-center justify-center gap-4" aria-label="Enlaces legales rápidos">
+              <Link to="/privacidad" className="hover:text-cream transition-colors duration-base whitespace-nowrap">Privacidad</Link>
+              <span aria-hidden="true" className="text-cream/30">·</span>
+              <Link to="/terminos" className="hover:text-cream transition-colors duration-base whitespace-nowrap">Términos</Link>
+              <span aria-hidden="true" className="text-cream/30">·</span>
+              <Link to="/cookies" className="hover:text-cream transition-colors duration-base whitespace-nowrap">Cookies</Link>
             </nav>
           </div>
         </div>
