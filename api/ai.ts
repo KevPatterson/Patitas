@@ -1,6 +1,12 @@
 import type { VercelRequest, VercelResponse } from './types/vercel';
 import { rejectMethod } from './_lib/http';
 import { AI_ENABLED, providerAvailable } from './_lib/env';
+import { handleCalculateMatches } from './_lib/ai/handlers/calculate-matches';
+import { handleCreateMatch } from './_lib/ai/handlers/create-match';
+import { handleDetectDuplicates } from './_lib/ai/handlers/detect-duplicates';
+import { handleExtractFromImage } from './_lib/ai/handlers/extract-from-image';
+import { handleProcessPublication } from './_lib/ai/handlers/process-publication';
+import { handleProcessJob } from './_lib/ai/handlers/process-job';
 
 export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
@@ -55,17 +61,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   switch (action) {
     case 'calculate-matches':
-      return (await import('./ai/calculate-matches')).default(req, res);
+      return handleCalculateMatches(req, res);
     case 'create-match':
-      return (await import('./ai/create-match')).default(req, res);
+      return handleCreateMatch(req, res);
     case 'detect-duplicates':
-      return (await import('./ai/detect-duplicates')).default(req, res);
+      return handleDetectDuplicates(req, res);
     case 'extract-from-image':
-      return (await import('./ai/extract-from-image')).default(req, res);
+      return handleExtractFromImage(req, res);
     case 'process-publication':
-      return (await import('./ai/process-publication')).default(req, res);
+      return handleProcessPublication(req, res);
     case 'process-job':
-      return (await import('./ai/process-job')).default(req, res);
+      return handleProcessJob(req, res);
     default:
       return res.status(400).json({ error: 'Acción desconocida', code: 'INVALID_INPUT' });
   }

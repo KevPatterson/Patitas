@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
-import { limitAiByUser, limitByIp } from '../_lib/rate-limit-utils';
-import { canManagePublication, getActor, loadPublication } from '../_lib/authz';
+import type { VercelRequest, VercelResponse } from '../../../types/vercel';
+import { supabaseAdmin } from '../../supabase-admin';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../../http';
+import { limitAiByUser, limitByIp } from '../../rate-limit-utils';
+import { canManagePublication, getActor, loadPublication } from '../../authz';
 
 /**
- * POST /api/ai/calculate-matches — candidatos de coincidencia para una publicación.
+ * POST /api/ai?action=calculate-matches — candidatos de coincidencia para una publicación.
  *
  * Hallazgo API-02 (IDOR de lectura): el endpoint **no comprobaba la propiedad**.
  * Cualquier usuario autenticado podía pasar el UUID de una publicación ajena y
@@ -22,7 +22,7 @@ const calculateSchema = z.object({
   limit: z.number().int().min(1).max(50).optional(),
 });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleCalculateMatches(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
   if (rejectMethod(req, res, 'POST')) return;

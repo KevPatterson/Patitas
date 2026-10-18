@@ -1,13 +1,13 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
-import { limitAiByUser, limitByIp } from '../_lib/rate-limit-utils';
-import { canManagePublication, getActor, loadPublication } from '../_lib/authz';
-import { AI_ENABLED } from '../_lib/env';
+import type { VercelRequest, VercelResponse } from '../../../types/vercel';
+import { supabaseAdmin } from '../../supabase-admin';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../../http';
+import { limitAiByUser, limitByIp } from '../../rate-limit-utils';
+import { canManagePublication, getActor, loadPublication } from '../../authz';
+import { AI_ENABLED } from '../../env';
 
 /**
- * POST /api/ai/process-publication — encola trabajos de IA para una publicación.
+ * POST /api/ai?action=process-publication — encola trabajos de IA para una publicación.
  *
  * Ya comprobaba la propiedad y devolvía 403, pero no contemplaba al moderador
  * (le bloqueaba igual) y el body se validaba a mano. Se completa con Zod y se
@@ -28,7 +28,7 @@ const processSchema = z.object({
   tasks: z.array(z.enum(VALID_TASKS)).max(VALID_TASKS.length).optional(),
 });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleProcessPublication(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
   if (rejectMethod(req, res, 'POST')) return;
@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ? parsed.data.tasks
     : (['embedding_text', 'moderation'] as const);
 
-  const jobs = tasks.map((task) => ({
+  const jobs = tasks.map((task: string) => ({
     publication_id: publication.id,
     job_type: task,
     status: 'PENDING',

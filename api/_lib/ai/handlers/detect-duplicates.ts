@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
-import { limitAiByUser, limitByIp } from '../_lib/rate-limit-utils';
-import { canManagePublication, getActor, loadPublication } from '../_lib/authz';
+import type { VercelRequest, VercelResponse } from '../../../types/vercel';
+import { supabaseAdmin } from '../../supabase-admin';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../../http';
+import { limitAiByUser, limitByIp } from '../../rate-limit-utils';
+import { canManagePublication, getActor, loadPublication } from '../../authz';
 
 /**
- * POST /api/ai/detect-duplicates — busca publicaciones duplicadas de una dada.
+ * POST /api/ai?action=detect-duplicates — busca publicaciones duplicadas de una dada.
  *
  * Hallazgo API-02 (IDOR): igual que `calculate-matches`, no comprobaba la
  * propiedad: cualquiera podía leer metadatos de publicaciones ajenas **y además
@@ -19,7 +19,7 @@ const detectSchema = z.object({
   threshold: z.number().min(0).max(1).optional(),
 });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleDetectDuplicates(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
   if (rejectMethod(req, res, 'POST')) return;

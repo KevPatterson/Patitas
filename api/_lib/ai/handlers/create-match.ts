@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
-import { limitAiByUser, limitByIp } from '../_lib/rate-limit-utils';
-import { actorOwnsAnyPublication, getActor, isModerator } from '../_lib/authz';
+import type { VercelRequest, VercelResponse } from '../../../types/vercel';
+import { supabaseAdmin } from '../../supabase-admin';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../../http';
+import { limitAiByUser, limitByIp } from '../../rate-limit-utils';
+import { actorOwnsAnyPublication, getActor, isModerator } from '../../authz';
 
 /**
- * POST /api/ai/create-match — crea una coincidencia entre dos publicaciones.
+ * POST /api/ai?action=create-match — crea una coincidencia entre dos publicaciones.
  *
  * Hallazgo API-03: el endpoint aceptaba `overallScore`, `structuredScore`,
  * `textScore`, `semanticScore` y `visualScore` **enviados por el cliente** y los
@@ -39,7 +39,7 @@ const MIN_MATCH_SCORE = 60;
 /** Por debajo de esto la coincidencia es demasiado débil para notificar. */
 const NOTIFY_THRESHOLD = 75;
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleCreateMatch(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
   if (rejectMethod(req, res, 'POST')) return;
@@ -128,8 +128,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
   }
 
-  const typeA = publications.find((p) => p.id === pubAId)?.type as string | undefined;
-  const typeB = publications.find((p) => p.id === pubBId)?.type as string | undefined;
+  const typeA = publications.find((p: { id: string; type: string }) => p.id === pubAId)?.type;
+  const typeB = publications.find((p: { id: string; type: string }) => p.id === pubBId)?.type;
 
   const matchType =
     (typeA === 'LOST' && typeB === 'FOUND') || (typeA === 'FOUND' && typeB === 'LOST')
@@ -165,8 +165,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Notificación a los dueños, solo si la coincidencia es fuerte y son distintos.
-  const ownerAId = publications.find((p) => p.id === pubAId)?.owner_profile_id as string | null;
-  const ownerBId = publications.find((p) => p.id === pubBId)?.owner_profile_id as string | null;
+  const ownerAId = publications.find((p: { id: string; owner_profile_id: string | null }) => p.id === pubAId)?.owner_profile_id ?? null;
+  const ownerBId = publications.find((p: { id: string; owner_profile_id: string | null }) => p.id === pubBId)?.owner_profile_id ?? null;
 
   let notified = false;
 

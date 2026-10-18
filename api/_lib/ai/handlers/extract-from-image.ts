@@ -1,15 +1,15 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
-import { limitAiByUser, limitByIp } from '../_lib/rate-limit-utils';
-import { fetchRemoteImage } from '../_lib/url-guard';
-import { toImagePayload } from '../_lib/image-guard';
-import { aiProviderIsReal, AI_ENABLED, providerAvailable } from '../_lib/env';
-import { getAIProvider } from '../_lib/ai-provider';
+import type { VercelRequest, VercelResponse } from '../../../types/vercel';
+import { supabaseAdmin } from '../../supabase-admin';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../../http';
+import { limitAiByUser, limitByIp } from '../../rate-limit-utils';
+import { fetchRemoteImage } from '../../url-guard';
+import { toImagePayload } from '../../image-guard';
+import { aiProviderIsReal, AI_ENABLED, providerAvailable } from '../../env';
+import { getAIProvider } from '../../ai-provider';
 
 /**
- * POST /api/ai/extract-from-image — OCR + Computer Vision para autocompletar el
+ * POST /api/ai?action=extract-from-image — OCR + Computer Vision para autocompletar el
  * formulario de publicación.
  *
  * Hallazgo API-05 (SSRF): antes se aceptaba `imageUrl` tal cual y el proveedor
@@ -28,7 +28,7 @@ const extractSchema = z.object({
   imageUrl: z.string().url('La URL de la imagen no es válida').max(2048),
 });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleExtractFromImage(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
   if (rejectMethod(req, res, 'POST')) return;

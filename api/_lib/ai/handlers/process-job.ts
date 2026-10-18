@@ -1,15 +1,15 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { getAIProvider } from '../_lib/ai-provider';
-import { loadOwnStorageImage } from '../_lib/image-guard';
-import { fail, parseBody, rejectMethod } from '../_lib/http';
-import { limitByIp } from '../_lib/rate-limit-utils';
-import { AI_ENABLED, INTERNAL_API_KEY } from '../_lib/env';
-import { safeEqual } from '../_lib/authz';
+import type { VercelRequest, VercelResponse } from '../../../types/vercel';
+import { supabaseAdmin } from '../../supabase-admin';
+import { getAIProvider } from '../../ai-provider';
+import { loadOwnStorageImage } from '../../image-guard';
+import { fail, parseBody, rejectMethod } from '../../http';
+import { limitByIp } from '../../rate-limit-utils';
+import { AI_ENABLED, INTERNAL_API_KEY } from '../../env';
+import { safeEqual } from '../../authz';
 
 /**
- * POST /api/ai/process-job — procesa un job de IA concreto. Lo invoca el
+ * POST /api/ai?action=process-job — procesa un job de IA concreto. Lo invoca el
  * worker/cron, nunca el navegador.
  *
  * Hallazgo API-09: la API key se comparaba con `authHeader !== \`Bearer ${apiKey}\``,
@@ -23,7 +23,7 @@ const processJobSchema = z.object({
   jobId: z.string().uuid('El identificador del job no es válido'),
 });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handleProcessJob(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
   if (rejectMethod(req, res, 'POST')) return;
@@ -265,7 +265,7 @@ async function processVisionJob(publicationId: string) {
       }
 
       // Guardar atributos extraídos
-      const attributes = visionResult.labels.map((label) => ({
+      const attributes = visionResult.labels.map((label: { label: string; confidence: number }) => ({
         vision_result_id: visionRecord.id,
         publication_id: publicationId,
         attribute_key: label.label,
