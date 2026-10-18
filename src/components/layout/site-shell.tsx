@@ -300,16 +300,16 @@ export function SiteShell({ children }: SiteShellProps) {
           </div>
         </div>
 
-        <div className="relative mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 md:gap-12">
+        <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="flex flex-row items-start justify-between gap-4 sm:gap-6">
             {/* IZQUIERDA: Marca y descripción */}
-            <div className="space-y-3 text-center md:text-left md:max-w-xs flex-1 md:flex-none">
-              <div className="flex items-center gap-3 justify-center md:justify-start">
-                <Logo variant="mark" size={36} className="text-cream" />
+            <div className="space-y-2 text-left min-w-0 flex-1" style={{ minWidth: '120px' }}>
+              <div className="flex items-center gap-2">
+                <Logo variant="mark" size={28} className="text-cream" />
                 <span style={{
                   fontFamily: '"Baloo 2", cursive',
                   fontWeight: 800,
-                  fontSize: '1.5rem',
+                  fontSize: '1.25rem',
                   lineHeight: 1,
                   letterSpacing: '-0.02em',
                   color: 'var(--color-cream)'
@@ -317,57 +317,57 @@ export function SiteShell({ children }: SiteShellProps) {
                   patitas
                 </span>
               </div>
-              <p className="max-w-md font-display text-lg leading-relaxed text-cream/90">
+              <p className="font-display text-base leading-snug text-cream/90 whitespace-nowrap">
                 🐾 Cada patita merece volver a casa
               </p>
-              <p className="text-sm text-cream/60">
+              <p className="text-xs text-cream/60 whitespace-nowrap">
                 Plataforma comunitaria · Hecho con ❤️ en Cuba
               </p>
             </div>
 
             {/* CENTRO: Equipo de desarrollo */}
-            <section className="w-full md:w-auto flex-1 flex-none" aria-label="Equipo de desarrollo">
-              <h3 className="font-display text-xl font-extrabold text-cream mb-4 text-center">
-                <span className="text-orange-300">🐾</span> Equipo de desarrollo
+            <section className="flex-shrink-0" aria-label="Equipo de desarrollo">
+              <h3 className="font-display text-base font-extrabold text-cream mb-2 text-center">
+                <span className="text-orange-300">🐾</span> Equipo
               </h3>
               <div className="flex justify-center">
                 {devTeam.map((member) => (
                   <article
                     key={member.name}
-                    className="group relative rounded-2xl bg-navy-light/50 border border-orange-900/30 p-5 max-w-xs transition-all duration-base hover:border-orange-600/50 hover:bg-navy-light/80 hover:-translate-y-1"
+                    className="group relative rounded-xl bg-navy-light/50 border border-orange-900/30 p-3 max-w-xs transition-all duration-base hover:border-orange-600/50 hover:bg-navy-light/80 hover:-translate-y-0.5"
                   >
-                    <div className="relative mb-3 flex justify-center">
+                    <div className="relative mb-2 flex justify-center">
                       {member.avatar ? (
                         <img
                           src={member.avatar}
                           alt={`${member.name} - GitHub`}
-                          className="size-20 rounded-2xl border-2 border-orange-900/30 shadow-lg object-cover"
+                          className="size-16 rounded-xl border border-orange-900/30 shadow-md object-cover"
                           loading="lazy"
                         />
                       ) : (
-                        <div className="flex size-20 items-center justify-center rounded-2xl bg-linear-to-br from-orange-500 to-orange-700 text-cream font-display font-extrabold text-2xl shadow-lg">
+                        <div className="flex size-16 items-center justify-center rounded-xl bg-linear-to-br from-orange-500 to-orange-700 text-cream font-display font-extrabold text-xl shadow-md">
                           {member.initials}
                         </div>
                       )}
-                      <div className="absolute -bottom-1.5 -right-1.5 size-5 rounded-full bg-orange-400 flex items-center justify-center border-2 border-navy">
-                        <PawPrint className="size-2.5 text-navy" strokeWidth={2.5} aria-hidden="true" />
+                      <div className="absolute -bottom-1 -right-1 size-4 rounded-full bg-orange-400 flex items-center justify-center border border-navy">
+                        <PawPrint className="size-2 text-navy" strokeWidth={2.5} aria-hidden="true" />
                       </div>
                     </div>
-                    <div className="space-y-0.5 text-center">
-                      <h4 className="font-display font-bold text-cream group-hover:text-orange-300 transition-colors">
+                    <div className="space-y-0 text-center">
+                      <h4 className="font-display font-bold text-cream group-hover:text-orange-300 transition-colors text-sm">
                         {member.name}
                       </h4>
-                      <p className="text-xs text-cream/70">{member.role}</p>
+                      <p className="text-[10px] text-cream/70">{member.role}</p>
                     </div>
-                    <div className="mt-3 flex justify-center">
+                    <div className="mt-2 flex justify-center">
                       <a
                         href={member.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-orange-300 hover:text-orange-100 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-orange-300 hover:text-orange-100 transition-colors"
                         aria-label={`Ver perfil de GitHub de ${member.name}`}
                       >
-                        <ExternalLink className="size-4" aria-hidden="true" />
+                        <ExternalLink className="size-3.5" aria-hidden="true" />
                         GitHub
                       </a>
                     </div>
@@ -377,28 +377,28 @@ export function SiteShell({ children }: SiteShellProps) {
             </section>
 
             {/* DERECHA: Enlaces de navegación */}
-            <nav className="flex flex-col gap-2 text-sm font-semibold text-center md:text-right flex-1 md:flex-none" aria-label="Enlaces del pie">
+            <nav className="flex flex-col gap-1.5 text-xs font-semibold text-right min-w-0 flex-1" style={{ minWidth: '120px' }} aria-label="Enlaces del pie">
               <Link 
                 to="/buscar" 
-                className="text-cream/80 hover:text-orange transition-colors duration-base"
+                className="text-cream/80 hover:text-orange transition-colors duration-base whitespace-nowrap"
               >
                 Buscar mascotas
               </Link>
               <Link 
                 to="/adopciones" 
-                className="text-cream/80 hover:text-purple transition-colors duration-base"
+                className="text-cream/80 hover:text-purple transition-colors duration-base whitespace-nowrap"
               >
                 Adopciones
               </Link>
               <Link 
                 to="/mapa" 
-                className="text-cream/80 hover:text-turquoise transition-colors duration-base"
+                className="text-cream/80 hover:text-turquoise transition-colors duration-base whitespace-nowrap"
               >
                 Mapa de casos
               </Link>
               <Link 
                 to="/como-funciona" 
-                className="text-cream/80 hover:text-cream transition-colors duration-base"
+                className="text-cream/80 hover:text-cream transition-colors duration-base whitespace-nowrap"
               >
                 Cómo funciona
               </Link>
