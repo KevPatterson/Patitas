@@ -689,15 +689,6 @@ export function HomePage() {
               </div>
             </ScrollReveal>
 
-            {/* Nuevo: Paso 4 - Adoptados */}
-            <ScrollReveal animation="scale-in" delay={450}>
-              <StatCard 
-                value={stats.ADOPTED.toLocaleString()} 
-                label="Adoptados" 
-                tone="success"
-                icon={<Heart className="size-8" />}
-              />
-            </ScrollReveal>
           </div>
         </section>
       </ScrollReveal>
@@ -726,6 +717,12 @@ export function HomePage() {
             value={stats.ADOPTION.toLocaleString()} 
             label="En adopción" 
             tone="adoption"
+            icon={<Heart className="size-8" />}
+          />
+          <StatCard 
+            value={stats.ADOPTED.toLocaleString()} 
+            label="Adoptados" 
+            tone="success"
             icon={<Heart className="size-8" />}
           />
         </section>

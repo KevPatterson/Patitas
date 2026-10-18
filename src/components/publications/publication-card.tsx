@@ -110,8 +110,8 @@ export function PublicationCard({ publication, distance }: PublicationCardProps)
         </div>
       </div>
 
-      {/* Barra inferior decorativa en hover */}
-      <div className="h-1 bg-linear-to-r from-orange via-turquoise to-purple transform scale-x-0 group-hover:scale-x-100 transition-transform duration-base origin-left" />
+      {/* Barra inferior decorativa en hover - paleta naranja monocromática */}
+      <div className="h-1 bg-linear-to-r from-orange-200 via-orange-400 to-orange-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-base origin-left" />
     </Link>
   );
 }
