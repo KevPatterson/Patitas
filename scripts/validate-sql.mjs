@@ -139,7 +139,7 @@ function maskNonBlockKeywords(code) {
 function checkBlocks(code) {
   const errors = [];
   const masked = maskNonBlockKeywords(code);
-  const tokens = masked.match(/\b(begin|end|case|if)\b\s*;?/gi) ?? [];
+  const tokens = masked.match(/\b(begin|end|case|if|commit|rollback)\b\s*;?/gi) ?? [];
   const stack = [];
 
   for (const raw of tokens) {
@@ -148,6 +148,12 @@ function checkBlocks(code) {
 
     if (tok === 'begin') {
       stack.push(hasSemicolon ? 'tx' : 'begin');
+      continue;
+    }
+
+    // `commit` / `rollback` cierran la transacción de los bloques de test.
+    if (tok === 'commit' || tok === 'rollback') {
+      if (stack[stack.length - 1] === 'tx') stack.pop();
       continue;
     }
 

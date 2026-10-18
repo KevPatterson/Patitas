@@ -50,6 +50,13 @@ describe('validador de migraciones SQL', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('acepta la suite pgTAP (transacciones con rollback)', () => {
+    const result = runValidator(resolve(process.cwd(), 'supabase', 'tests'));
+
+    expect(result.output).toContain('Errores: 0');
+    expect(result.ok).toBe(true);
+  });
+
   it('detecta un bloque dollar-quoted sin cerrar', () => {
     withMigrations(
       {

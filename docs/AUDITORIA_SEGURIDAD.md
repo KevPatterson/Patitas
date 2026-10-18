@@ -604,16 +604,74 @@ Fase 0.
 
 | Hallazgo | Fase | Nota |
 |----------|------|------|
-| DB-11 buckets de Storage públicos | 2 | Listado anónimo de imágenes |
-| DB-05 `locations` UPDATE abierto | 2 | Mitigado por el fuzzing determinista, pero cualquier autenticado aún edita cualquier fila |
-| DB-07 grants por columna (resto) | 2 | Solo se revocaron las de contacto |
 | AI-03 auto-publicación guiada por LLM | 8 | El HMAC ya cubre el contenido; falta cola de moderación obligatoria |
 | FE-* (frontend y despliegue) | 4 | Sin verificar en profundidad |
 
 ### Riesgo residual aceptado conscientemente
 
-`publications.contact_*` sigue siendo legible por **cualquier usuario con cuenta**,
-con cuota y registro. Cerrarlo del todo implica mover la lectura a una función
-`SECURITY DEFINER` y cambiar el frontend; se difiere a la Fase 2 porque hoy la UI
-no muestra esos datos a terceros. La barrera actual (anon bloqueado, 30
-revelaciones al día y auditoría) elimina el scraping masivo, que era el riesgo real.
+Los datos de contacto ya no son legibles por SELECT directo (ver Fase 2 más abajo),
+pero un usuario autenticado **puede** revelarlos hasta 30 veces al día pasando por
+`reveal_publication_contact()`. Ese es el compromiso: la app necesita que quien vea
+un anuncio pueda contactar al dueño, y no hay forma de distinguir "contactar" de
+"scrapear" más allá de la cuota. Cada revelación queda registrada en
+`contact_reveals` y en `audit_logs`, así que un abuso es detectable a posteriori.
+
+---
+
+## 8. Estado tras la Fase 2 (resto de la autoridad en la BD)
+
+La Fase 1 adelantó buena parte de la Fase 2 (rate limiting en BD, difuminado
+determinista, políticas RLS, `pg_temp`, `REVOKE`). La migración **0013** cierra lo
+que faltaba.
+
+### Corregido en 0013
+
+| Hallazgo | Sev. | Antes | Cómo se corrigió |
+|----------|------|-------|------------------|
+| DB-06 completo | 🔴 Alta | `authenticated` podía leer `contact_*` con un SELECT y su propio `LIMIT` | `REVOKE SELECT (contact_*) FROM authenticated`. Único camino: `reveal_publication_contact()`, que autoriza, aplica la cuota y registra |
+| DB-05 `locations` UPDATE abierto | 🔴 Alta | Cualquier autenticado editaba **cualquier** coordenada | Solo el dueño de una publicación que apunte a esa ubicación, o un moderador |
+| DB-11 listado de Storage | 🟠 Media | `anon` podía listar todos los objetos de `pet-images` y `avatars` | Se elimina la política pública de `pet-images` (las URLs públicas no pasan por RLS, las imágenes siguen viéndose) y `avatars` pasa a listarse solo en la carpeta propia |
+| DB-07 `microchip_private` | 🟠 Media | Protegido solo por RLS de fila | `REVOKE SELECT (microchip_private) FROM anon, authenticated` |
+| MIME del bucket | 🟠 Media | `pet-images` aceptaba `image/gif` | Se quita GIF: solo JPEG/PNG/WebP, coherente con la validación por magic bytes |
+| 2.3 `search_path` | 🟡 Baja | Solo las funciones de la 0012 lo fijaban | `ALTER FUNCTION ... SET search_path = public, pg_temp` en **todas** las funciones de `public`, sin redefinir cuerpos |
+| 2.3 funciones de búsqueda | 🟡 Baja | `EXECUTE` para PUBLIC | `REVOKE ... FROM public, anon` + `GRANT` explícito a `authenticated`, `service_role` |
+
+**Verificado, no asumido**: `search_publications`, `search_similar_*` y
+`calculate_structured_match_score` **no** devuelven `contact_*` ni `microchip`
+(comprobado en su `RETURNS TABLE` y con un assert en la suite pgTAP que inspecciona
+`pg_get_function_result`). Si devolvieran contacto, el `REVOKE` por columna sería
+inútil.
+
+### Bug preexistente encontrado y corregido
+
+`getPublicationById()` (el formulario de edición) seleccionaba `microchip` de
+`publications`, una columna que **no existe** (solo existe `pets.microchip_private`,
+`0001:96`). PostgREST devuelve error ante una columna desconocida, así que la carga
+de una publicación para editar fallaba. Se eliminó la columna del `select` y del
+tipo.
+
+### Cambio de contrato que afecta al frontend
+
+| Antes | Ahora |
+|-------|-------|
+| `getPublicationBySlug()` devolvía `contact_phone`/`contact_whatsapp`/`contact_mode` | No los devuelve (no se mostraban en la UI) |
+| `getPublicationById()` devolvía los tres + `contact_email` | No los devuelve; el formulario usa `getPublicationContact()` |
+| — | Nuevo `getPublicationContact(id)` → `rpc('reveal_publication_contact')`, devuelve `null` si no hay permiso o se agotó la cuota |
+
+### Pruebas añadidas
+
+- `supabase/tests/0013_rls_idor.test.sql`: simula `authenticated` con el JWT de cada
+  usuario y comprueba, **sin pasar por /api**, que no se puede leer ni tocar lo de
+  otro, escalar el rol, leer notificaciones ajenas, insertar en nombre de otro,
+  saltarse la cuota de contacto, editar ubicaciones ajenas ni listar Storage. Y que
+  el moderador **sí** puede lo que le corresponde.
+- `scripts/validate-sql.mjs` ahora valida también `supabase/tests/` (transacciones
+  `begin`/`rollback`), con test en Vitest.
+
+### Sigue pendiente (no es de esta fase)
+
+| Tema | Fase | Nota |
+|------|------|------|
+| AI-03 auto-publicación guiada por salida del LLM | 8 | El HMAC ya cubre el contenido; falta cola de moderación obligatoria |
+| FE-* frontend y despliegue (CSP, JSON-LD, callback, dominio) | 4 | Sin verificar |
+| Verificación de dueño / antiestafa | 8 | Producto, no seguridad de plataforma |

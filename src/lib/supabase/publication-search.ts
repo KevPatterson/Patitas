@@ -385,9 +385,6 @@ export async function getPublicationBySlug(slug: string) {
       age_approx,
       characteristics,
       published_at, 
-      contact_phone, 
-      contact_whatsapp, 
-      contact_mode, 
       reward, 
       event_date, 
       event_time_approx, 
@@ -407,9 +404,6 @@ export async function getPublicationBySlug(slug: string) {
     | (PublicationRow & {
         age_approx: string | null;
         characteristics: string | null;
-        contact_phone: string | null;
-        contact_whatsapp: string | null;
-        contact_mode: 'INTERNAL' | 'PHONE' | 'WHATSAPP';
         reward: string | null;
         event_date: string | null;
         event_time_approx: string | null;
@@ -418,6 +412,16 @@ export async function getPublicationBySlug(slug: string) {
       })
     | null;
 }
+/**
+ * Publicación completa para el formulario de edición.
+ *
+ * NO incluye las columnas de contacto ni el microchip: desde la migración 0013 no
+ * tienen permisos de columna para `authenticated`. Los datos de contacto se piden
+ * aparte con `getPublicationContact()`, que es el único camino autorizado.
+ *
+ * También se elimina `microchip`: esa columna no existe en `publications` (solo
+ * `pets.microchip_private`), así que la consulta fallaba entera en PostgREST.
+ */
 export async function getPublicationById(id: string) {
   const { data, error } = await supabase
     .from('publications')
@@ -436,14 +440,9 @@ export async function getPublicationById(id: string) {
       age_approx,
       characteristics,
       published_at, 
-      contact_phone, 
-      contact_whatsapp, 
-      contact_email,
-      contact_mode, 
       reward, 
       event_date, 
       event_time_approx, 
-      microchip,
       is_imported,
       source_platform,
       source_url,
@@ -464,14 +463,9 @@ export async function getPublicationById(id: string) {
     | (PublicationRow & {
         age_approx: string | null;
         characteristics: string | null;
-        contact_phone: string | null;
-        contact_whatsapp: string | null;
-        contact_email: string | null;
-        contact_mode: 'INTERNAL' | 'PHONE' | 'WHATSAPP' | 'EMAIL';
         reward: string | null;
         event_date: string | null;
         event_time_approx: string | null;
-        microchip: string | null;
         is_imported: boolean | null;
         source_platform: string | null;
         source_url: string | null;
@@ -480,4 +474,44 @@ export async function getPublicationById(id: string) {
         owner: { username: string } | null;
       })
     | null;
+}
+
+export type PublicationContact = {
+  contact_phone: string | null;
+  contact_whatsapp: string | null;
+  contact_email: string | null;
+  contact_mode: 'INTERNAL' | 'PHONE' | 'WHATSAPP' | 'EMAIL';
+};
+
+/**
+ * Obtiene los datos de contacto de una publicación.
+ *
+ * Pasa por `reveal_publication_contact()`, no por un SELECT: esa función es la que
+ * decide si el usuario puede verlos (dueño o moderador, o cuota de 30 cada 24 h
+ * con registro en `contact_reveals`). Devuelve `null` si no hay permiso o se
+ * agotó la cuota, en lugar de lanzar: la UI muestra "contacto no disponible".
+ */
+export async function getPublicationContact(
+  publicationId: string
+): Promise<PublicationContact | null> {
+  const { data, error } = await supabase.rpc('reveal_publication_contact', {
+    p_publication_id: publicationId,
+  });
+
+  if (error) {
+    // 53400 = cuota agotada; 42501 = sin permiso o publicación no visible.
+    console.warn('[contacto] no se pudo revelar el contacto:', error.message);
+    return null;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+
+  if (!row) return null;
+
+  return {
+    contact_phone: row.contact_phone ?? null,
+    contact_whatsapp: row.contact_whatsapp ?? null,
+    contact_email: row.contact_email ?? null,
+    contact_mode: row.contact_mode ?? 'INTERNAL',
+  };
 }

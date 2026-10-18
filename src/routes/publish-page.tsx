@@ -13,7 +13,7 @@ import { ImageDataExtractor } from '../components/ai/image-data-extractor';
 import { FacebookImportWizard } from '../components/import/FacebookImportWizard';
 import { createLocation, createPublication, uploadPublicationImages, createPet, deletePublicationImages } from '../lib/supabase/publications';
 import { updatePublication } from '../lib/supabase/my-publications';
-import { getPublicationById } from '../lib/supabase/publication-search';
+import { getPublicationById, getPublicationContact } from '../lib/supabase/publication-search';
 import { buildPublicationSlug } from '../lib/utils/slug';
 import { publicationFormSchema, type PublicationFormValues } from '../lib/validations/publication';
 import { TYPE_LABELS, TYPE_EMOJIS, SPECIES_LABELS, SEX_LABELS, SIZE_LABELS, AGE_LABELS, MAX_IMAGES, MAX_IMAGE_BYTES, ALLOWED_IMAGE_TYPES } from '../lib/constants/labels';
@@ -101,6 +101,11 @@ export function PublishPage() {
             setOriginalSlug(publication.slug);
             setIsEditing(true);
 
+            // Los datos de contacto ya no se pueden leer con un SELECT (migración
+            // 0013): se piden a la función autorizada. Para el dueño no consume
+            // cuota ni registra revelación.
+            const contact = await getPublicationContact(publication.id);
+
             // Mapear datos de la publicación al formulario
             const location = Array.isArray(publication.location)
               ? publication.location[0] ?? null
@@ -120,11 +125,11 @@ export function PublishPage() {
               collar: false,
               plate: false,
               reward: publication.reward ?? '',
-              contactMode: publication.contact_mode,
-              contactPhone: publication.contact_phone ?? '',
-              contactWhatsapp: publication.contact_whatsapp ?? '',
-              contactEmail: publication.contact_email ?? '',
-              microchip: publication.microchip ?? '',
+              contactMode: contact?.contact_mode ?? 'INTERNAL',
+              contactPhone: contact?.contact_phone ?? '',
+              contactWhatsapp: contact?.contact_whatsapp ?? '',
+              contactEmail: contact?.contact_email ?? '',
+              microchip: '',
               province: location?.province ?? '',
               municipality: location?.municipality ?? '',
               zone: location?.zone ?? '',
