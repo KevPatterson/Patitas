@@ -1,8 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Search, MapPinned, PlusCircle, Bell } from 'lucide-react';
+import { Home, Search, MapPinned, PlusCircle, Bell, Heart } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
-
+import { useAuth } from '../../app/auth-context';
 interface NavItem {
   to: string;
   label: string;
@@ -10,16 +10,21 @@ interface NavItem {
   highlight?: boolean;
 }
 
-const items: readonly NavItem[] = [
-  { to: '/', label: 'Inicio', icon: Home },
-  { to: '/buscar', label: 'Buscar', icon: Search },
-  { to: '/publicar', label: 'Publicar', icon: PlusCircle, highlight: true },
-  { to: '/mapa', label: 'Mapa', icon: MapPinned },
-  { to: '/notificaciones', label: 'Notifs', icon: Bell },
-];
 export function BottomNav() {
   const location = useLocation();
+  const { user } = useAuth();
   const unreadCount = useNotificationCount();
+  const isLoggedIn = !!user;
+
+  const items: readonly NavItem[] = [
+    { to: '/', label: 'Inicio', icon: Home },
+    { to: '/buscar', label: 'Buscar', icon: Search },
+    { to: '/publicar', label: 'Publicar', icon: PlusCircle, highlight: true },
+    { to: '/mapa', label: 'Mapa', icon: MapPinned },
+    isLoggedIn
+      ? { to: '/notificaciones', label: 'Notifs', icon: Bell }
+      : { to: '/adopciones', label: 'Adopciones', icon: Heart },
+  ];
 
   return (
     <nav
