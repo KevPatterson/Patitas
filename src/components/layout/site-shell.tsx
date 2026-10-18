@@ -300,16 +300,16 @@ export function SiteShell({ children }: SiteShellProps) {
           </div>
         </div>
 
-        <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex flex-row items-start justify-between gap-4 sm:gap-6">
+        <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-row items-start justify-between gap-2 sm:gap-4">
             {/* IZQUIERDA: Marca y descripción */}
-            <div className="space-y-2 text-left min-w-0 flex-1" style={{ minWidth: '120px' }}>
-              <div className="flex items-center gap-2">
-                <Logo variant="mark" size={28} className="text-cream" />
+            <div className="space-y-1.5 text-left min-w-0 flex-1" style={{ minWidth: '110px' }}>
+              <div className="flex items-center gap-1.5">
+                <Logo variant="mark" size={24} className="text-cream" />
                 <span style={{
                   fontFamily: '"Baloo 2", cursive',
                   fontWeight: 800,
-                  fontSize: '1.25rem',
+                  fontSize: '1.125rem',
                   lineHeight: 1,
                   letterSpacing: '-0.02em',
                   color: 'var(--color-cream)'
@@ -317,58 +317,70 @@ export function SiteShell({ children }: SiteShellProps) {
                   patitas
                 </span>
               </div>
-              <p className="font-display text-base leading-snug text-cream/90 whitespace-nowrap">
+              <p className="font-display text-sm leading-snug text-cream/90 whitespace-nowrap">
                 🐾 Cada patita merece volver a casa
               </p>
-              <p className="text-xs text-cream/60 whitespace-nowrap">
+              <p className="text-[10px] text-cream/60 whitespace-nowrap">
                 Plataforma comunitaria · Hecho con ❤️ en Cuba
               </p>
             </div>
 
             {/* CENTRO: Equipo de desarrollo */}
             <section className="flex-shrink-0" aria-label="Equipo de desarrollo">
-              <h3 className="font-display text-base font-extrabold text-cream mb-2 text-center">
+              <h3 className="font-display text-sm font-extrabold text-cream mb-1.5 text-center">
                 <span className="text-orange-300">🐾</span> Equipo
               </h3>
               <div className="flex justify-center">
                 {devTeam.map((member) => (
                   <article
                     key={member.name}
-                    className="group relative rounded-xl bg-navy-light/50 border border-orange-900/30 p-3 max-w-xs transition-all duration-base hover:border-orange-600/50 hover:bg-navy-light/80 hover:-translate-y-0.5"
+                    className="group relative rounded-xl bg-navy-light/50 border border-orange-900/30 p-2.5 max-w-xs transition-all duration-base hover:border-orange-600/50 hover:bg-navy-light/80 hover:-translate-y-0.5"
                   >
-                    <div className="relative mb-2 flex justify-center">
+                    <div className="relative mb-1.5 flex justify-center">
                       {member.avatar ? (
                         <img
                           src={member.avatar}
                           alt={`${member.name} - GitHub`}
-                          className="size-16 rounded-xl border border-orange-900/30 shadow-md object-cover"
+                          className="size-14 rounded-xl border border-orange-900/30 shadow-md object-cover"
                           loading="lazy"
                         />
                       ) : (
-                        <div className="flex size-16 items-center justify-center rounded-xl bg-linear-to-br from-orange-500 to-orange-700 text-cream font-display font-extrabold text-xl shadow-md">
+                        <div className="flex size-14 items-center justify-center rounded-xl bg-linear-to-br from-orange-500 to-orange-700 text-cream font-display font-extrabold text-lg shadow-md">
                           {member.initials}
                         </div>
                       )}
-                      <div className="absolute -bottom-1 -right-1 size-4 rounded-full bg-orange-400 flex items-center justify-center border border-navy">
-                        <PawPrint className="size-2 text-navy" strokeWidth={2.5} aria-hidden="true" />
+                      <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-orange-400 flex items-center justify-center border border-navy">
+                        <PawPrint className="size-1.5 text-navy" strokeWidth={2.5} aria-hidden="true" />
                       </div>
                     </div>
                     <div className="space-y-0 text-center">
-                      <h4 className="font-display font-bold text-cream group-hover:text-orange-300 transition-colors text-sm">
+                      <h4 className="font-display font-bold text-cream group-hover:text-orange-300 transition-colors text-xs">
                         {member.name}
                       </h4>
-                      <p className="text-[10px] text-cream/70">{member.role}</p>
+                      <p className="text-[9px] text-cream/70">{member.role}</p>
                     </div>
-                    <div className="mt-2 flex justify-center">
+                    <div className="mt-1.5 flex justify-center gap-2">
                       <a
                         href={member.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-orange-300 hover:text-orange-100 transition-colors"
+                        className="text-orange-300 hover:text-orange-100 transition-colors"
                         aria-label={`Ver perfil de GitHub de ${member.name}`}
                       >
-                        <ExternalLink className="size-3.5" aria-hidden="true" />
-                        GitHub
+                        <svg className="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                      </a>
+                      <a
+                        href="https://wa.me/5356954200"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-400 hover:text-green-300 transition-colors"
+                        aria-label="Contactar por WhatsApp"
+                      >
+                        <svg className="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.472.099-.174.05-.371-.025-.52-.075-.149-.669-1.611-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.41.01-.61.01-.434.008-1.136.247-1.708 1.14-.57.893-1.11 2.076-1.25 2.396-.14.319-.057.621.1 1.14.15.52.655 1.784 1.685 3.53.72 1.256 1.158 1.885 1.836 2.09.567.175 1.053.247 1.32.197.168-.033.336-.13.52-.312.149-.15.447-.447 1.003-1.096 1.704-1.945 1.817-2.034 2.716-2.386.817-.312 1.282-.502 1.409-.531.15-.033.247-.05.41-.05.167 0 .266.024.35.068.15.075.782.81 1.003 1.054.24.273.48.562.633.736.129.149.169.247.104.372-.05.11-.217.173-.427.149-.21-.024-.536-.07-.804-.16-.266-.09-.546-.217-.77-.472z"/>
+                        </svg>
                       </a>
                     </div>
                   </article>
@@ -377,7 +389,7 @@ export function SiteShell({ children }: SiteShellProps) {
             </section>
 
             {/* DERECHA: Enlaces de navegación */}
-            <nav className="flex flex-col gap-1.5 text-xs font-semibold text-right min-w-0 flex-1" style={{ minWidth: '120px' }} aria-label="Enlaces del pie">
+            <nav className="flex flex-col gap-1 text-xs font-semibold text-right min-w-0 flex-1" style={{ minWidth: '110px' }} aria-label="Enlaces del pie">
               <Link 
                 to="/buscar" 
                 className="text-cream/80 hover:text-orange transition-colors duration-base whitespace-nowrap"
