@@ -1,131 +1,170 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { z } from 'zod';
+import type { VercelRequest, VercelResponse } from './types/vercel';
 import { supabaseAdmin } from './_lib/supabase-admin';
-import { checkRateLimit, extractToken, verifyAuth } from './_lib/rate-limit-utils';
-
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
-const MAX_IMAGES_PER_PUBLICATION = 10;
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from './_lib/http';
+import { limitByIp, limitByUser } from './_lib/rate-limit-utils';
+import { canManagePublication, getActor, loadPublication } from './_lib/authz';
 
 /**
- * Endpoint unificado para publicaciones
- * POST /api/publications?action=<action>
- * 
- * Actions: create, validate-upload
+ * POST /api/publications?action=<create|validate-upload>
+ *
+ * Router de publicaciones. Hallazgo API-11: `create` solo comprobaba que
+ * `title`, `description` y `type` estuvieran presentes, sin validar enums ni
+ * longitudes, y devolvía `ok: true` sin hacer nada más. Se añade Zod y se
+ * documenta explícitamente que la creación real ocurre en el cliente bajo RLS
+ * (este endpoint existe para aplicar cuota y validar antes de subir archivos).
+ *
+ * `validate-upload` ya comprobaba propiedad, pero usaba el MIME declarado por el
+ * cliente. Se mantiene como comprobación previa, pero el MIME real se verifica
+ * por magic bytes en el momento de la subida (Fase 3).
  */
+
+const PUBLICATION_TYPES = ['LOST', 'FOUND', 'ABANDONED', 'ADOPTION', 'SIGHTING'] as const;
+
+/** Tipos aceptados por el bucket. GIF queda fuera a propósito (Fase 3). */
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8 MB, igual que el bucket
+const MAX_IMAGES_PER_PUBLICATION = 10;
+
+const createSchema = z.object({
+  title: z.string().trim().min(5, 'El título es demasiado corto').max(140, 'El título es demasiado largo'),
+  description: z
+    .string()
+    .trim()
+    .min(15, 'La descripción es demasiado corta')
+    .max(5000, 'La descripción es demasiado larga'),
+  type: z.enum(PUBLICATION_TYPES),
+  species: z.string().trim().min(2).max(60).optional(),
+  province: z.string().trim().max(80).optional(),
+  municipality: z.string().trim().max(80).optional(),
+});
+
+const validateUploadSchema = z.object({
+  publicationId: z.string().uuid().optional(),
+  fileSize: z.number().int().positive().max(50 * 1024 * 1024).optional(),
+  mimeType: z.string().max(120).optional(),
+});
+
+function actionOf(req: VercelRequest): string {
+  const raw = req.query.action;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return typeof value === 'string' ? value : '';
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (rejectMethod(req, res, 'POST')) return;
 
-  const action = req.query.action as string;
+  const ipLimit = await limitByIp(req, res, 'publications-ip', 120, 3600_000);
+  if (!ipLimit.ok) return;
 
-  switch (action) {
+  switch (actionOf(req)) {
     case 'create':
       return handleCreate(req, res);
     case 'validate-upload':
       return handleValidateUpload(req, res);
     default:
-      return res.status(400).json({ error: 'Unknown action. Use ?action=create or ?action=validate-upload' });
+      return fail(
+        res,
+        400,
+        'INVALID_INPUT',
+        'Acción desconocida. Usa ?action=create o ?action=validate-upload'
+      );
   }
 }
 
 // ============================================================================
-// CREATE PUBLICATION
+// CREATE
 // ============================================================================
 async function handleCreate(req: VercelRequest, res: VercelResponse) {
-  // Rate limiting: 10 publicaciones por hora
-  if (!checkRateLimit(req, res, 'publication-create', 10, 3600_000)) {
-    return;
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
 
-  const token = extractToken(req);
-  const { user, error: authError } = await verifyAuth(token, supabaseAdmin);
+  // Cuota por usuario: la creación real la hace el cliente, así que este es el
+  // único punto donde se puede limitar sin tocar RLS.
+  const userLimit = await limitByUser(res, 'publication-create', auth.user.id, 10, 3600_000);
+  if (!userLimit.ok) return;
 
-  if (authError || !user) {
-    return res.status(401).json({ error: authError || 'Unauthorized' });
+  const parsed = parseBody(req, createSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
 
-  let payload: Record<string, unknown> = {};
-
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' });
-  }
-
-  // Validaciones básicas server-side
-  if (!payload.title || !payload.description || !payload.type) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  // La creación real se hace desde el cliente con RLS
-  // Este endpoint sirve principalmente para rate limiting y validación adicional
-  return res.status(200).json({ ok: true, message: 'Publication can be created' });
+  return json(res, 200, {
+    ok: true,
+    message: 'La publicación se puede crear',
+    // La inserción definitiva la hace el cliente bajo RLS; aquí solo se valida y
+    // se aplica cuota, tal como está diseñada la arquitectura del proyecto.
+    created_on_client: true,
+  });
 }
 
 // ============================================================================
 // VALIDATE UPLOAD
 // ============================================================================
 async function handleValidateUpload(req: VercelRequest, res: VercelResponse) {
-  // Rate limiting: 50 uploads por hora
-  if (!checkRateLimit(req, res, 'upload-validate', 50, 3600_000)) {
-    return;
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
 
-  const token = extractToken(req);
-  const { user, error: authError } = await verifyAuth(token, supabaseAdmin);
+  const userLimit = await limitByUser(res, 'upload-validate', auth.user.id, 50, 3600_000);
+  if (!userLimit.ok) return;
 
-  if (authError || !user) {
-    return res.status(401).json({ error: authError || 'Unauthorized' });
+  const parsed = parseBody(req, validateUploadSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
 
-  let payload: { publicationId?: string; fileSize?: number; mimeType?: string; count?: number } = {};
+  const { publicationId, fileSize, mimeType } = parsed.data;
 
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' });
-  }
+  if (publicationId) {
+    const publication = await loadPublication(supabaseAdmin, publicationId);
 
-  // Validar publicación existe y pertenece al usuario
-  if (payload.publicationId) {
-    const { data: publication, error: pubError } = await supabaseAdmin
-      .from('publications')
-      .select('id, owner_profile_id')
-      .eq('id', payload.publicationId)
-      .is('deleted_at', null)
-      .single();
-
-    if (pubError || !publication) {
-      return res.status(404).json({ error: 'Publication not found' });
+    if (!publication) {
+      return fail(res, 404, 'NOT_FOUND', 'Publicación no encontrada');
     }
 
-    if (publication.owner_profile_id !== user.id) {
-      return res.status(403).json({ error: 'Not authorized to upload to this publication' });
+    const actor = await getActor(supabaseAdmin, auth.user.id);
+
+    if (!canManagePublication(actor, publication)) {
+      return fail(res, 403, 'FORBIDDEN', 'No puedes subir imágenes a esta publicación');
     }
 
-    // Verificar cuántas imágenes ya tiene
-    const { count } = await supabaseAdmin
+    const { count, error: countError } = await supabaseAdmin
       .from('publication_images')
       .select('id', { count: 'exact', head: true })
-      .eq('publication_id', payload.publicationId);
+      .eq('publication_id', publicationId);
 
-    if (count && count >= MAX_IMAGES_PER_PUBLICATION) {
-      return res.status(400).json({ error: `Maximum ${MAX_IMAGES_PER_PUBLICATION} images per publication` });
+    if (countError) {
+      return internalError(res, 'publications/count-images', countError);
+    }
+
+    if (count !== null && count >= MAX_IMAGES_PER_PUBLICATION) {
+      return fail(
+        res,
+        409,
+        'CONFLICT',
+        `Máximo ${MAX_IMAGES_PER_PUBLICATION} imágenes por publicación`
+      );
     }
   }
 
-  // Validar MIME type
-  if (payload.mimeType && !ALLOWED_MIME_TYPES.includes(payload.mimeType)) {
-    return res.status(400).json({ error: 'Invalid file type. Only JPG, PNG, WebP and GIF allowed' });
+  if (mimeType && !(ALLOWED_MIME_TYPES as readonly string[]).includes(mimeType)) {
+    return fail(res, 400, 'INVALID_INPUT', 'Tipo de archivo no permitido. Usa JPEG, PNG o WebP.');
   }
 
-  // Validar tamaño
-  if (payload.fileSize && payload.fileSize > MAX_FILE_SIZE) {
-    return res.status(400).json({ error: 'File too large. Maximum 8MB' });
+  if (fileSize && fileSize > MAX_FILE_SIZE) {
+    return fail(res, 400, 'INVALID_INPUT', 'El archivo supera el máximo de 8 MB');
   }
 
-  return res.status(200).json({ ok: true, message: 'Upload validation passed' });
+  return json(res, 200, {
+    ok: true,
+    message: 'Validación de subida correcta',
+    // El cliente debe recordar que el MIME declarado no es concluyente.
+    mime_hint: 'El tipo real se verificará por contenido al subir el archivo.',
+  });
 }

@@ -1,12 +1,9 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
-import { checkRateLimit, extractToken, verifyAuth } from '../_lib/rate-limit-utils';
-import { getAIProvider } from '../_lib/ai-provider';
-
-function json(res: VercelResponse, statusCode: number, body: unknown) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.status(statusCode).json(body);
-}
+import { fail, internalError, json, requireAuth, rejectMethod } from '../_lib/http';
+import { limitByIp, limitByUser } from '../_lib/rate-limit-utils';
+import { detectImage, containsGpsMetadata, MAX_IMAGE_BYTES } from '../_lib/image-guard';
+import { getAIProvider, type VisionResult } from '../_lib/ai-provider';
 
 interface ScreenshotImportResponse {
   success: boolean;
@@ -20,96 +17,103 @@ interface ScreenshotImportResponse {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
-  
-  if (req.method !== 'POST') {
-    return json(res, 405, { error: 'Method not allowed' });
+
+  if (rejectMethod(req, res, 'POST')) return;
+
+  const ipLimit = await limitByIp(req, res, 'facebook-import-ip', 20, 3600_000);
+  if (!ipLimit.ok) return;
+
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
-  
-  // Rate limiting: 15 imports por hora por usuario
-  if (!checkRateLimit(req, res, 'facebook-import-screenshot', 15, 3600_000)) {
-    return;
-  }
-  
-  const token = extractToken(req);
-  const { user, error: authError } = await verifyAuth(token, supabaseAdmin);
-  
-  if (authError || !user) {
-    return json(res, 401, { error: authError || 'Unauthorized' });
-  }
-  
+
+  const userLimit = await limitByUser(res, 'facebook-import-user', auth.user.id, 15, 3600_000);
+  if (!userLimit.ok) return;
+
   // Parsear FormData (multipart/form-data)
   const contentType = req.headers['content-type'] ?? '';
   if (!contentType.includes('multipart/form-data')) {
-    return json(res, 400, { error: 'Se requiere multipart/form-data' });
+    return fail(res, 400, 'INVALID_INPUT', 'Se requiere multipart/form-data');
   }
-  
-  // En Vercel, el body ya viene parseado para FormData
+
   let formData: FormData;
   try {
     formData = req.body as unknown as FormData;
   } catch {
-    return json(res, 400, { error: 'Error parseando FormData' });
+    return fail(res, 400, 'INVALID_INPUT', 'No se pudo leer el formulario');
   }
-  
+
   const file = formData.get('image') as File | null;
   if (!file) {
-    return json(res, 400, { error: 'Archivo image requerido' });
+    return fail(res, 400, 'INVALID_INPUT', 'Falta el archivo "image"');
   }
-  
-  // Validar archivo
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!allowedTypes.includes(file.type)) {
-    return json(res, 400, { error: 'Tipo de archivo no permitido. Usa JPG, PNG o WebP' });
-  }
-  
-  const maxSize = 8 * 1024 * 1024; // 8MB
-  if (file.size > maxSize) {
-    return json(res, 400, { error: 'Archivo demasiado grande (máx 8MB)' });
-  }
-  
-  // Subir a Storage usando supabaseAdmin
+
   const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  const ext = file.type.split('/')[1] === 'jpeg' ? 'jpg' : file.type.split('/')[1];
-  const filename = `facebook-imports/${user.id}/${Date.now()}.${ext}`;
-  
+  const bytes = new Uint8Array(arrayBuffer);
+
+  // Validación por CONTENIDO (magic bytes), no por `file.type`: el MIME lo envía
+  // el cliente y se puede falsificar (un .php renombrado a .jpg, o un SVG con
+  // script). Se rechazan SVG y GIF explícitamente.
+  const detected = detectImage(bytes, MAX_IMAGE_BYTES);
+
+  if (!detected.ok) {
+    return fail(res, 400, 'INVALID_INPUT', detected.reason);
+  }
+
+  // Comprobación redundante con la del endpoint de uploads: aquí entra un archivo
+  // que puede venir de una captura con GPS.
+  if (containsGpsMetadata(bytes)) {
+    return fail(
+      res,
+      400,
+      'INVALID_INPUT',
+      'La captura contiene datos de geolocalización (EXIF GPS). Vuelve a guardarla sin ubicación.'
+    );
+  }
+
+  // Nombre generado en servidor (uuid). Nunca se usa el nombre original del
+  // cliente: evita path traversal y filtración de datos en el nombre.
+  const extension = detected.mimeType === 'image/jpeg' ? 'jpg' : detected.mimeType.split('/')[1];
+  const filename = `facebook-imports/${auth.user.id}/${crypto.randomUUID()}.${extension}`;
+
   const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
     .from('pet-images')
-    .upload(filename, buffer, {
-      contentType: file.type,
-      upsert: true,
+    .upload(filename, Buffer.from(bytes), {
+      contentType: detected.mimeType,
+      upsert: false,
     });
-  
+
   if (uploadError) {
-    console.error('Error subiendo imagen:', uploadError);
-    return json(res, 500, { error: 'Error subiendo imagen' });
+    return internalError(res, 'facebook-screenshot/upload', uploadError);
   }
-  
-  // Obtener URL pública
+
   const { data: publicUrlData } = supabaseAdmin.storage
     .from('pet-images')
     .getPublicUrl(uploadData.path);
+
   const imageUrl = publicUrlData.publicUrl;
-  
-  // Procesar con OCR + Vision (reutilizar lógica existente)
+  const image = { bytes, mimeType: detected.mimeType, sourceUrl: imageUrl };
+
+  // Procesar con OCR + Vision
   try {
     const provider = getAIProvider();
-    
-    // OCR
-    const ocrResult = await provider.extractTextFromImage(imageUrl);
-    
-    // Vision
-    const visionResult = await provider.analyzeImage(imageUrl,
+
+    // Se pasan los bytes ya validados; el proveedor no descarga la URL.
+    const ocrResult = await provider.extractTextFromImage(image);
+
+    const visionResult = await provider.analyzeImage(
+      image,
       'Analiza esta captura de pantalla de Facebook sobre una mascota. ' +
-      'Extrae: tipo de post (perdido/encontrado/adopción/abandonado), ' +
-      'especie, raza, color, tamaño, sexo, collar, placa, ' +
-      'ubicación (provincia/municipio/zona), fecha, teléfono, WhatsApp, email, recompensa. ' +
-      'Responde en JSON con campos: type, species, breed, color, size, sex, collar, plate, ' +
-      'province, municipality, zone, event_date, contact_phone, contact_whatsapp, contact_email, reward, description, confidence_by_field'
+        'Extrae: tipo de post (perdido/encontrado/adopción/abandonado), ' +
+        'especie, raza, color, tamaño, sexo, collar, placa, ' +
+        'ubicación (provincia/municipio/zona), fecha, teléfono, WhatsApp, email, recompensa. ' +
+        'Responde en JSON con campos: type, species, breed, color, size, sex, collar, plate, ' +
+        'province, municipality, zone, event_date, contact_phone, contact_whatsapp, contact_email, reward, description, confidence_by_field'
     );
     
     // Combinar resultados
-    const combinedText = `${ocrResult.text}\n\n${visionResult.description}`;
+    const combinedText = `${ocrResult.text}\n\n${visionResult.description ?? ''}`;
     
     // Extraer datos estructurados del texto combinado
     const extracted = extractStructuredDataFromText(combinedText, visionResult);
@@ -130,16 +134,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } as ScreenshotImportResponse);
     
   } catch (error) {
-    console.error('Error procesando captura:', error);
-    return json(res, 500, { error: 'Error procesando imagen con IA' });
+    return internalError(res, 'facebook-screenshot/ai', error);
   }
 }
 
-function extractStructuredDataFromText(text: string, visionResult: { 
-  description: string; 
-  labels: Array<{ label: string; confidence: number }>;
-  objects: Array<{ object: string; confidence: number; bbox?: number[] }>;
-}): {
+function extractStructuredDataFromText(text: string, visionResult: VisionResult): {
   type?: 'LOST' | 'FOUND' | 'ADOPTION' | 'ABANDONED';
   species?: string;
   breed?: string;

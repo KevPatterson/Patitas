@@ -1,80 +1,76 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { z } from 'zod';
+import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
-import { checkRateLimit, extractToken, verifyAuth } from '../_lib/rate-limit-utils';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
+import { limitAiByUser, limitByIp } from '../_lib/rate-limit-utils';
+import { canManagePublication, getActor, loadPublication } from '../_lib/authz';
+import { AI_ENABLED } from '../_lib/env';
 
 /**
- * Endpoint para iniciar procesamiento asíncrono de IA en una publicación
- * POST /api/ai/process-publication
- * 
- * Body: {
- *   publicationId: string;
- *   tasks?: Array<'ocr' | 'vision' | 'embedding_text' | 'embedding_image' | 'moderation' | 'extraction'>;
- * }
- * 
- * Crea jobs de procesamiento asíncrono que serán procesados posteriormente
+ * POST /api/ai/process-publication — encola trabajos de IA para una publicación.
+ *
+ * Ya comprobaba la propiedad y devolvía 403, pero no contemplaba al moderador
+ * (le bloqueaba igual) y el body se validaba a mano. Se completa con Zod y se
+ * aplica cuota por usuario.
  */
+
+const VALID_TASKS = [
+  'ocr',
+  'vision',
+  'embedding_text',
+  'embedding_image',
+  'moderation',
+  'extraction',
+] as const;
+
+const processSchema = z.object({
+  publicationId: z.string().uuid('El identificador de la publicación no es válido'),
+  tasks: z.array(z.enum(VALID_TASKS)).max(VALID_TASKS.length).optional(),
+});
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (rejectMethod(req, res, 'POST')) return;
+
+  const ipLimit = await limitByIp(req, res, 'ai-process-ip', 60, 3600_000);
+  if (!ipLimit.ok) return;
+
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
 
-  // Rate limiting: 20 procesamiento AI por hora
-  if (!checkRateLimit(req, res, 'ai-process', 20, 3600_000)) {
-    return;
+  const userLimit = await limitAiByUser(res, auth.user.id);
+  if (!userLimit.ok) return;
+
+  if (!AI_ENABLED) {
+    return fail(res, 503, 'INTERNAL', 'El procesamiento con IA está desactivado temporalmente.');
   }
 
-  const token = extractToken(req);
-  const { user, error: authError } = await verifyAuth(token, supabaseAdmin);
-
-  if (authError || !user) {
-    return res.status(401).json({ error: authError || 'Unauthorized' });
+  const parsed = parseBody(req, processSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
 
-  let payload: { publicationId?: string; tasks?: string[] } = {};
+  const publication = await loadPublication(supabaseAdmin, parsed.data.publicationId);
 
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+  if (!publication) {
+    return fail(res, 404, 'NOT_FOUND', 'Publicación no encontrada');
   }
 
-  if (!payload.publicationId) {
-    return res.status(400).json({ error: 'Missing publicationId' });
+  const actor = await getActor(supabaseAdmin, auth.user.id);
+
+  if (!canManagePublication(actor, publication)) {
+    return fail(res, 403, 'FORBIDDEN', 'No tienes permiso sobre esta publicación');
   }
 
-  // Verificar que la publicación existe y pertenece al usuario
-  const { data: publication, error: pubError } = await supabaseAdmin
-    .from('publications')
-    .select('id, owner_profile_id')
-    .eq('id', payload.publicationId)
-    .is('deleted_at', null)
-    .single();
+  const tasks = parsed.data.tasks && parsed.data.tasks.length > 0
+    ? parsed.data.tasks
+    : (['embedding_text', 'moderation'] as const);
 
-  if (pubError || !publication) {
-    return res.status(404).json({ error: 'Publication not found' });
-  }
-
-  if (publication.owner_profile_id !== user.id) {
-    return res.status(403).json({ error: 'Not authorized' });
-  }
-
-  // Tareas por defecto si no se especifican
-  const tasks = payload.tasks && payload.tasks.length > 0 
-    ? payload.tasks 
-    : ['embedding_text', 'moderation'];
-
-  const validTasks = ['ocr', 'vision', 'embedding_text', 'embedding_image', 'moderation', 'extraction'];
-  const filteredTasks = tasks.filter((t) => validTasks.includes(t));
-
-  if (filteredTasks.length === 0) {
-    return res.status(400).json({ error: 'No valid tasks specified' });
-  }
-
-  // Crear jobs de procesamiento
-  const jobs = filteredTasks.map((task) => ({
-    publication_id: payload.publicationId,
+  const jobs = tasks.map((task) => ({
+    publication_id: publication.id,
     job_type: task,
     status: 'PENDING',
     priority: task === 'moderation' ? 1 : 5,
@@ -89,13 +85,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .select('id, job_type');
 
   if (jobError) {
-    console.error('Error creating AI jobs:', jobError);
-    return res.status(500).json({ error: 'Failed to create processing jobs' });
+    return internalError(res, 'ai/process-publication', jobError);
   }
 
-  return res.status(200).json({ 
-    ok: true, 
-    message: 'AI processing jobs created',
+  return json(res, 200, {
+    ok: true,
+    message: 'Trabajos de IA encolados',
     jobs: createdJobs,
   });
 }

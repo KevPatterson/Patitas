@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# Cancela ejecuciones antiguas de la misma rama/PR para no gastar minutos de CI.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  calidad:
+    name: Lint, tipos, build, tests y auditoría
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Node 22 = runtime por defecto de las Vercel Functions.
+          node-version: 22.x
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Verificar tipos (app + api + tooling)
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Validar migraciones SQL (estructura e idempotencia)
+        run: npm run validate:sql
+
+      - name: Tests
+        run: npm test
+
+      - name: Auditoría de dependencias (falla con severidad alta o crítica)
+        run: npm audit --audit-level=high

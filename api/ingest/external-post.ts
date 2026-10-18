@@ -1,12 +1,15 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
-import { consumeRateLimit } from '../_lib/rate-limit';
+import { fail, internalError, json, rejectMethod } from '../_lib/http';
+import { limitByIp } from '../_lib/rate-limit-utils';
 import {
   ingestExternalPostSchema,
   sanitizeExternalText,
   validateHmacTimestamp,
+  type IngestExternalPostInput,
 } from '../../src/lib/validations/ingest';
 import { getAIProvider } from '../_lib/ai-provider';
+import { canonicalIngestPayload } from '../_lib/ingest-hmac';
 
 const INGEST_HMAC_SECRET = process.env.INGEST_HMAC_SECRET;
 const INGEST_AUTOPUBLISH = process.env.INGEST_AUTOPUBLISH === 'true';
@@ -55,15 +58,7 @@ interface IngestResult {
   message: string;
 }
 
-function json(res: VercelResponse, statusCode: number, body: unknown) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.status(statusCode).json(body);
-}
 
-function getClientIp(req: VercelRequest): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  return Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0] ?? req.socket.remoteAddress ?? 'unknown';
-}
 
 async function verifyHmac(payload: string, signature: string): Promise<boolean> {
   if (!INGEST_HMAC_SECRET) {
@@ -302,7 +297,7 @@ function calculateConfidence(
  */
 async function checkDuplicates(
   extracted: ExtractedData,
-  images: string[],
+  _images: string[],
   platform: 'TELEGRAM' | 'FACEBOOK_PUBLIC',
   externalId: string
 ): Promise<{ isDuplicate: boolean; duplicateOf?: string; similarity: number }> {
@@ -497,56 +492,58 @@ async function createPublication(
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
-  const ip = getClientIp(req);
-  const rate = consumeRateLimit(`ingest:${ip}`, 100, 60_000);
-  
-  if (!rate.allowed) {
-    res.setHeader('Retry-After', Math.ceil((rate.resetAt - Date.now()) / 1000).toString());
-    return json(res, 429, { error: 'Too many requests' });
-  }
-  
+
+  if (rejectMethod(req, res, 'POST')) return;
+
+  const ipLimit = await limitByIp(req, res, 'ingest-ip', 100, 60_000);
+  if (!ipLimit.ok) return;
+
   // Verificar HMAC secret configurado
   if (!INGEST_HMAC_SECRET) {
     console.error('INGEST_HMAC_SECRET no configurado en entorno');
-    return json(res, 500, { error: 'Service not configured' });
+    return fail(res, 500, 'INTERNAL', 'Servicio no configurado');
   }
-  
+
   let payload: IngestExternalPostInput;
-  
+
   try {
     payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
   } catch {
-    return json(res, 400, { error: 'Invalid JSON body' });
+    return fail(res, 400, 'INVALID_INPUT', 'Cuerpo JSON inválido');
   }
-  
+
   // Validar schema
   const validation = ingestExternalPostSchema.safeParse(payload);
   if (!validation.success) {
-    return json(res, 400, { error: 'Validation failed', details: validation.error.flatten() });
+    return fail(res, 400, 'INVALID_INPUT', 'Los datos no pasaron la validación', {
+      issues: validation.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+    });
   }
-  
+
   const data = validation.data;
   
   // Validar timestamp (anti-replay)
   const timestampCheck = validateHmacTimestamp(data.timestamp);
   if (!timestampCheck.valid) {
-    return json(res, 401, { error: timestampCheck.error });
+    return fail(res, 401, 'UNAUTHORIZED', timestampCheck.error ?? 'Timestamp inválido');
   }
   
-  // Verificar firma HMAC
-  const payloadForHmac = JSON.stringify({
-    source_id: data.source_id,
-    platform: data.platform,
-    external_id: data.external_id,
-    source_url: data.source_url,
-    posted_at: data.posted_at,
-    timestamp: data.timestamp,
-  });
-  
-  const hmacValid = await verifyHmac(payloadForHmac, data.signature);
+  // ── Verificación HMAC ─────────────────────────────────────────────────────
+  // Dos arreglos respecto al código anterior:
+  //
+  //   1. COBERTURA: antes solo se firmaban los metadatos, así que quien capturara
+  //      un sobre válido podía alterar `raw_text` o `image_paths` y la firma
+  //      seguía siendo válida (hallazgo API-07).
+  //   2. FORMATO: el worker (`workers/telegram-collector/auth.py`) firma
+  //      `f"{timestamp}." + json.dumps(payload, sort_keys=True, separators=(",",":"))`
+  //      SIN incluir `timestamp` ni `signature`. El servidor calculaba otra cosa
+  //      (JSON sin ordenar y sin el prefijo del timestamp), así que **ninguna
+  //      firma del worker podía validar nunca**. Aquí se replica exactamente el
+  //      formato del worker.
+  const hmacValid = await verifyHmac(canonicalIngestPayload(data), data.signature);
   if (!hmacValid) {
-    console.warn('HMAC inválido desde IP:', ip);
-    return json(res, 401, { error: 'Invalid signature' });
+    console.warn('[ingest] firma HMAC inválida', { source_url: data.source_url });
+    return fail(res, 401, 'UNAUTHORIZED', 'Firma inválida');
   }
   
   // Verificar que la fuente existe y está activa
@@ -557,15 +554,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .single();
   
   if (sourceError || !source) {
-    return json(res, 404, { error: 'Source not found' });
+    return fail(res, 404, 'NOT_FOUND', 'Fuente no encontrada');
   }
   
   if (!source.is_active) {
-    return json(res, 403, { error: 'Source is inactive' });
+    return fail(res, 403, 'FORBIDDEN', 'La fuente está desactivada');
   }
   
   if (source.platform !== data.platform) {
-    return json(res, 400, { error: 'Platform mismatch' });
+    return fail(res, 400, 'INVALID_INPUT', 'La plataforma no coincide con la fuente');
   }
   
   // Verificar idempotencia: ¿ya existe este post?
@@ -609,7 +606,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   
   if (insertError || !externalPost) {
     console.error('Error insertando external_post:', insertError);
-    return json(res, 500, { error: 'Failed to create external post record' });
+    return internalError(res, 'ingest/create-record', insertError);
   }
   
   try {
@@ -757,6 +754,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update({ error_count: source.error_count + 1 })
       .eq('id', data.source_id);
     
-    return json(res, 500, { error: 'Processing failed' });
+    return internalError(res, 'ingest/processing', error);
   }
 }

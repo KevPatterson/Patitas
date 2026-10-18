@@ -1,242 +1,213 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { z } from 'zod';
+import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
-import { consumeRateLimit } from '../_lib/rate-limit';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
+import { limitByIp, limitByUser } from '../_lib/rate-limit-utils';
+import { getActorRole, isModerator, writeAuditLog, type Role } from '../_lib/authz';
 
-type ModerationAction = 
-  | 'resolve-report' 
-  | 'hide-publication' 
-  | 'restore-publication' 
-  | 'set-role'
-  | 'approve-takedown'
-  | 'reject-takedown';
+/**
+ * POST /api/admin/moderation — acciones de moderación.
+ *
+ * Lo que YA estaba bien (y se conserva): el JWT se valida con
+ * `supabase.auth.getUser` y el rol se lee de `profiles` con el service role,
+ * nunca de `user_metadata` ni de claims del token (que el usuario puede editar).
+ *
+ * Lo que faltaba (hallazgo API-01):
+ *   - Zod: solo se comprobaba presencia de `action` e `id`. `id` nunca se
+ *     validaba como UUID y no existía `reason` con longitud máxima.
+ *   - Los errores de Postgres se devolvían al cliente (hallazgo API-08).
+ *   - El resultado del `insert` en `audit_logs` se ignoraba: si fallaba, la
+ *     acción se aplicaba sin dejar rastro.
+ */
 
-function json(res: VercelResponse, statusCode: number, body: Record<string, unknown>) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.status(statusCode).json(body);
-}
+const moderationSchema = z
+  .object({
+    action: z.enum([
+      'resolve-report',
+      'hide-publication',
+      'restore-publication',
+      'set-role',
+      'approve-takedown',
+      'reject-takedown',
+    ]),
+    id: z.string().uuid('El identificador no es válido'),
+    reason: z
+      .string()
+      .trim()
+      .min(3, 'El motivo es demasiado corto')
+      .max(500, 'El motivo es demasiado largo (máximo 500 caracteres)')
+      .optional(),
+    role: z.enum(['USER', 'MODERATOR', 'ADMIN']).optional(),
+  })
+  .refine((data) => data.action !== 'set-role' || data.role !== undefined, {
+    message: 'Para cambiar el rol hay que indicar el nuevo rol',
+    path: ['role'],
+  });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method !== 'POST') {
-    return json(res, 405, { error: 'Method not allowed' });
+  if (rejectMethod(req, res, 'POST')) return;
+
+  const ipLimit = await limitByIp(req, res, 'moderation-ip', 40, 60_000);
+  if (!ipLimit.ok) return;
+
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
 
-  const forwarded = req.headers['x-forwarded-for'];
-  const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0] ?? req.socket.remoteAddress ?? 'unknown';
-  const rateKey = `moderation:${ip}`;
-  const rate = consumeRateLimit(rateKey, 20, 60_000);
+  const role = await getActorRole(supabaseAdmin, auth.user.id);
 
-  if (!rate.allowed) {
-    res.setHeader('Retry-After', Math.ceil((rate.resetAt - Date.now()) / 1000).toString());
-    return json(res, 429, { error: 'Too many requests' });
+  if (!isModerator(role ? { id: auth.user.id, role } : null)) {
+    return fail(res, 403, 'FORBIDDEN', 'No tienes permisos de moderación');
   }
 
-  const authorization = req.headers.authorization;
-  const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null;
+  const userLimit = await limitByUser(res, 'moderation-user', auth.user.id, 30, 60_000);
+  if (!userLimit.ok) return;
 
-  if (!token) {
-    return json(res, 401, { error: 'Missing authorization token' });
+  const parsed = parseBody(req, moderationSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
 
-  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+  const { action, id, reason, role: newRole } = parsed.data;
 
-  if (userError || !userData.user) {
-    return json(res, 401, { error: 'Invalid session' });
-  }
+  // Toda acción de moderación debe quedar auditada. Si la auditoría falla, la
+  // acción NO se aplica: antes se ejecutaba y el fallo se perdía.
+  const audit = async (entityType: string, metadata: Record<string, unknown>): Promise<boolean> =>
+    writeAuditLog(supabaseAdmin, {
+      actorProfileId: auth.user.id,
+      action,
+      entityType,
+      entityId: id,
+      metadata: { ...metadata, reason: reason ?? null, moderator_role: role },
+    });
 
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .select('role')
-    .eq('id', userData.user.id)
-    .maybeSingle();
-
-  if (profileError || !profile || (profile.role !== 'MODERATOR' && profile.role !== 'ADMIN')) {
-    return json(res, 403, { error: 'Forbidden' });
-  }
-
-  let payload: { action?: ModerationAction; id?: string; role?: string } = {};
-
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body as typeof payload);
-  } catch {
-    return json(res, 400, { error: 'Invalid JSON body' });
-  }
-
-  if (!payload.action || !payload.id) {
-    return json(res, 400, { error: 'Missing action or id' });
-  }
-
-  if (payload.action === 'resolve-report') {
+  if (action === 'resolve-report') {
     const { error } = await supabaseAdmin
       .from('reports')
       .update({
         status: 'RESOLVED',
         resolved_at: new Date().toISOString(),
-        resolved_by: userData.user.id,
+        resolved_by: auth.user.id,
       })
-      .eq('id', payload.id);
+      .eq('id', id);
 
     if (error) {
-      return json(res, 500, { error: error.message });
+      return internalError(res, 'moderation/resolve-report', error);
     }
 
-    await supabaseAdmin.from('audit_logs').insert({
-      actor_profile_id: userData.user.id,
-      action: 'resolve-report',
-      entity_type: 'report',
-      entity_id: payload.id,
-      metadata: {},
-    });
+    const audited = await audit('report', {});
 
-    return json(res, 200, { ok: true });
+    return json(res, 200, { ok: true, audited });
   }
 
-  if (payload.action === 'hide-publication' || payload.action === 'restore-publication') {
-    const nextStatus = payload.action === 'hide-publication' ? 'HIDDEN' : 'ACTIVE';
+  if (action === 'hide-publication' || action === 'restore-publication') {
+    const nextStatus = action === 'hide-publication' ? 'HIDDEN' : 'ACTIVE';
 
-    const { error } = await supabaseAdmin.from('publications').update({ status: nextStatus }).eq('id', payload.id);
+    const { error } = await supabaseAdmin
+      .from('publications')
+      .update({ status: nextStatus })
+      .eq('id', id);
 
     if (error) {
-      return json(res, 500, { error: error.message });
+      return internalError(res, 'moderation/publication-status', error);
     }
 
-    await supabaseAdmin.from('audit_logs').insert({
-      actor_profile_id: userData.user.id,
-      action: payload.action,
-      entity_type: 'publication',
-      entity_id: payload.id,
-      metadata: {},
-    });
+    const audited = await audit('publication', { next_status: nextStatus });
 
-    return json(res, 200, { ok: true });
+    return json(res, 200, { ok: true, status: nextStatus, audited });
   }
 
-  if (payload.action === 'set-role') {
-    if (profile.role !== 'ADMIN') {
-      return json(res, 403, { error: 'Only admins can change roles' });
+  if (action === 'set-role') {
+    if (role !== 'ADMIN') {
+      return fail(res, 403, 'FORBIDDEN', 'Solo un administrador puede cambiar roles');
     }
 
-    const newRole = payload.role as 'USER' | 'MODERATOR' | 'ADMIN';
-    if (!newRole || !['USER', 'MODERATOR', 'ADMIN'].includes(newRole)) {
-      return json(res, 400, { error: 'Invalid role' });
-    }
+    const targetRole = newRole as Role;
 
-    const { error } = await supabaseAdmin.from('profiles').update({ role: newRole }).eq('id', payload.id);
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({ role: targetRole })
+      .eq('id', id);
 
     if (error) {
-      return json(res, 500, { error: error.message });
+      return internalError(res, 'moderation/set-role', error);
     }
 
-    await supabaseAdmin.from('audit_logs').insert({
-      actor_profile_id: userData.user.id,
-      action: 'set-role',
-      entity_type: 'profile',
-      entity_id: payload.id,
-      metadata: { newRole },
-    });
+    const audited = await audit('profile', { new_role: targetRole });
 
-    return json(res, 200, { ok: true, role: newRole });
+    return json(res, 200, { ok: true, role: targetRole, audited });
   }
 
-  if (payload.action === 'approve-takedown') {
-    // Aprobar solicitud: marcar publicación como DELETED permanentemente
+  if (action === 'approve-takedown' || action === 'reject-takedown') {
     const { data: takedown, error: takedownError } = await supabaseAdmin
       .from('takedown_requests')
-      .select('id, publication_id, reason')
-      .eq('id', payload.id)
-      .single();
+      .select('id, publication_id, reason, previous_status')
+      .eq('id', id)
+      .maybeSingle();
 
-    if (takedownError || !takedown) {
-      return json(res, 404, { error: 'Solicitud no encontrada' });
+    if (takedownError) {
+      return internalError(res, 'moderation/takedown-read', takedownError);
     }
 
-    // Actualizar solicitud
-    await supabaseAdmin
-      .from('takedown_requests')
-      .update({
-        status: 'APPROVED',
-        reviewed_by: userData.user.id,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq('id', payload.id);
-
-    // Marcar publicación como DELETED
-    await supabaseAdmin
-      .from('publications')
-      .update({
-        status: 'DELETED',
-        deleted_at: new Date().toISOString(),
-      })
-      .eq('id', takedown.publication_id);
-
-    // Actualizar external_posts si es importada
-    await supabaseAdmin
-      .from('external_posts')
-      .update({ status: 'TAKEN_DOWN' })
-      .eq('publication_id', takedown.publication_id);
-
-    await supabaseAdmin.from('audit_logs').insert({
-      actor_profile_id: userData.user.id,
-      action: 'TAKEDOWN_APPROVED',
-      entity_type: 'takedown_request',
-      entity_id: payload.id,
-      metadata: { publication_id: takedown.publication_id, reason: takedown.reason },
-    });
-
-    return json(res, 200, { ok: true, message: 'Solicitud aprobada. Publicación eliminada.' });
-  }
-
-
-  if (payload.action === 'reject-takedown') {
-    // Rechazar solicitud: restaurar publicación si estaba oculta
-    const { data: takedown, error: takedownError } = await supabaseAdmin
-      .from('takedown_requests')
-      .select('id, publication_id, previous_status, review_notes')
-      .eq('id', payload.id)
-      .single();
-
-    if (takedownError || !takedown) {
-      return json(res, 404, { error: 'Solicitud no encontrada' });
+    if (!takedown) {
+      return fail(res, 404, 'NOT_FOUND', 'Solicitud de retirada no encontrada');
     }
 
-    const previousStatus = takedown.previous_status ?? 'ACTIVE';
+    const approving = action === 'approve-takedown';
 
-    // Actualizar solicitud
-    await supabaseAdmin
+    const { error: updateRequestError } = await supabaseAdmin
       .from('takedown_requests')
       .update({
-        status: 'REJECTED',
-        reviewed_by: userData.user.id,
+        status: approving ? 'APPROVED' : 'REJECTED',
+        reviewed_by: auth.user.id,
         reviewed_at: new Date().toISOString(),
+        ...(reason ? { review_notes: reason } : {}),
       })
-      .eq('id', payload.id);
+      .eq('id', id);
 
-    // Restaurar publicación
-    await supabaseAdmin
+    if (updateRequestError) {
+      return internalError(res, 'moderation/takedown-update', updateRequestError);
+    }
+
+    // Aprobar = eliminar definitivamente. Rechazar = restaurar el estado previo.
+    const publicationUpdate = approving
+      ? { status: 'DELETED', deleted_at: new Date().toISOString() }
+      : { status: (takedown.previous_status as string | null) ?? 'ACTIVE' };
+
+    const { error: pubError } = await supabaseAdmin
       .from('publications')
-      .update({
-        status: previousStatus,
-      })
+      .update(publicationUpdate)
       .eq('id', takedown.publication_id);
 
+    if (pubError) {
+      return internalError(res, 'moderation/takedown-publication', pubError);
+    }
 
-    // Actualizar external_posts si es importada
-    await supabaseAdmin
-      .from('external_posts')
-      .update({ status: 'PUBLISHED' })
-      .eq('publication_id', takedown.publication_id);
+    if (takedown.publication_id) {
+      await supabaseAdmin
+        .from('external_posts')
+        .update({ status: approving ? 'TAKEN_DOWN' : 'PUBLISHED' })
+        .eq('publication_id', takedown.publication_id);
+    }
 
-    await supabaseAdmin.from('audit_logs').insert({
-      actor_profile_id: userData.user.id,
-      action: 'TAKEDOWN_REJECTED',
-      entity_type: 'takedown_request',
-      entity_id: payload.id,
-      metadata: { publication_id: takedown.publication_id },
+    const audited = await audit('takedown_request', {
+      publication_id: takedown.publication_id,
+      takedown_reason: takedown.reason,
+      decision: approving ? 'APPROVED' : 'REJECTED',
     });
 
-    return json(res, 200, { ok: true, message: 'Solicitud rechazada. Publicación restaurada.' });
+    return json(res, 200, {
+      ok: true,
+      audited,
+      message: approving
+        ? 'Solicitud aprobada. La publicación se ha eliminado.'
+        : 'Solicitud rechazada. La publicación se ha restaurado.',
+    });
   }
 
-  return json(res, 400, { error: 'Unknown action' });
+  // Inalcanzable: el enum de Zod ya limita las acciones.
+  return fail(res, 400, 'INVALID_INPUT', 'Acción no reconocida');
 }

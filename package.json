@@ -8,8 +8,10 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc -b",
     "format": "prettier --write .",
     "test": "vitest run",
+    "validate:sql": "node scripts/validate-sql.mjs",
     "seed:test": "node scripts/seed-test-publications.mjs"
   },
   "dependencies": {
@@ -33,7 +35,6 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19.1.15",
     "@types/react-dom": "^19.1.9",
-    "@vercel/node": "^20.0.0",
     "@vitejs/plugin-react": "^5.0.2",
     "eslint": "^9.36.0",
     "eslint-config-prettier": "^10.1.8",

@@ -467,8 +467,9 @@ export function PublicationPage() {
               {/* Estado de procesamiento de IA */}
               {publication.id && <ProcessingStatusBadge publicationId={publication.id} />}
 
-              {/* Alerta de duplicados */}
-              {publication.id && (
+              {/* Alerta de duplicados — también solo para el dueño: el endpoint
+                  exige propiedad de la publicación desde la Fase 1. */}
+              {isOwner && publication.id && (
                 <DuplicateWarning
                   publicationId={publication.id}
                   onViewDuplicate={(duplicateId) => {
@@ -477,8 +478,10 @@ export function PublicationPage() {
                 />
               )}
 
-              {/* Panel de Matches de IA */}
-              {publication.id && (publication.type === 'LOST' || publication.type === 'FOUND') && (
+              {/* Panel de Matches de IA — solo para el dueño: el endpoint exige
+                  propiedad desde la Fase 1 (hallazgo API-02), así que pedirlo
+                  como visitante solo produciría un 403 y un panel vacío. */}
+              {isOwner && publication.id && (publication.type === 'LOST' || publication.type === 'FOUND') && (
                 <MatchesPanel publicationId={publication.id} />
               )}
 

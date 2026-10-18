@@ -1,160 +1,220 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { z } from 'zod';
+import type { VercelRequest, VercelResponse } from '../types/vercel';
 import { supabaseAdmin } from '../_lib/supabase-admin';
-import { checkRateLimit, extractToken, verifyAuth } from '../_lib/rate-limit-utils';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
+import { limitAiByUser, limitByIp } from '../_lib/rate-limit-utils';
+import { actorOwnsAnyPublication, getActor, isModerator } from '../_lib/authz';
 
 /**
- * Endpoint para crear un match entre dos publicaciones
- * POST /api/ai/create-match
- * 
- * Body: {
- *   publicationAId: string;
- *   publicationBId: string;
- *   matchType: 'LOST_FOUND' | 'SIGHTING' | 'VISUAL' | 'SEMANTIC';
- *   overallScore: number;
- *   structuredScore?: number;
- *   textScore?: number;
- *   semanticScore?: number;
- *   visualScore?: number;
- *   reasons?: string[];
- * }
+ * POST /api/ai/create-match — crea una coincidencia entre dos publicaciones.
+ *
+ * Hallazgo API-03: el endpoint aceptaba `overallScore`, `structuredScore`,
+ * `textScore`, `semanticScore` y `visualScore` **enviados por el cliente** y los
+ * insertaba tal cual, y solo comprobaba que las dos publicaciones existieran. Con
+ * eso, cualquier usuario autenticado podía:
+ *
+ *   - inventarse un match del 100 % entre publicaciones ajenas,
+ *   - y disparar notificaciones falsas a sus dueños ("¡encontramos tu mascota!").
+ *
+ * Ahora:
+ *
+ *   - El servidor **recalcula** el score con
+ *     `calculate_structured_match_score` (la misma función que usa
+ *     `calculate-matches`). Lo que envíe el cliente se ignora por completo.
+ *   - Se exige ser **dueño de A o B** (o moderador).
+ *   - Se conservan las protecciones que ya había: nada de matches de una
+ *     publicación consigo misma y nada de duplicados (409).
  */
+
+const createMatchSchema = z.object({
+  publicationAId: z.string().uuid('El identificador de la primera publicación no es válido'),
+  publicationBId: z.string().uuid('El identificador de la segunda publicación no es válido'),
+  // Se acepta por compatibilidad con el cliente actual, pero NO se usa.
+  overallScore: z.number().min(0).max(100).optional(),
+});
+
+/** Score mínimo para considerar que dos publicaciones son una coincidencia. */
+const MIN_MATCH_SCORE = 60;
+
+/** Por debajo de esto la coincidencia es demasiado débil para notificar. */
+const NOTIFY_THRESHOLD = 75;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (rejectMethod(req, res, 'POST')) return;
+
+  const ipLimit = await limitByIp(req, res, 'ai-match-ip', 120, 3600_000);
+  if (!ipLimit.ok) return;
+
+  const auth = await requireAuth(req, supabaseAdmin);
+  if (!auth.ok) {
+    return fail(res, auth.status, auth.code, auth.message);
   }
 
-  // Rate limiting: 50 matches por hora
-  if (!checkRateLimit(req, res, 'ai-match-create', 50, 3600_000)) {
-    return;
+  const userLimit = await limitAiByUser(res, auth.user.id);
+  if (!userLimit.ok) return;
+
+  const parsed = parseBody(req, createMatchSchema);
+  if (!parsed.ok) {
+    return fail(res, parsed.status, parsed.code, parsed.message, { issues: parsed.issues });
   }
 
-  const token = extractToken(req);
-  const { user, error: authError } = await verifyAuth(token, supabaseAdmin);
+  const { publicationAId, publicationBId } = parsed.data;
 
-  if (authError || !user) {
-    return res.status(401).json({ error: authError || 'Unauthorized' });
+  if (publicationAId === publicationBId) {
+    return fail(res, 400, 'INVALID_INPUT', 'No se puede emparejar una publicación consigo misma');
   }
 
-  let payload: {
-    publicationAId?: string;
-    publicationBId?: string;
-    matchType?: string;
-    overallScore?: number;
-    structuredScore?: number;
-    textScore?: number;
-    semanticScore?: number;
-    visualScore?: number;
-    reasons?: string[];
-  } = {};
-
-  try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' });
-  }
-
-  // Validaciones
-  if (!payload.publicationAId || !payload.publicationBId) {
-    return res.status(400).json({ error: 'Missing publication IDs' });
-  }
-
-  if (!payload.matchType || !payload.overallScore) {
-    return res.status(400).json({ error: 'Missing matchType or overallScore' });
-  }
-
-  if (payload.overallScore < 0 || payload.overallScore > 100) {
-    return res.status(400).json({ error: 'overallScore must be between 0 and 100' });
-  }
-
-  if (payload.publicationAId === payload.publicationBId) {
-    return res.status(400).json({ error: 'Cannot match publication with itself' });
-  }
-
-  // Asegurar que publication_a_id < publication_b_id para unicidad
+  // Orden canónico para que el índice único (least, greatest) evite duplicados.
   const [pubAId, pubBId] =
-    payload.publicationAId < payload.publicationBId
-      ? [payload.publicationAId, payload.publicationBId]
-      : [payload.publicationBId, payload.publicationAId];
+    publicationAId < publicationBId
+      ? [publicationAId, publicationBId]
+      : [publicationBId, publicationAId];
 
-  // Verificar que ambas publicaciones existen
   const { data: publications, error: pubError } = await supabaseAdmin
     .from('publications')
-    .select('id, owner_profile_id')
+    .select('id, owner_profile_id, type')
     .in('id', [pubAId, pubBId])
     .is('deleted_at', null);
 
-  if (pubError || !publications || publications.length !== 2) {
-    return res.status(404).json({ error: 'One or both publications not found' });
+  if (pubError) {
+    return internalError(res, 'create-match/publications', pubError);
   }
 
-  // Crear el match
+  if (!publications || publications.length !== 2) {
+    return fail(res, 404, 'NOT_FOUND', 'Una de las publicaciones no existe');
+  }
+
+  const actor = await getActor(supabaseAdmin, auth.user.id);
+
+  if (!actor) {
+    return fail(res, 403, 'FORBIDDEN', 'Tu perfil no está disponible todavía');
+  }
+
+  // Autorización: dueño de A o B, o moderador.
+  const allowed = await actorOwnsAnyPublication(supabaseAdmin, actor, [pubAId, pubBId]);
+
+  if (!allowed) {
+    return fail(
+      res,
+      403,
+      'FORBIDDEN',
+      'Solo el dueño de una de las publicaciones puede crear la coincidencia'
+    );
+  }
+
+  // ── Recálculo en servidor ────────────────────────────────────────────────
+  // El score estructurado lo calcula la base de datos a partir de las columnas
+  // reales de ambas publicaciones. Los valores del cliente se descartan.
+  const { data: scoreData, error: scoreError } = await supabaseAdmin.rpc(
+    'calculate_structured_match_score',
+    { pub_a_id: pubAId, pub_b_id: pubBId }
+  );
+
+  if (scoreError) {
+    return internalError(res, 'create-match/score', scoreError);
+  }
+
+  const structuredScore = Number(scoreData ?? 0);
+
+  if (!Number.isFinite(structuredScore) || structuredScore < MIN_MATCH_SCORE) {
+    return fail(
+      res,
+      422,
+      'INVALID_INPUT',
+      `Las publicaciones no son lo bastante similares (${Math.round(structuredScore || 0)} % de coincidencia)`,
+      { structuredScore: Number.isFinite(structuredScore) ? structuredScore : 0 }
+    );
+  }
+
+  const typeA = publications.find((p) => p.id === pubAId)?.type as string | undefined;
+  const typeB = publications.find((p) => p.id === pubBId)?.type as string | undefined;
+
+  const matchType =
+    (typeA === 'LOST' && typeB === 'FOUND') || (typeA === 'FOUND' && typeB === 'LOST')
+      ? 'LOST_FOUND'
+      : 'SEMANTIC';
+
   const { data: match, error: matchError } = await supabaseAdmin
     .from('ai_matches')
     .insert({
       publication_a_id: pubAId,
       publication_b_id: pubBId,
-      match_type: payload.matchType,
-      overall_score: payload.overallScore,
-      structured_score: payload.structuredScore || null,
-      text_score: payload.textScore || null,
-      semantic_score: payload.semanticScore || null,
-      visual_score: payload.visualScore || null,
+      match_type: matchType,
+      // Todos los scores son calculados aquí, nunca recibidos.
+      overall_score: structuredScore,
+      structured_score: structuredScore,
+      text_score: null,
+      semantic_score: null,
+      visual_score: null,
       status: 'PENDING',
       viewed_by_a: false,
       viewed_by_b: false,
-      reasons: payload.reasons || [],
-      metadata: {},
+      reasons: ['Coincidencia calculada por el servidor'],
+      metadata: { source: 'api', created_by: actor.id, client_scores_ignored: true },
     })
     .select('id')
     .single();
 
   if (matchError) {
-    // Puede fallar por constraint de unicidad si el match ya existe
     if (matchError.code === '23505') {
-      return res.status(409).json({ error: 'Match already exists' });
+      return fail(res, 409, 'CONFLICT', 'Esa coincidencia ya existe');
     }
-    console.error('Error creating match:', matchError);
-    return res.status(500).json({ error: 'Failed to create match' });
+    return internalError(res, 'create-match/insert', matchError);
   }
 
-  // Crear notificaciones para ambos owners (si son diferentes)
-  const ownerAId = publications.find((p) => p.id === pubAId)?.owner_profile_id;
-  const ownerBId = publications.find((p) => p.id === pubBId)?.owner_profile_id;
+  // Notificación a los dueños, solo si la coincidencia es fuerte y son distintos.
+  const ownerAId = publications.find((p) => p.id === pubAId)?.owner_profile_id as string | null;
+  const ownerBId = publications.find((p) => p.id === pubBId)?.owner_profile_id as string | null;
 
-  if (ownerAId && ownerBId && ownerAId !== ownerBId) {
-    const notifications = [
+  let notified = false;
+
+  if (
+    structuredScore >= NOTIFY_THRESHOLD &&
+    ownerAId &&
+    ownerBId &&
+    ownerAId !== ownerBId
+  ) {
+    const body = `Encontramos una posible coincidencia para tu publicación (${Math.round(structuredScore)} % de similitud).`;
+
+    const { error: notifyError } = await supabaseAdmin.from('notifications').insert([
       {
         profile_id: ownerAId,
         type: 'MATCH',
         title: '¡Posible coincidencia!',
-        body: `Encontramos una posible coincidencia para tu publicación (${Math.round(payload.overallScore)}% de similitud).`,
-        link: `/publicaciones/${pubAId}`,
+        body,
+        link: `/p/${pubAId}`,
         is_read: false,
       },
       {
         profile_id: ownerBId,
         type: 'MATCH',
         title: '¡Posible coincidencia!',
-        body: `Encontramos una posible coincidencia para tu publicación (${Math.round(payload.overallScore)}% de similitud).`,
-        link: `/publicaciones/${pubBId}`,
+        body,
+        link: `/p/${pubBId}`,
         is_read: false,
       },
-    ];
+    ]);
 
-    await supabaseAdmin.from('notifications').insert(notifications);
+    if (!notifyError) {
+      notified = true;
 
-    // Actualizar estado del match
-    await supabaseAdmin
-      .from('ai_matches')
-      .update({ status: 'NOTIFIED', notified_at: new Date().toISOString() })
-      .eq('id', match.id);
+      await supabaseAdmin
+        .from('ai_matches')
+        .update({ status: 'NOTIFIED', notified_at: new Date().toISOString() })
+        .eq('id', match.id);
+    } else {
+      console.error('[create-match] no se pudieron crear las notificaciones', notifyError);
+    }
   }
 
-  return res.status(200).json({
+  return json(res, 200, {
     ok: true,
-    message: 'Match created successfully',
     matchId: match.id,
+    structuredScore,
+    matchType,
+    notified,
+    moderated: isModerator(actor),
   });
 }
