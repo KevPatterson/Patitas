@@ -7,6 +7,7 @@ import { Button, LinkButton } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { registerSchema, type RegisterInput } from '../../lib/validations/auth';
 import { signUpWithPassword, signInWithGoogle } from '../../lib/supabase/auth';
+import { loginErrorMessage, registerErrorMessage } from '../../lib/auth/error-messages';
 import { setPageMeta } from '../../lib/seo/page-meta';
 
 export function RegisterPage() {
@@ -32,7 +33,8 @@ export function RegisterPage() {
       });
       setSuccessMessage('🎉 Cuenta creada. Revisa tu correo para verificar tu sesión.');
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : 'No pudimos crear tu cuenta.');
+      // No se confirma si el email ya estaba registrado: mismo mensaje siempre.
+      setServerError(registerErrorMessage(error));
     }
   };
 
@@ -41,7 +43,7 @@ export function RegisterPage() {
     try {
       await signInWithGoogle();
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : 'No pudimos iniciar con Google.');
+      setServerError(loginErrorMessage(error));
     }
   };
 

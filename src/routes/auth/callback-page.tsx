@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PawPrint } from 'lucide-react';
 import { supabase } from '../../lib/supabase/client';
 import { PawLoader } from '../../components/ui/paw-loader';
+import { safeInternalPath } from '../../lib/utils/safe-url';
 
 export function CallbackPage() {
   const navigate = useNavigate();
@@ -25,7 +26,13 @@ export function CallbackPage() {
           const { data } = await supabase.auth.getSession();
           if (!data.session) throw new Error('No se pudo completar el inicio de sesión.');
         }
-        navigate('/', { replace: true });
+
+        // Destino posterior al login. Se acepta SOLO una ruta interna: `next=//evil.com`
+        // o `next=https://evil.com` serían open redirect, así que cualquier cosa que
+        // no sea una ruta relativa simple cae al inicio.
+        const next = safeInternalPath(params.get('next'));
+
+        navigate(next, { replace: true });
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error al completar autenticación.');
       }

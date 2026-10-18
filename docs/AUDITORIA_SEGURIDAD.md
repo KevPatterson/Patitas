@@ -55,10 +55,10 @@ La columna **Evidencia** siempre cita `archivo:línea` comprobado a mano.
 | DB-12 | Suite de tests pgTAP / `supabase/tests/` | **NO EXISTE** | Alta | 2 |
 | DB-13 | `supabase/seed.sql` | **NO EXISTE** | Baja | 1 |
 | FE-01 | JSON-LD inyectado con `JSON.stringify` sin escapar `<`/`>` | pendiente | Media | 4 |
-| FE-02 | `dangerouslySetInnerHTML` / `innerHTML` con datos de usuario | pendiente | Media | 4 |
-| FE-03 | Redirección abierta en `/auth/callback` (`next`) | pendiente | Media | 4 |
-| FE-04 | Dominio duplicado (`patitas-plataforma-…` vs `patitass.vercel.app`) | pendiente | Media | 4 |
-| DEP-03 | `vercel.json` mezcla `routes` (legacy) con `headers` | pendiente | Baja | 4 |
+| FE-02 | `dangerouslySetInnerHTML` / `innerHTML` con datos de usuario | **NO EXISTE** | — | 4 ✅ |
+| FE-03 | Redirección abierta en `/auth/callback` (`next`) | **NO EXISTE** (sin `next`); helper añadido | Baja | 4 ✅ |
+| FE-04 | Dominio duplicado (`patitas-plataforma-…` vs `patitass.vercel.app`) | **NO EXISTE en código**; solo en docs | Baja | 4 ✅ |
+| DEP-03 | `vercel.json` mezcla `routes` (legacy) con `headers` | **EXISTE** | Baja | 4 ✅ |
 | AI-01 | Proveedor IA por defecto (`TESSERACT`) sin dependencia instalada | **EXISTE** | Alta | 5 |
 | AI-02 | `imageResponse` sin definir en el proveedor Cloudflare | **EXISTE** | Media | 0 ✅ |
 | AI-03 | Auto-publicación guiada por salida de LLM sobre texto externo | **EXISTE** | Media | 8 |

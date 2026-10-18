@@ -1,3 +1,5 @@
+import { safeJsonLd } from './json-ld';
+
 type LostPetStructuredData = {
   name: string;
   description: string;
@@ -32,7 +34,7 @@ export function generateLostPetStructuredData(data: LostPetStructuredData): stri
     dateCreated: data.datePosted,
   };
 
-  return JSON.stringify(structuredData);
+  return safeJsonLd(structuredData);
 }
 
 type WebsiteStructuredData = {
@@ -58,7 +60,7 @@ export function generateWebsiteStructuredData(data: WebsiteStructuredData): stri
     },
   };
 
-  return JSON.stringify(structuredData);
+  return safeJsonLd(structuredData);
 }
 
 export function injectStructuredData(data: string, id: string): void {

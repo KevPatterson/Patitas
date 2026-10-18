@@ -8,6 +8,7 @@ import { Button, LinkButton } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { resetPasswordSchema, type ResetPasswordInput } from '../../lib/validations/auth';
 import { resetPassword } from '../../lib/supabase/auth';
+import { GENERIC_RESET_SENT, resetPasswordErrorMessage } from '../../lib/auth/error-messages';
 import { setPageMeta } from '../../lib/seo/page-meta';
 
 export function ForgotPasswordPage() {
@@ -29,10 +30,18 @@ export function ForgotPasswordPage() {
 
     try {
       await resetPassword(values.email);
-      setSuccessMessage('📧 Te enviamos un enlace para restablecer tu contraseña. Revisa tu correo.');
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : 'No pudimos enviar el correo.');
+      // Solo se muestran los errores de red o de rate limit. Cualquier otro
+      // (incluido "el usuario no existe") se trata como enviado: mostrar algo
+      // distinto permitiría enumerar cuentas registradas.
+      const blocking = resetPasswordErrorMessage(error);
+      if (blocking) {
+        setServerError(blocking);
+        return;
+      }
     }
+
+    setSuccessMessage(`📧 ${GENERIC_RESET_SENT}`);
   };
 
   return (
