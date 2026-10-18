@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/triple-slash-reference -- los stubs de las
+ * dependencias opcionales de IA deben cargarse también cuando Vercel compila este
+ * archivo suelto, sin el tsconfig del proyecto. */
+/// <reference path="../types/ai-dependencies.d.ts" />
 /**
  * Capa de abstracción para proveedores de IA
  * Permite cambiar de proveedor sin modificar toda la aplicación

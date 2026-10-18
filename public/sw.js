@@ -40,12 +40,20 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Solo cachear requests del mismo origen
+  // Solo se cachean GET. Cachear la respuesta de un POST/PUT sería incorrecto y,
+  // además, podría dejar datos de una sesión servidos a otra persona.
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  // Solo cachear requests del mismo origen. Esto excluye Supabase (auth, REST y
+  // Storage): sus respuestas van firmadas con el token del usuario y NUNCA deben
+  // guardarse en la caché del navegador.
   if (url.origin !== location.origin) {
     return;
   }
 
-  // No cachear llamadas a la API
+  // No cachear llamadas a la API: son respuestas autenticadas y dinámicas.
   if (url.pathname.startsWith('/api/')) {
     return;
   }

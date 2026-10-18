@@ -1,7 +1,16 @@
 User-agent: *
 Allow: /
-Disallow: /api/
+
+# Rutas privadas: no aportan nada a los buscadores y, si se indexaran por error,
+# expondrían datos de la cuenta.
+Disallow: /dashboard
 Disallow: /admin
+Disallow: /notificaciones
 Disallow: /auth/
+Disallow: /api/
+
+# Las búsquedas con parámetros generan infinitas URLs equivalentes.
+Disallow: /buscar?
+Disallow: /cerca-de-ti?
 
 Sitemap: https://patitass.vercel.app/sitemap.xml

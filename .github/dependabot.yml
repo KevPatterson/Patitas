@@ -1,0 +1,57 @@
+version: 2
+
+updates:
+  # Dependencias de la aplicación (React, Supabase, Leaflet…).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+    open-pull-requests-limit: 5
+    versioning-strategy: increase-if-necessary
+    groups:
+      # Las actualizaciones de parche y menores de desarrollo van juntas: revisarlas
+      # una por una no aporta y multiplica los PRs.
+      dev-dependencies:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      production-minor:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+    # Los saltos de versión mayor de React, Vite o Supabase se revisan a mano:
+    # pueden cambiar API y romper el build sin que los tests lo detecten.
+    ignore:
+      - dependency-name: react
+        update-types: ['version-update:semver-major']
+      - dependency-name: react-dom
+        update-types: ['version-update:semver-major']
+      - dependency-name: vite
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@supabase/supabase-js'
+        update-types: ['version-update:semver-major']
+      - dependency-name: zod
+        update-types: ['version-update:semver-major']
+
+  # Acciones de GitHub usadas en el workflow de CI.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+
+  # Imagen base del worker de Telegram, si se usa Docker.
+  - package-ecosystem: docker
+    directory: /workers/telegram-collector
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    ignore:
+      # Si el directorio no contiene un Dockerfile, Dependabot simplemente no
+      # encuentra nada; el ignore evita ruido si se añade más adelante.
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']

@@ -770,3 +770,135 @@ documentación y artefactos.
 - una imagen pequeña no se amplía;
 - los avatares salen ≤512 px y ≤300 KB;
 - PNG y WebP de entrada se aceptan y salen como WebP.
+
+---
+
+## 10. Fase 5 — Funcionalidades incompletas
+
+Esta fase no es de seguridad, pero dos de sus cambios sí cierran huecos reales.
+
+### 5.2 Adopciones: la notificación estaba rota
+
+`updateAdoptionRequestStatus` insertaba la notificación **desde el cliente**. Desde
+que la migración 0013 restringió la inserción en `notifications` al service role,
+ese `insert` fallaba en silencio: el solicitante nunca sabía si le habían aceptado
+la adopción.
+
+La migración **0017** lo corrige y añade lo que faltaba de la tarea:
+
+| Cambio | Detalle |
+|--------|---------|
+| Notificación por trigger | `adoption_requests_notify_status` avisa al solicitante en `ACCEPTED`, `REJECTED` y `CANCELLED` |
+| Notas del dueño | Columna `owner_notes` (máx. 1000) |
+| Sin duplicados | Índice único parcial en `(publication_id, requester_profile_id)` para `PENDING`/`ACCEPTED` |
+| Sin autosolicitud | Trigger `validate_adoption_request` (23514 `OWN_PUBLICATION`) |
+
+Las tres reglas viven en la base de datos, así que también se aplican si alguien
+llama a la API de Supabase directamente.
+
+### 5.4 IA simulada: dejar de presentar resultados falsos
+
+`VITE_AI_ENABLED` (por defecto `false`) oculta en la UI las coincidencias,
+la alerta de duplicados y el autocompletado por OCR. Con `AI_PROVIDER=MOCK` los
+resultados son inventados y no deben parecer reales. El endpoint `/api/ai` sigue
+disponible para pruebas y administración.
+
+### 5.3 y 5.7
+
+- Nuevo visor de **`audit_logs`** en el panel de administración (pestaña
+  «Auditoría»). Las acciones se registraban pero no se podían consultar. La
+  lectura la autoriza la RLS de moderadores, así que un usuario normal ve cero
+  filas aunque llame a la API.
+- **Enlace roto corregido**: las colas de administración enlazaban a
+  `/admin/publications/<id>`, una ruta que no existía (404). Ahora existe
+  `/admin/publicaciones/:id`, que resuelve el slug y redirige a la página pública,
+  con un estado de error con salida si la publicación no está disponible.
+- Se verificaron **todos** los enlaces internos literales y dinámicos contra las
+  rutas registradas en `App.tsx`: no queda ninguno sin destino.
+
+### 5.1 y 5.6
+
+- **Mapa**: ya estaba implementado con React Leaflet (marcadores, clustering y
+  filtros), así que **no se oculta** ni se marca como «próximamente»; se mantiene
+  tal cual.
+- **Notificaciones**: la página cargaba una vez y no escuchaba cambios. Ahora se
+  suscribe a `postgres_changes` filtrando por `profile_id`, con el botón de
+  recarga como respaldo si Realtime falla.
+---
+
+## 11. Fase 6 — SEO, compartir y rendimiento
+
+### 6.3 Code splitting: el cambio con más impacto
+
+Antes todo el sitio viajaba en **un único `index.js` de 1.104 KB** (307 KB gzip):
+la portada descargaba también el panel de administración, el editor de
+publicaciones y **Leaflet completo**, aunque el visitante no fuese a usarlos.
+
+Ahora cada ruta es un chunk propio (`React.lazy` + `Suspense` con el `PawLoader`
+como fallback) y los vendors van separados para que el navegador los conserve
+entre despliegues.
+
+| Métrica | Antes | Después |
+|---------|-------|---------|
+| JS de entrada | 1.104 KB en 1 archivo | **37 KB** + vendors (React 217, Supabase 218, router 37, iconos 20) |
+| CSS | 87 KB en 1 archivo | **71 KB** + 16 KB de Leaflet (solo en `/mapa`) |
+| Peso inicial (gzip) | ~327 KB | **~173 KB** |
+| Leaflet | en el bundle inicial | **153 KB diferidos**, solo al abrir `/mapa` |
+| Código diferido | — | **602 KB en 38 chunks** |
+
+Las rutas pesadas que ya no se descargan al entrar: `/admin` (70 KB),
+`/publicar` (59 KB), `/p/:slug` (53 KB), `/dashboard` (19 KB).
+
+### 6.1 Open Graph por publicación
+
+El problema: al compartir `…/p/mi-perro` en WhatsApp, el crawler no ejecuta
+JavaScript y solo veía el `index.html` genérico, así que la tarjeta mostraba el
+título del sitio.
+
+Solución: una regla en `vercel.json` con `has` sobre el `user-agent` reescribe
+`/p/:slug` a `/api/og?slug=:slug` **solo para crawlers** (WhatsApp,
+facebookexternalhit, Twitterbot, TelegramBot, Slack, Discord, LinkedIn,
+Pinterest, Reddit, Skype, VK, Iframely, Embedly). Se eligió declarativo en vez de
+Edge Middleware para que, si la condición falla, los humanos sigan recibiendo la
+SPA sin ningún riesgo de romper el enrutado.
+
+`/api/og` devuelve HTML mínimo con `og:title`, `og:description`, `og:image`,
+`og:url` y `twitter:card`, leyendo **solo columnas públicas**: ni contacto ni
+coordenadas, porque ese enlace se pega en grupos de desconocidos. Cachea 1 h en
+CDN y responde `noindex` cuando la publicación ya no está activa.
+
+### 6.2 Sitemap, robots y canonical
+
+- `public/robots.txt`: bloquea `/dashboard`, `/admin`, `/notificaciones`,
+  `/auth/`, `/api/` y las búsquedas con parámetros (generan URLs infinitas).
+- `/api/sitemap.xml` (rewrite desde `/sitemap.xml`): solo publicaciones
+  `ACTIVE` y no borradas, hasta 5000 URLs, ordenadas por `updated_at`, con las
+  rutas estáticas incluidas. 1 h de caché en CDN.
+- `setPageMeta` ahora soporta `noindex` y normaliza a absoluto el canonical y
+  `og:image` (los crawlers no aceptan rutas relativas). La etiqueta `robots` se
+  pone y se **quita** según la ruta, para que no se quede pegada al navegar.
+- Las publicaciones resueltas/ocultas se marcan `noindex` desde la página.
+
+### 6.5 Movimiento reducido
+
+Ya existía un bloque `@media (prefers-reduced-motion: reduce)` que anula
+animaciones, transiciones, `scroll-behavior` y transformaciones. Se mantiene y se
+documenta: cubre el requisito sin necesidad de un modo ligero aparte.
+
+### 6.6 Service worker
+
+Estrategia Network First con fallback a caché. Se añadió el guard que faltaba:
+**solo se cachean GET**. Antes cualquier respuesta 200 del mismo origen entraba en
+la caché, incluida la de un POST. Sigue sin cachear nada de otro origen (Supabase
+auth/REST/Storage van firmadas con el token del usuario) ni `/api/`.
+
+### 6.4 y 6.7 — pendientes
+
+- **6.4**: hay `loading="lazy"` en las listas nuevas, pero falta `width`/`height`
+  y `srcset` de forma sistemática. No se hizo porque exige conocer las
+  dimensiones reales de cada imagen (hoy no se guardan en `publication_images`).
+  Propuesta: añadir `width`/`height` a la tabla al subir (ya se calculan en
+  `/api/uploads`) y generar miniaturas con las transformaciones de Supabase.
+- **6.7**: la auditoría Lighthouse no se puede ejecutar desde este entorno. Hay
+  que lanzarla contra el deploy con las instrucciones del apartado de pasos
+  manuales.

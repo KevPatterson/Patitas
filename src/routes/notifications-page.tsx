@@ -11,6 +11,7 @@ import {
   markAllAsRead, 
   deleteNotification, 
   getUnreadCount,
+  subscribeToNotifications,
   type Notification 
 } from '../lib/supabase/notifications';
 import { setPageMeta } from '../lib/seo/page-meta';
@@ -22,8 +23,13 @@ export function NotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
+  // Dependencia estable: el objeto `user` cambia de identidad en cada refresco de
+  // token de Supabase, y con él en las dependencias el efecto se re-ejecutaba sin
+  // parar (el mismo problema que tenía el panel de adopciones).
+  const userId = user?.id;
+
   const loadNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
     
     setLoading(true);
     try {
@@ -38,7 +44,7 @@ export function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     setPageMeta({
@@ -49,10 +55,42 @@ export function NotificationsPage() {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (userId) {
       void loadNotifications();
     }
-  }, [user, loadNotifications]);
+  }, [userId, loadNotifications]);
+
+  /**
+   * Tiempo real (tarea 5.6).
+   *
+   * La página cargaba una vez al entrar y no se enteraba de nada nuevo: había que
+   * recargar a mano para ver una coincidencia o un comentario. Se suscribe a
+   * `postgres_changes` filtrando por el propio `profile_id` (la RLS también lo
+   * garantiza, pero el filtro evita tráfico innecesario).
+   *
+   * Si Realtime falla o no está disponible, el usuario sigue teniendo el botón de
+   * recargar de la propia página: no se depende del canal para funcionar.
+   */
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = subscribeToNotifications(user.id, (notification) => {
+      setNotifications((prev) => {
+        // Evita duplicar si el INSERT llega mientras se está recargando la lista.
+        if (prev.some((item) => item.id === notification.id)) return prev;
+        return [notification, ...prev];
+      });
+
+      if (!notification.is_read) {
+        setUnreadCount((prev) => prev + 1);
+      }
+    });
+
+    return unsubscribe;
+    // `userId` (cadena) en lugar de `user` (objeto): así el canal no se
+    // resuscribe en cada refresco de token.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {

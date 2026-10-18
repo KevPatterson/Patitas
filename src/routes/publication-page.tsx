@@ -9,6 +9,7 @@ import { ProcessingStatusBadge } from '../components/ai/processing-status';
 import { DuplicateWarning } from '../components/ai/duplicate-warning';
 import { MatchesPanel } from '../components/publications/matches-panel';
 import { ProcessButton } from '../components/ai/process-button';
+import { isFeatureEnabled } from '../lib/config/feature-flags';
 import { createReport } from '../lib/supabase/reports';
 import { useAuth } from '../app/auth-context';
 import { getPublicationBySlug, searchPublications } from '../lib/supabase/publication-search';
@@ -164,6 +165,9 @@ export function PublicationPage() {
       description: publication.description.slice(0, 155),
       canonicalPath: `/p/${publication.slug}`,
       image,
+      // Solo se indexa lo público y vigente: una publicación resuelta, oculta o
+      // eliminada no debe posicionarse en buscadores (tarea 6.2).
+      noindex: publication.status !== 'ACTIVE',
     });
 
     // Agregar structured data para publicaciones perdidas/encontradas
@@ -460,20 +464,24 @@ export function PublicationPage() {
               {/* Botón de procesamiento IA (solo para el dueño) */}
               {isOwner && publication.id && (
                 <div className="rounded-xl border-2 border-purple/20 bg-white p-4 shadow-sm">
-                  <ProcessButton publicationId={publication.id} />
+                  {isFeatureEnabled('ai') && <ProcessButton publicationId={publication.id} />}
                 </div>
               )}
 
               {/* Estado de procesamiento de IA */}
-              {publication.id && <ProcessingStatusBadge publicationId={publication.id} />}
+              {isFeatureEnabled('ai') && publication.id && (
+                <ProcessingStatusBadge publicationId={publication.id} />
+              )}
 
-              {/* Alerta de duplicados — también solo para el dueño: el endpoint
-                  exige propiedad de la publicación desde la Fase 1. */}
-              {isOwner && publication.id && (
+              {/* Alerta de duplicados — solo para el dueño: el endpoint
+                  exige propiedad de la publicación desde la Fase 1.
+                  Oculto si la IA está desactivada (tarea 5.4): con el proveedor
+                  mock los resultados son inventados. */}
+              {isFeatureEnabled('ai') && isOwner && publication.id && (
                 <DuplicateWarning
                   publicationId={publication.id}
                   onViewDuplicate={(duplicateId) => {
-                    window.open(`/admin/publications/${duplicateId}`, '_blank');
+                    window.open(`/admin/publicaciones/${duplicateId}`, '_blank', 'noopener,noreferrer');
                   }}
                 />
               )}
@@ -481,9 +489,12 @@ export function PublicationPage() {
               {/* Panel de Matches de IA — solo para el dueño: el endpoint exige
                   propiedad desde la Fase 1 (hallazgo API-02), así que pedirlo
                   como visitante solo produciría un 403 y un panel vacío. */}
-              {isOwner && publication.id && (publication.type === 'LOST' || publication.type === 'FOUND') && (
-                <MatchesPanel publicationId={publication.id} />
-              )}
+              {isFeatureEnabled('ai') &&
+                isOwner &&
+                publication.id &&
+                (publication.type === 'LOST' || publication.type === 'FOUND') && (
+                  <MatchesPanel publicationId={publication.id} />
+                )}
 
               {/* Detalles */}
               <div className="rounded-3xl border-2 border-turquoise/20 bg-white p-6 space-y-3 shadow-md">

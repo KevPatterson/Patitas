@@ -47,6 +47,11 @@ export function SearchPage() {
 
   const LIMIT = 48;
 
+  // Clave estable: `useSearchParams` puede devolver un objeto nuevo por render, y
+  // con él en las dependencias la búsqueda se dispararía en bucle (el mismo bug
+  // que tenía la página de adopciones).
+  const searchParamsKey = searchParams.toString();
+
   const filters = useMemo((): SearchFilters => {
     return {
       query: searchParams.get('q') || '',
@@ -60,7 +65,8 @@ export function SearchPage() {
       since: searchParams.get('since') || '',
       until: searchParams.get('until') || '',
     };
-  }, [searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParamsKey]);
 
   const municipalities = useMemo(() => filters.province ? CUBA[filters.province as keyof typeof CUBA] ?? [] : [], [filters.province]);
 
