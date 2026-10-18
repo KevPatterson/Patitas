@@ -1,5 +1,6 @@
 import { supabase } from './client';
 import type { User } from '@supabase/supabase-js';
+import { blobToBase64, compressAvatar } from '../utils/image-compression';
 
 /**
  * Evento global que se dispara cuando el avatar del usuario cambia
@@ -206,63 +207,74 @@ export async function updateProfile(userId: string, updates: {
   return data;
 }
 
+/**
+ * Sube el avatar del usuario.
+ *
+ * Desde la Fase 3 el cliente ya no escribe en Storage (migración 0015): la imagen
+ * se comprime en el navegador, se envía a `/api/uploads?action=avatar`, donde se
+ * quita el EXIF con sharp, se rechaza si lleva GPS y se guarda con un nombre uuid
+ * generado en servidor. El servidor actualiza también `profiles.avatar_url`.
+ */
 export async function uploadAvatar(userId: string, file: File) {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${userId}/avatar.${fileExt}`;
+  const compression = await compressAvatar(file, { fileIndex: 1, totalFiles: 1 });
+  const dataBase64 = await blobToBase64(compression.blob);
 
-  // Eliminar avatar anterior si existe
-  const { data: existingFiles } = await supabase.storage
-    .from('avatars')
-    .list(userId);
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
 
-  if (existingFiles && existingFiles.length > 0) {
-    await supabase.storage
-      .from('avatars')
-      .remove(existingFiles.map(f => `${userId}/${f.name}`));
+  if (!token) {
+    throw new Error('Necesitas iniciar sesión para cambiar tu foto de perfil');
   }
 
-  // Subir nuevo avatar
-  const { error: uploadError } = await supabase.storage
-    .from('avatars')
-    .upload(fileName, file, {
-      cacheControl: '3600',
-      upsert: true,
-    });
+  const response = await fetch('/api/uploads?action=avatar', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ dataBase64 }),
+  });
 
-  if (uploadError) {
-    throw uploadError;
+  const payload = (await response.json().catch(() => ({}))) as {
+    avatarUrl?: string;
+    error?: string;
+  };
+
+  if (!response.ok || !payload.avatarUrl) {
+    if (response.status === 413) {
+      throw new Error('La foto es demasiado grande para enviarla');
+    }
+    throw new Error(payload.error ?? 'No se pudo subir la foto de perfil');
   }
 
-  // Obtener URL pública
-  const { data: urlData } = supabase.storage
-    .from('avatars')
-    .getPublicUrl(fileName);
-
-  const avatarUrl = urlData.publicUrl;
-
-  // Actualizar profile con la nueva URL
-  const { error: updateError } = await supabase
-    .from('profiles')
-    .update({ avatar_url: avatarUrl })
-    .eq('id', userId);
-
-  if (updateError) {
-    throw updateError;
-  }
-
-  return avatarUrl;
+  return payload.avatarUrl;
 }
 
+/**
+ * Elimina el avatar personalizado y vuelve a la foto de Google/OAuth si existe.
+ *
+ * El borrado del objeto pasa por la API (`?action=delete-image`), que comprueba
+ * que la carpeta del path sea la del propio usuario.
+ */
 export async function deleteAvatar(userId: string): Promise<string | null> {
-  // Eliminar archivos del storage
-  const { data: existingFiles } = await supabase.storage
-    .from('avatars')
-    .list(userId);
+  const { data: existingFiles } = await supabase.storage.from('avatars').list(userId);
 
   if (existingFiles && existingFiles.length > 0) {
-    await supabase.storage
-      .from('avatars')
-      .remove(existingFiles.map(f => `${userId}/${f.name}`));
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+
+    if (token) {
+      for (const file of existingFiles) {
+        await fetch('/api/uploads?action=delete-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ storagePath: `${userId}/${file.name}`, bucket: 'avatars' }),
+        });
+      }
+    }
   }
 
   // Al eliminar la foto personalizada, volvemos a la foto de Google/OAuth

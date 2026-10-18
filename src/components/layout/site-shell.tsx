@@ -169,7 +169,7 @@ export function SiteShell({ children }: SiteShellProps) {
               user ? (
                 <>
                   {/* Desktop */}
-                  <div className="hidden gap-1 lg:flex">
+                  <div className="hidden items-center gap-1 lg:flex">
                     <Link
                       to={profileHref}
                       className="inline-flex items-center gap-2 rounded-full border-2 border-[#231942] bg-white px-3.5 py-2 text-sm font-semibold text-[#231942] transition-all duration-base hover:bg-[#FFE3CC] active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
@@ -200,7 +200,7 @@ export function SiteShell({ children }: SiteShellProps) {
                   </div>
 
                   {/* Móvil - Solo Perfil y Logout */}
-                  <div className="flex gap-1 lg:hidden">
+                  <div className="flex items-center gap-1 lg:hidden">
                     <Link
                       to={profileHref}
                       className="flex items-center justify-center rounded-full border-2 border-[#231942] bg-white p-2 transition-all duration-base hover:bg-[#FFE3CC] active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"

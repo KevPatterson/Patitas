@@ -198,6 +198,19 @@ select throws_ok(
   'ubicación: un usuario no puede leer el secreto del difuminado'
 );
 
+-- La función de difuminado se revocó a `authenticated` en la 0013 (solo la usan
+-- los triggers SECURITY DEFINER), así que aquí se comprueba el permiso…
+select throws_ok(
+  $$select fuzzed_lat from public.fuzz_coordinates_deterministic(
+      '44444444-dddd-4ddd-8ddd-444444444444', 23.1365, -82.3855)$$,
+  '42501',
+  null,
+  'ubicación: un usuario no puede invocar el difuminado directamente'
+);
+
+-- …y la propiedad de determinismo se comprueba como rol con permiso (postgres).
+reset role;
+
 select is(
   (select fuzzed_lat from public.fuzz_coordinates_deterministic(
      '44444444-dddd-4ddd-8ddd-444444444444', 23.1365, -82.3855)),
@@ -206,8 +219,11 @@ select is(
   'ubicación: repetir el guardado no genera una muestra nueva (no promediable)'
 );
 
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"22222222-bbbb-4bbb-8bbb-222222222222","role":"authenticated"}';
+
 -- ════════════════════════════════════════════════════════════════════════════
--- 5. Datos de contacto (DB-06 cerrado del todo en 0013)
+-- 5. Datos de contacto (DB-06 cerrado del todo en 0014)
 -- ════════════════════════════════════════════════════════════════════════════
 
 select throws_ok(

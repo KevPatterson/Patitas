@@ -558,13 +558,13 @@ crearse a mano. En el proyecto de producción:
    permite censurar cualquier publicación de forma anónima. **Prioridad 1 de la
    Fase 1.**
 4. **Los datos de contacto son descargables en masa** (DB-06). Requiere migración
-   nueva (0012+), no se puede arreglar desde `/api`.
+   nueva (0013+), no se puede arreglar desde `/api`.
 5. **Dos migraciones comparten el número `0011`**
-   (`0011_external_sources.sql` y `0011_fix_resolve_policy.sql`). `supabase db
+   (`0011_external_sources.sql` y `0012_fix_resolve_policy.sql`). `supabase db
    reset` las aplica por orden alfabético, lo cual es determinista pero frágil.
    **No se renombran** (regla 3: no tocar migraciones 0001–0010; renombrar una
    0011 ya aplicada rompería el historial de esquema). Las nuevas migraciones
-   empiezan en **0012**.
+   empiezan en **0013**.
 6. **`api/` no se ejecuta en CI**: el type-check es estático. No hay tests de
    endpoints. La Fase 7 añade Playwright.
 
@@ -598,7 +598,7 @@ Fase 0.
 | DB-03 sin `REVOKE EXECUTE` | 🟠 Media | `EXECUTE` para PUBLIC | `REVOKE ALL ... FROM public` + `GRANT` explícito |
 | API-10 service role en `src/` | — | No existía | **Con test**: `src/lib/__tests__/secrets.test.ts` falla si reaparece |
 | AI-01 proveedor IA sin dependencia | 🟠 Media | `TESSERACT` por defecto, imposible | `providerAvailable()` → 503 accionable; `MOCK` por defecto; `provider_is_real` en las respuestas |
-| DB-12 sin tests pgTAP | 🔴 Alta | 0 pruebas | `supabase/tests/0012_db_authority.test.sql` |
+| DB-12 sin tests pgTAP | 🔴 Alta | 0 pruebas | `supabase/tests/0013_db_authority.test.sql` |
 
 ### Pendiente para fases siguientes
 
@@ -621,10 +621,10 @@ un anuncio pueda contactar al dueño, y no hay forma de distinguir "contactar" d
 ## 8. Estado tras la Fase 2 (resto de la autoridad en la BD)
 
 La Fase 1 adelantó buena parte de la Fase 2 (rate limiting en BD, difuminado
-determinista, políticas RLS, `pg_temp`, `REVOKE`). La migración **0013** cierra lo
+determinista, políticas RLS, `pg_temp`, `REVOKE`). La migración **0014** cierra lo
 que faltaba.
 
-### Corregido en 0013
+### Corregido en 0014
 
 | Hallazgo | Sev. | Antes | Cómo se corrigió |
 |----------|------|-------|------------------|
@@ -633,7 +633,7 @@ que faltaba.
 | DB-11 listado de Storage | 🟠 Media | `anon` podía listar todos los objetos de `pet-images` y `avatars` | Se elimina la política pública de `pet-images` (las URLs públicas no pasan por RLS, las imágenes siguen viéndose) y `avatars` pasa a listarse solo en la carpeta propia |
 | DB-07 `microchip_private` | 🟠 Media | Protegido solo por RLS de fila | `REVOKE SELECT (microchip_private) FROM anon, authenticated` |
 | MIME del bucket | 🟠 Media | `pet-images` aceptaba `image/gif` | Se quita GIF: solo JPEG/PNG/WebP, coherente con la validación por magic bytes |
-| 2.3 `search_path` | 🟡 Baja | Solo las funciones de la 0012 lo fijaban | `ALTER FUNCTION ... SET search_path = public, pg_temp` en **todas** las funciones de `public`, sin redefinir cuerpos |
+| 2.3 `search_path` | 🟡 Baja | Solo las funciones de la 0013 lo fijaban | `ALTER FUNCTION ... SET search_path = public, pg_temp` en **todas** las funciones de `public`, sin redefinir cuerpos |
 | 2.3 funciones de búsqueda | 🟡 Baja | `EXECUTE` para PUBLIC | `REVOKE ... FROM public, anon` + `GRANT` explícito a `authenticated`, `service_role` |
 
 **Verificado, no asumido**: `search_publications`, `search_similar_*` y
@@ -650,8 +650,40 @@ inútil.
 de una publicación para editar fallaba. Se eliminó la columna del `select` y del
 tipo.
 
-### Cambio de contrato que afecta al frontend
+### Errores de SQL detectados al aplicar las migraciones
 
+Las migraciones se validan estáticamente, pero dos fallos solo aparecieron al
+ejecutarlas en Supabase. Ambos están corregidos y **cubiertos por el validador**
+para que no vuelvan a pasar:
+
+| Error | Causa | Corrección |
+|-------|-------|------------|
+| `42601: syntax error at or near "select"` | `create trigger … after select`: PostgreSQL **no** tiene triggers sobre SELECT | Eliminado el trigger y la función asociada; la cuota de contacto se aplica dentro de `reveal_publication_contact()` (0014) |
+| `22004: null values cannot be formatted as an SQL identifier` | Un bloque `DO` recorría un array bidimensional `cfg text[][]` y hacía `format('%I', r[6])`; el 6.º elemento llegó `NULL` | Sustituido por **5 sentencias `create trigger` explícitas**, sin arrays ni bucles dinámicos. El autor de la fila se resuelve con `to_jsonb(new) ->> columna`, sin SQL dinámico |
+
+Además, al revisarlo se encontró un **fallo silencioso**: la 0014 revocaba
+privilegios con firmas inventadas (`search_publications` con 9 argumentos cuando
+tiene 11; `search_similar_publications_by_text(text, …)` cuando el primero es
+`vector`). El `exception when undefined_function` las omitía sin avisar, así que
+el `REVOKE` **nunca se aplicaba**. Ahora las firmas son exactas, el aviso es un
+`WARNING` visible y el validador compara cada `GRANT`/`REVOKE` contra las firmas
+declaradas en todo el repositorio.
+
+Reglas añadidas a `scripts/validate-sql.mjs`:
+
+1. Evento de cada `create trigger` contra la allowlist `INSERT/UPDATE/DELETE/TRUNCATE`.
+2. `TRUNCATE` + `FOR EACH ROW` (combinación rechazada por PostgreSQL).
+3. Arrays bidimensionales (`array[[…]]`), que se desalinean en silencio.
+4. `GRANT`/`REVOKE` sin firma sobre funciones con sobrecarga.
+5. `GRANT`/`REVOKE` con firma que no casa con ninguna declarada (número de
+   argumentos y tipo del primero).
+6. Sintaxis de otros motores (`auto_increment`, `unsigned`, `ENGINE`, `ifnull`,
+   `limit N,M`).
+
+Cada regla tiene su test con un fixture roto (20 tests en esa suite), así que el
+validador no puede degradarse sin que la CI lo note.
+
+### Cambio de contrato que afecta al frontend
 | Antes | Ahora |
 |-------|-------|
 | `getPublicationBySlug()` devolvía `contact_phone`/`contact_whatsapp`/`contact_mode` | No los devuelve (no se mostraban en la UI) |
@@ -660,7 +692,7 @@ tipo.
 
 ### Pruebas añadidas
 
-- `supabase/tests/0013_rls_idor.test.sql`: simula `authenticated` con el JWT de cada
+- `supabase/tests/0014_rls_idor.test.sql`: simula `authenticated` con el JWT de cada
   usuario y comprueba, **sin pasar por /api**, que no se puede leer ni tocar lo de
   otro, escalar el rol, leer notificaciones ajenas, insertar en nombre de otro,
   saltarse la cuota de contacto, editar ubicaciones ajenas ni listar Storage. Y que
@@ -675,3 +707,66 @@ tipo.
 | AI-03 auto-publicación guiada por salida del LLM | 8 | El HMAC ya cubre el contenido; falta cola de moderación obligatoria |
 | FE-* frontend y despliegue (CSP, JSON-LD, callback, dominio) | 4 | Sin verificar |
 | Verificación de dueño / antiestafa | 8 | Producto, no seguridad de plataforma |
+
+---
+
+## 9. Fase 3 — Uploads y privacidad de imágenes
+
+### El problema de fondo
+
+El cliente subía las imágenes **directamente a Supabase Storage** con la anon key.
+En Storage no hay forma de inspeccionar los bytes de un objeto, así que ninguna
+validación de servidor podía aplicarse: el MIME lo declaraba el cliente y el EXIF
+viajaba intacto. Reencodear en el navegador no es una garantía (el navegador es
+del usuario).
+
+### La solución
+
+La migración **0015** retira las políticas de `INSERT`/`UPDATE`/`DELETE` sobre
+`storage.objects` para `authenticated`. Con RLS activo, sin política no hay
+escritura: **la única vía es `/api/uploads`**, que usa el service role y ejecuta
+siempre el mismo saneado.
+
+| Tarea | Estado | Detalle |
+|-------|--------|---------|
+| 3.1 Quitar EXIF (incluido GPS) | **Hecha** | Cliente: reencode con `canvas` → WebP (elimina metadatos). Servidor: `sharp` reencodea otra vez y **rechaza** si quedaba GPS |
+| 3.2 Magic bytes, solo JPEG/PNG/WebP, dimensiones máximas | **Hecha** | `detectImage()` rechaza SVG, GIF y ejecutables renombrados; salida limitada a 1600 px de lado |
+| 3.3 Compresión a 1600 px / ≤1 MB + progreso + reintento | **Hecha** | `compressImage()` (calidades 0.82→0.42), barra de progreso en el wizard, 2 reintentos con espera creciente |
+| 3.4 Nombre generado en servidor | **Hecha** | `<publicationId>/<uuid>.webp`; además un `CHECK` **NOT VALID** en `publication_images` que solo admite ese patrón en filas nuevas |
+| 3.5 Avatares con reglas propias | **Hecha** | Mismo pipeline, 512 px de lado y 300 KB de objetivo |
+
+### Detalles que importan
+
+- **Se rechaza, no se limpia.** Si la imagen trae GPS, la API responde 400 con un
+  mensaje que pide volver a guardarla sin ubicación. Limpiar en silencio ocultaría
+  al usuario que su foto llevaba sus coordenadas.
+- **Defensa en profundidad.** Después de reencodear se vuelve a comprobar el
+  resultado: si apareciera EXIF, el archivo no se sube.
+- **Sin objetos huérfanos.** Si el `INSERT` en `publication_images` falla después
+  de subir, el objeto se borra.
+- **El borrado también pasa por la API**, que comprueba que el primer segmento del
+  path sea una publicación del usuario (o su propio uid en avatares). Antes el
+  cliente borraba directamente con `storage.remove()`.
+- **`sharp` pasó de `devDependencies` a `dependencies`**: es código de producción.
+
+### Bug de despliegue encontrado y corregido
+
+`.vercelignore` excluía `api/ai/*.ts` con el comentario *"importados dinámicamente
+por api/ai.ts"*. Eso rompía justo lo que decía proteger: si el módulo no se
+despliega, el `await import()` del router falla y **todos los endpoints de IA
+respondían 500 en producción**. Además Vercel no puede incluir en el bundle un
+archivo ignorado. Se eliminaron esas exclusiones; ahora solo se ignora
+documentación y artefactos.
+
+### Pruebas
+
+`api/__tests__/image-process.test.ts` (12 tests, con `sharp` real):
+
+- una imagen con GPS en EXIF se **rechaza** con código `GPS_METADATA`;
+- una imagen con EXIF pero sin GPS se acepta y **la salida no contiene EXIF**
+  (verificado con `sharp.metadata()` y con el buscador de bloques APP1);
+- SVG, `.php` renombrado y GIF se rechazan;
+- una imagen de 3000×1200 sale con el lado largo ≤1600 px y ≤1 MB;
+- una imagen pequeña no se amplía;
+- los avatares salen ≤512 px y ≤300 KB;
+- PNG y WebP de entrada se aceptan y salen como WebP.

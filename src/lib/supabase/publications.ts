@@ -1,5 +1,4 @@
 import { supabase } from './client';
-import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES } from '../constants/labels';
 type CreateLocationInput = {
   province: string;
   municipality: string;
@@ -135,77 +134,11 @@ export async function createPublication(input: CreatePublicationInput) {
 
   return data;
 }
-
-export async function uploadPublicationImages(publicationId: string, files: File[]) {
-  if (files.length > MAX_IMAGES) {
-    throw new Error(`Máximo ${MAX_IMAGES} imágenes por publicación.`);
-  }
-  const uploads = await Promise.all(
-    files.map(async (file, index) => {
-      if (!ALLOWED_IMAGE_TYPES.includes(file.type as typeof ALLOWED_IMAGE_TYPES[number])) {
-        throw new Error(`Formato no permitido: ${file.type}. Usa JPG, PNG o WebP.`);
-      }
-
-      if (file.size > MAX_IMAGE_BYTES) {
-        throw new Error('Cada imagen debe pesar menos de 8 MB.');
-      }
-
-      const extension = file.name.split('.').pop() || 'jpg';
-      const fileName = `${publicationId}/${Date.now()}-${index}.${extension}`;
-      const { data, error } = await supabase.storage.from('pet-images').upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      return {
-        storagePath: data.path,
-        altText: file.name,
-        sortOrder: index,
-        isCover: index === 0,
-      };
-    })
-  );
-
-  const { error } = await supabase.from('publication_images').insert(
-    uploads.map((upload) => ({
-      publication_id: publicationId,
-      storage_path: upload.storagePath,
-      alt_text: upload.altText,
-      sort_order: upload.sortOrder,
-      is_cover: upload.isCover,
-    }))
-  );
-
-  if (error) {
-    throw error;
-  }
-}
-export async function deletePublicationImages(publicationId: string, storagePaths: string[]) {
-  if (storagePaths.length === 0) return;
-  
-  // Eliminar de storage
-  const { error: storageError } = await supabase.storage
-    .from('pet-images')
-    .remove(storagePaths);
-  
-  if (storageError) {
-    console.error('Error deleting images from storage:', storageError);
-    // No lanzar error, continuar con eliminación de BD
-  }
-  
-  // Eliminar de base de datos
-  const { error: dbError } = await supabase
-    .from('publication_images')
-    .delete()
-    .eq('publication_id', publicationId)
-    .in('storage_path', storagePaths);
-  
-  if (dbError) {
-    throw dbError;
-  }
-}
+// La subida y el borrado de imágenes viven en su propio módulo porque ahora pasan
+// por /api/uploads (el cliente ya no escribe en Storage, ver migración 0015).
+export {
+  uploadPublicationImages,
+  deletePublicationImages,
+  type UploadProgress,
+  type UploadedImage,
+} from './publication-images';

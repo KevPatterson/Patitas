@@ -28,11 +28,12 @@
 --   drop function if exists public.enforce_rate_limit();
 --   drop function if exists public.tg_rate_limit();
 --   drop table if exists public.rate_limit_events;
---   drop function if exists public.rate_limit_hit(uuid, text);
+--   drop function if exists public.rate_limit_hit(uuid, text, int, int);
 --   drop function if exists public.fuzz_location_on_insert();
 --   drop function if exists public.fuzz_location_on_update();
 --   drop function if exists public.fuzz_coordinates_deterministic(uuid, numeric, numeric);
---   drop function if exists public.fuzz_coordinates(numeric, numeric);
+--   -- fuzz_coordinates(numeric, numeric) la elimina esta migración; para
+--   -- recuperarla hay que reaplicar 0007_location_privacy.sql.
 --   drop table if exists public.contact_reveals;
 --   drop function if exists public.app_secret();
 --   drop policy if exists "system can insert notifications" on public.notifications;
@@ -370,9 +371,11 @@ declare
   v_json         jsonb;
   v_owner_text   text;
 begin
-  -- Autor de la fila: se obtiene con SQL dinámico porque el nombre de la
-  -- columna cambia según la tabla (owner_profile_id, author_profile_id, …).
-  execute format('select ($1).%I::text', v_owner_column) into v_owner_text using new;
+  -- Autor de la fila. Se obtiene del propio NEW serializado a jsonb, así que no
+  -- hace falta SQL dinámico ni `format('%I', …)`: el nombre de la columna varía
+  -- según la tabla (owner_profile_id, author_profile_id, …) pero aquí es solo una
+  -- clave de un objeto jsonb, nunca un identificador SQL.
+  v_owner_text := to_jsonb(new) ->> v_owner_column;
 
   if v_owner_text is null then
     return new;  -- sin autor identificable: no hay a quién limitar
@@ -415,36 +418,61 @@ begin
 end;
 $$;
 
-revoke all on function public.tg_rate_limit() from public, anon, authenticated;
+-- NOTA deliberada: no se revoca EXECUTE de tg_rate_limit() aunque sea una función
+-- SECURITY DEFINER. Es una función de trigger: PostgreSQL no vuelve a comprobar el
+-- privilegio EXECUTE cuando el trigger se dispara, pero revocarlo no aporta nada
+-- (invocarla por RPC falla siempre con "can only be called as a trigger") y
+-- cualquier duda al respecto se pagaría con inserts rotos. Se prioriza no romper
+-- la escritura.
 
--- Cuotas: (acción, columna de autor, unidad, límite normal, límite cuenta nueva)
-do $do$
-declare
-  cfg text[][] := array[
-    ['comment',          'author_profile_id',    'hour', '10', '3', 'comments'],
-    ['publication',      'owner_profile_id',     'day',  '5',  '2', 'publications'],
-    ['sighting',         'reporter_profile_id',  'hour', '10', '3', 'sightings'],
-    ['adoption_request', 'requester_profile_id', 'day',  '10', '3', 'adoption_requests'],
-    ['report',           'reporter_id',          'hour', '3',  '1', 'reports']
-  ];
-  i int;
-  r text[];
-  trig_name text;
-begin
-  for i in 1 .. array_length(cfg, 1) loop
-    r := cfg[i];
-    trig_name := r[6] || '_rate_limit';
+-- ── Triggers de cuota, uno por tabla ────────────────────────────────────────
+--
+-- A propósito NO se genera con un bucle sobre un array bidimensional. Una
+-- versión anterior lo hacía (`cfg text[][]` + `r := cfg[i]` + `format('%I', r[6])`)
+-- y falló al aplicar con:
+--
+--   ERROR 22004: null values cannot be formatted as an SQL identifier
+--
+-- porque el 6.º elemento del slice llegó NULL y `format('%I', NULL)` no admite
+-- nulos. Con sentencias explícitas el alineamiento de argumentos se ve a simple
+-- vista y no depende de la posición de un subíndice.
+--
+-- Orden de TG_ARGV: (acción, columna de autor, unidad, límite, límite cuenta nueva)
 
-    execute format('drop trigger if exists %I on public.%I', trig_name, r[6]);
-    execute format(
-      'create trigger %I before insert on public.%I for each row execute function public.tg_rate_limit(%L, %L, %L, %L, %L)',
-      trig_name, r[6], r[1], r[2], r[3], r[4], r[5]
-    );
+-- comments: 10/hora (3/hora si la cuenta tiene menos de 24 h)
+drop trigger if exists comments_rate_limit on public.comments;
+create trigger comments_rate_limit
+  before insert on public.comments
+  for each row
+  execute function public.tg_rate_limit('comment', 'author_profile_id', 'hour', '10', '3');
 
-    raise notice 'rate limit aplicado: %.% -> %/%', r[6], trig_name, r[4], r[3];
-  end loop;
-end
-$do$;
+-- publications: 5/día (2/día si la cuenta tiene menos de 24 h)
+drop trigger if exists publications_rate_limit on public.publications;
+create trigger publications_rate_limit
+  before insert on public.publications
+  for each row
+  execute function public.tg_rate_limit('publication', 'owner_profile_id', 'day', '5', '2');
+
+-- sightings: 10/hora (3/hora si la cuenta tiene menos de 24 h)
+drop trigger if exists sightings_rate_limit on public.sightings;
+create trigger sightings_rate_limit
+  before insert on public.sightings
+  for each row
+  execute function public.tg_rate_limit('sighting', 'reporter_profile_id', 'hour', '10', '3');
+
+-- adoption_requests: 10/día (3/día si la cuenta tiene menos de 24 h)
+drop trigger if exists adoption_requests_rate_limit on public.adoption_requests;
+create trigger adoption_requests_rate_limit
+  before insert on public.adoption_requests
+  for each row
+  execute function public.tg_rate_limit('adoption_request', 'requester_profile_id', 'day', '10', '3');
+
+-- reports: 3/hora (1/hora si la cuenta tiene menos de 24 h)
+drop trigger if exists reports_rate_limit on public.reports;
+create trigger reports_rate_limit
+  before insert on public.reports
+  for each row
+  execute function public.tg_rate_limit('report', 'reporter_id', 'hour', '3', '1');
 
 comment on function public.tg_rate_limit() is
   'Rate limit por auth.uid() en la BD. Lanza SQLSTATE 53400 con detalle RATE_LIMIT_EXCEEDED.';
@@ -485,92 +513,27 @@ create policy "service role manages contact reveals"
   using (true)
   with check (true);
 
--- Las inserciones las hace el trigger (SECURITY DEFINER), no el cliente.
+-- Las inserciones las hace la función RPC (SECURITY DEFINER), no el cliente.
 revoke insert, update, delete on public.contact_reveals from anon, authenticated;
 
 comment on table public.contact_reveals is
   'Auditoría de accesos a teléfono/WhatsApp/email de una publicación, con cuota diaria.';
 
-/*
- * Trigger AFTER SELECT: registra la revelación y corta si se supera la cuota.
- *
- * Es el único punto donde Postgres permite condicionar una LECTURA según una
- * cuota por usuario. La alternativa (RLS) no puede contar filas de otra tabla
- * sin coste cuadrático por fila.
- *
- * Se saltan los accesos legítimos que no son "revelación":
- *   - el dueño de la publicación (lo ve en su propio formulario de edición)
- *   - moderadores y administradores
- */
-create or replace function public.tg_contact_reveal_quota()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  v_actor uuid := auth.uid();
-  v_role  public.user_role;
-  v_owner uuid;
-  v_limit int := 30;          -- revelaciones por usuario cada 24 h
-  v_recent int;
-  v_allowed boolean;
-  v_json jsonb;
-begin
-  -- Sin sesión (anon) o sin columnas de contacto: nada que registrar.
-  if v_actor is null then
-    return null;
-  end if;
-
-  if new.contact_phone is null
-     and new.contact_whatsapp is null
-     and new.contact_email is null then
-    return null;
-  end if;
-
-  select role into v_role from public.profiles where id = v_actor;
-  if v_role in ('MODERATOR', 'ADMIN') then
-    return null;
-  end if;
-
-  v_owner := new.owner_profile_id;
-  if v_owner = v_actor then
-    return null;  -- es su propia publicación
-  end if;
-
-  v_allowed := public.rate_limit_hit(v_actor, 'contact_reveal', v_limit, 86400);
-
-  if not v_allowed then
-    v_json := jsonb_build_object(
-      'code', 'CONTACT_REVEAL_LIMIT',
-      'message', 'Has visto demasiados contactos hoy. Vuelve mañana o guarda la publicación en favoritos.',
-      'limit', v_limit,
-      'window', '24 horas'
-    );
-
-    raise exception 'contact reveal quota exceeded'
-      using errcode = '53400',
-            detail = v_json::text,
-            hint = v_json->>'message';
-  end if;
-
-  insert into public.contact_reveals (profile_id, publication_id)
-  values (v_actor, new.id);
-
-  return null;
-end;
-$$;
-
-revoke all on function public.tg_contact_reveal_quota() from public, anon, authenticated;
-
-drop trigger if exists publications_contact_reveal_quota on public.publications;
-create trigger publications_contact_reveal_quota
-  after select on public.publications
-  for each row
-  execute function public.tg_contact_reveal_quota();
-
-comment on function public.tg_contact_reveal_quota() is
-  'Registra y limita (30/24 h) los accesos de terceros a los datos de contacto de una publicación.';
+-- ────────────────────────────────────────────────────────────────────────────
+-- NOTA IMPORTANTE sobre cómo se aplica la cuota
+-- ────────────────────────────────────────────────────────────────────────────
+-- PostgreSQL NO permite triggers sobre SELECT (no existe `AFTER SELECT`; solo
+-- INSERT, UPDATE, DELETE y TRUNCATE). Una versión anterior de esta migración
+-- intentaba hacerlo y fallaba con:
+--
+--   ERROR: 42601: syntax error at or near "select"
+--
+-- La cuota y el registro de revelaciones se aplican en la migración 0013, dentro
+-- de `reveal_publication_contact()`, que además es el único camino para leer las
+-- columnas de contacto a partir de ese momento. Esta migración solo bloquea el
+-- acceso de `anon`; la 0013 bloquea también `authenticated`.
+--
+-- Se dejan aquí las políticas de la tabla de auditoría, que sí son válidas.
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 5. DB-06 · Revocar columnas sensibles a anon
@@ -597,6 +560,9 @@ comment on column public.publications.contact_phone is
 -- 6.1 notifications INSERT: estaba abierta a TODO el mundo (incluido anon),
 -- así que cualquiera podía insertar notificaciones para cualquier profile_id.
 drop policy if exists "system can insert notifications" on public.notifications;
+-- Se hace drop también del nombre NUEVO para que la migración sea reejecutable
+-- (un fallo a mitad deja objetos creados y `create policy` no admite duplicados).
+drop policy if exists "service role can insert notifications" on public.notifications;
 create policy "service role can insert notifications"
   on public.notifications
   for insert
@@ -606,6 +572,7 @@ create policy "service role can insert notifications"
 -- 6.2 external_sources UPDATE: el comentario decía "service role" pero sin TO
 -- aplicaba a anon y authenticated, que podían alterar is_trusted o is_active.
 drop policy if exists "service role can update source tracking" on public.external_sources;
+-- Idempotente: el mismo nombre va precedido de su propio drop.
 create policy "service role can update source tracking"
   on public.external_sources
   for update
@@ -618,6 +585,7 @@ create policy "service role can update source tracking"
 -- El nombre real de la política original es "anyone can create takedown request".
 drop policy if exists "anyone can create takedown request" on public.takedown_requests;
 drop policy if exists "anyone can request takedown" on public.takedown_requests;
+drop policy if exists "service role can insert takedown requests" on public.takedown_requests;
 create policy "service role can insert takedown requests"
   on public.takedown_requests
   for insert
@@ -667,25 +635,10 @@ create policy "pet owner can insert"
 -- 7. DB-03 · Limpieza de privilegios en funciones expuestas
 -- ════════════════════════════════════════════════════════════════════════════
 --
--- Las funciones de búsqueda son SECURITY INVOKER (RLS sigue aplicando), pero no
--- hay razón para dejar EXECUTE a PUBLIC por defecto. Se deja explícito.
-
-do $do$
-declare
-  fn text;
-  fns text[] := array[
-    'public.search_publications',
-    'public.search_similar_publications_by_text',
-    'public.search_similar_images',
-    'public.calculate_structured_match_score'
-  ];
-begin
-  foreach fn in array fns loop
-    if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-               where n.nspname || '.' || p.proname = fn) then
-      execute format('revoke all on function %s from public', fn);
-      execute format('grant execute on function %s to authenticated, service_role', fn);
-    end if;
-  end loop;
-end
-$do$;
+-- Este ajuste vive en la migración 0013, que lo hace con las firmas EXACTAS de
+-- cada función (incluidos los tipos de argumento). Aquí se intentó con el nombre
+-- a secas y un bucle dinámico; se retiró para no duplicar lógica y porque una
+-- firma equivocada se omitía en silencio dejando el REVOKE sin aplicar.
+--
+-- Se deja constancia para que quede claro que el trabajo no se ha perdido: lo
+-- aplica 0013_db_authority_resto.sql (sección 5).

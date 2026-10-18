@@ -415,7 +415,7 @@ export async function getPublicationBySlug(slug: string) {
 /**
  * Publicación completa para el formulario de edición.
  *
- * NO incluye las columnas de contacto ni el microchip: desde la migración 0013 no
+ * NO incluye las columnas de contacto ni el microchip: desde la migración 0014 no
  * tienen permisos de columna para `authenticated`. Los datos de contacto se piden
  * aparte con `getPublicationContact()`, que es el único camino autorizado.
  *

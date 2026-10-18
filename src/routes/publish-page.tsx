@@ -12,6 +12,7 @@ import { PawLoader } from '../components/ui/paw-loader';
 import { ImageDataExtractor } from '../components/ai/image-data-extractor';
 import { FacebookImportWizard } from '../components/import/FacebookImportWizard';
 import { createLocation, createPublication, uploadPublicationImages, createPet, deletePublicationImages } from '../lib/supabase/publications';
+import type { UploadProgress } from '../lib/supabase/publication-images';
 import { updatePublication } from '../lib/supabase/my-publications';
 import { getPublicationById, getPublicationContact } from '../lib/supabase/publication-search';
 import { buildPublicationSlug } from '../lib/utils/slug';
@@ -48,6 +49,9 @@ export function PublishPage() {
   const [step, setStep] = useState(1);
   const [files, setFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
+  // Progreso de compresión y subida de imágenes (Fase 3): en conexiones lentas
+  // el usuario necesita ver que algo está pasando y poder reintentar.
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [existingImages, setExistingImages] = useState<Array<{ storage_path: string; is_cover: boolean }>>([]);
   const [originalExistingImages, setOriginalExistingImages] = useState<Array<{ storage_path: string; is_cover: boolean }>>([]);
   const [editingPublicationId, setEditingPublicationId] = useState<string | null>(null);
@@ -102,7 +106,7 @@ export function PublishPage() {
             setIsEditing(true);
 
             // Los datos de contacto ya no se pueden leer con un SELECT (migración
-            // 0013): se piden a la función autorizada. Para el dueño no consume
+            // 0014): se piden a la función autorizada. Para el dueño no consume
             // cuota ni registra revelación.
             const contact = await getPublicationContact(publication.id);
 
@@ -495,7 +499,10 @@ export function PublishPage() {
 
         // Subir nuevas imágenes si hay
         if (files.length > 0) {
-          await uploadPublicationImages(editingPublicationId, files);
+          await uploadPublicationImages(editingPublicationId, files, {
+            onProgress: setUploadProgress,
+            retries: 2,
+          });
         }
 
         navigate(`/p/${originalSlug ?? ''}`); // El slug no cambia en edición
@@ -567,7 +574,10 @@ export function PublishPage() {
         });
 
         if (files.length > 0) {
-          await uploadPublicationImages(publication.id, files);
+          await uploadPublicationImages(publication.id, files, {
+            onProgress: setUploadProgress,
+            retries: 2,
+          });
         }
 
         setSuccessSlug(slug);
@@ -1015,6 +1025,31 @@ export function PublishPage() {
                   <span className="text-xs font-medium text-lost bg-lost/10 border border-lost/20 rounded-full px-3 py-1 inline-block">
                     Límite de {MAX_IMAGES} imágenes alcanzado
                   </span>
+                )}
+
+                {/* Progreso de subida: las fotos se comprimen en el navegador
+                    (máx. 1600 px y ~1 MB) y se envían a /api/uploads, que quita
+                    el EXIF y rechaza las que traen GPS. */}
+                {uploadProgress && (
+                  <div className="w-full" aria-live="polite">
+                    <div className="mb-1 flex items-center justify-between text-xs font-semibold text-navy/70">
+                      <span>
+                        {uploadProgress.stage === 'done'
+                          ? `Imagen ${uploadProgress.uploadingIndex} de ${uploadProgress.totalFiles} lista`
+                          : `Preparando imagen ${uploadProgress.fileIndex} de ${uploadProgress.totalFiles}`}
+                      </span>
+                      <span>{uploadProgress.percent}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-navy/10">
+                      <div
+                        className="h-full rounded-full bg-turquoise transition-all duration-300"
+                        style={{ width: `${uploadProgress.percent}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-navy/50">
+                      Se quitan los metadatos de la foto (incluida la ubicación GPS).
+                    </p>
+                  </div>
                 )}
               </label>
 

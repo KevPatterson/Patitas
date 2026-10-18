@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- Pruebas pgTAP de la migración 0012 (la BD como autoridad)
+-- Pruebas pgTAP de la migración 0013 (la BD como autoridad)
 -- ════════════════════════════════════════════════════════════════════════════
 --
 -- Objetivo: demostrar que un usuario NORMAL (o un anónimo con la anon key) NO
@@ -248,9 +248,14 @@ select has_table(
   'DB-06: existe la tabla de auditoría de revelaciones de contacto'
 );
 
-select has_trigger(
-  'public', 'publications', 'publications_contact_reveal_quota',
-  'DB-06: existe el trigger que registra y limita las revelaciones'
+-- Regresión: PostgreSQL NO permite triggers sobre SELECT. Una versión anterior de
+-- la 0013 intentaba crear `publications_contact_reveal_quota ... after select` y la
+-- migración fallaba con 42601. La cuota se aplica en la función RPC de la 0014.
+select ok(
+  not exists (
+    select 1 from pg_trigger where tgname = 'publications_contact_reveal_quota'
+  ),
+  'DB-06: no se crea un trigger AFTER SELECT (PostgreSQL no lo soporta); la cuota vive en la RPC'
 );
 
 select policies_are(
