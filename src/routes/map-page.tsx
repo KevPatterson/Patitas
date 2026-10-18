@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { divIcon, type LatLngExpression } from 'leaflet';
-import { MapPin, Filter, X, Layers, PawPrint } from 'lucide-react';
+import { MapPin, Filter, X, Layers, PawPrint, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { StatusBadge } from '../components/ui/status-badge';
 import { searchPublications, type PublicationSummary } from '../lib/supabase/publication-search';
@@ -45,7 +45,16 @@ const MARKER_ICONS: Record<PublicationSummary['type'], ReturnType<typeof divIcon
   return icons as Record<PublicationSummary['type'], ReturnType<typeof divIcon>>;
 })();
 
+const typeEmojis: Record<PublicationSummary['type'], string> = {
+  LOST: '🔴',
+  FOUND: '🟢',
+  ABANDONED: '🟠',
+  ADOPTION: '🟣',
+  SIGHTING: '🔵',
+};
+
 // Componente para recentrar el mapa
+
 function MapRecenter({ center }: { center: LatLngExpression }) {
   const map = useMap();
   useEffect(() => {
@@ -333,47 +342,80 @@ export function MapPage() {
                     position={[pub.approximateLat, pub.approximateLng]}
                     icon={MARKER_ICONS[pub.type]}
                   >
-                    <Popup maxWidth={280} className="custom-popup">
-                      <div className="flex flex-col h-full">
-                        <div className="p-3 space-y-2 overflow-y-auto">
-                          <div className="flex items-center justify-between">
-                            <StatusBadge status={pub.type} />
+                    <Popup maxWidth={380} className="custom-popup leaflet-popup-custom">
+                      <div className="flex flex-col w-full">
+                        {/* Header con tipo y status */}
+                        <div className="flex items-center justify-between border-b border-navy/10 px-4 py-3 bg-navy/5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl" aria-hidden="true">
+                              {typeEmojis[pub.type]}
+                            </span>
+                            <span className="font-display text-sm font-bold text-navy capitalize">{pub.type.toLowerCase()}</span>
                           </div>
-                          <h3 className="font-display text-lg font-bold text-navy line-clamp-1">
+                          <StatusBadge status={pub.status} />
+                        </div>
+
+                        {/* Contenido con scroll */}
+                        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 max-h-[400px] pb-4" style={{ scrollbarGutter: 'stable' }}>
+                          <h3 className="font-display text-base font-bold text-navy line-clamp-2">
                             {pub.title}
                           </h3>
+
                           {pub.coverImageUrl && (
                             <img
                               src={pub.coverImageUrl}
                               alt={pub.title}
-                              className="w-full h-40 object-cover rounded-xl"
+                              className="w-full h-44 object-cover rounded-xl shadow-sm"
+                              loading="lazy"
                             />
                           )}
-                          <p className="text-sm text-navy/70 line-clamp-3">
+
+                          <p className="text-sm text-navy/70 leading-relaxed whitespace-pre-line">
                             {pub.description}
                           </p>
-                          <div className="flex flex-wrap gap-1.5 text-xs">
+
+                          <div className="flex flex-wrap gap-1.5">
                             {pub.species && (
-                              <span className="rounded-full bg-turquoise/10 border border-turquoise/20 px-2 py-1 font-medium text-turquoise-dark">
-                                {pub.species}
+                              <span className="rounded-full bg-turquoise/10 border border-turquoise/20 px-2.5 py-1 font-medium text-turquoise-dark text-xs">
+                                {SPECIES_LABELS[pub.species as keyof typeof SPECIES_LABELS] || pub.species}
                               </span>
                             )}
                             {pub.color && (
-                              <span className="rounded-full bg-purple/10 border border-purple/20 px-2 py-1 font-medium text-purple-dark">
+                              <span className="rounded-full bg-purple/10 border border-purple/20 px-2.5 py-1 font-medium text-purple-dark text-xs">
                                 {pub.color}
                               </span>
                             )}
+                            {pub.breed && (
+                              <span className="rounded-full bg-orange/10 border border-orange/20 px-2.5 py-1 font-medium text-orange-dark text-xs">
+                                {pub.breed}
+                              </span>
+                            )}
+                            {pub.sex && (
+                              <span className="rounded-full bg-emerald/10 border border-emerald/20 px-2.5 py-1 font-medium text-emerald-dark text-xs">
+                                {pub.sex}
+                              </span>
+                            )}
                           </div>
-                          <p className="text-xs font-medium text-navy/60 flex items-center gap-1">
-                            <span className="text-orange">📍</span>
-                            <span>{[pub.zone, pub.municipality, pub.province].filter(Boolean).join(', ')}</span>
+
+                          <div className="flex items-center gap-2 text-xs text-navy/60 pt-1 border-t border-navy/5">
+                            <MapPin className="size-3.5 text-orange" aria-hidden="true" />
+                            <span className="truncate">{[pub.zone, pub.municipality, pub.province].filter(Boolean).join(', ')}</span>
+                          </div>
+
+                          <p className="text-xs text-navy/50 flex items-center gap-1">
+                            <Calendar className="size-3.5" aria-hidden="true" />
+                            <span>Publicado {new Date(pub.publishedAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                           </p>
                         </div>
-                        <Link to={`/p/${pub.slug}`}>
-                          <Button variant="primary" className="w-full text-sm py-3 rounded-none border-t border-navy/10 hover:bg-orange/90 transition-colors">
-                            Ver detalles →
-                          </Button>
-                        </Link>
+
+                        {/* Footer con botón de acción */}
+                        <div className="border-t border-navy/10 px-4 py-3 bg-navy/5">
+                          <Link to={`/p/${pub.slug}`}>
+                            <Button variant="primary" className="w-full text-sm py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
+                              Ver detalles →
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
                     </Popup>
                   </Marker>
