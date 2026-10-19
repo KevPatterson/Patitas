@@ -161,7 +161,7 @@ export function SiteShell({ children }: SiteShellProps) {
                   <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" fill="#3D1D0B" mask="url(#paw-mask-navbar)"/>
                 </svg>
               </div>
-              <span className="font-display text-[1.65rem] font-extrabold leading-none tracking-[-0.02em]">
+              <span className="hidden sm:inline font-display text-[1.65rem] font-extrabold leading-none tracking-[-0.02em] truncate max-w-[160px]">
                 patitas
               </span>
             </Link>
