@@ -234,8 +234,8 @@ export function MapPreview({ nearbyCount = 5 }: { nearbyCount?: number }) {
       <div
         className="map-card-anchor"
         style={{
-          left: `${((PROTAGONIST.x - 50) / 400) * 100}%`,
-          top: `${((PROTAGONIST.y - 60) / 250) * 100}%`,
+          left: `${((PROTAGONIST.x - 40) / 400) * 100}%`,
+          top: `${((PROTAGONIST.y - 45) / 250) * 100}%`,
         }}
       >
         <div className="map-floating-card map-card--lost" style={{ animationDelay: `${PROTAGONIST.delay}s` }}>
