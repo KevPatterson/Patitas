@@ -13,7 +13,7 @@ const CASE_COLORS: Record<CaseType, { color: string; fillColor: string }> = {
 
 /** viewBox 400x250. Radar centrado en Vedado. */
 const RADAR_CX = 200;
-const RADAR_CY = 120;
+const RADAR_CY = 150;
 const RADAR_R = 100;
 const SWEEP_SECONDS = 6; // una vuelta del barrido
 const WEDGE_DEG = 50; // ancho de la cuña
@@ -211,7 +211,7 @@ export function MapPreview({ nearbyCount = 5 }: { nearbyCount?: number }) {
           <circle r="12" className="map-radar-halo" />
           <circle r="5" className="map-radar-center" />
           <text x="14" y="4" className="map-radar-label">TÚ</text>
-          <text x="52" y="-52" className="map-distance-label">300 m</text>
+          <text x="52" y="-52" className="map-distance-label">10 km</text>
         </g>
 
         {/* ===== CAPA 3: CASOS ===== */}
