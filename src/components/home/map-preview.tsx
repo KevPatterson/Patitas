@@ -125,7 +125,7 @@ function Confetti({ x, y, delay }: { x: number; y: number; delay: number }) {
   );
 }
 
-export function MapPreview() {
+export function MapPreview({ nearbyCount = 5 }: { nearbyCount?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(true);
   const [tabVisible, setTabVisible] = useState(true);
@@ -250,7 +250,7 @@ export function MapPreview() {
 
       <div className="map-nearby-chip">
         <span className="map-chip-dot" />
-        <span>5 casos cerca de ti</span>
+        <span>{nearbyCount} caso{nearbyCount !== 1 ? 's' : ''} cerca de ti</span>
       </div>
     </div>
   );

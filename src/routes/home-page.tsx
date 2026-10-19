@@ -17,6 +17,7 @@ export function HomePage() {
   const [recentCases, setRecentCases] = useState<PublicationSummary[]>([]);
   const [adoptionCases, setAdoptionCases] = useState<PublicationSummary[]>([]);
   const [stats, setStats] = useState({ LOST: 0, FOUND: 0, ADOPTION: 0, ADOPTED: 0, total: 0 });
+  const [nearbyCount, setNearbyCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(() => {
     // Cargar ubicación guardada de localStorage al inicio
@@ -229,7 +230,6 @@ export function HomePage() {
       active = false;
     };
   }, []);
-
   // Efecto separado para reordenar casos cuando cambia la ubicación
   useEffect(() => {
     console.log('🔄 Reordenamiento:', { 
@@ -251,7 +251,7 @@ export function HomePage() {
         hasCoords: !!(allCases[0]?.approximateLat && allCases[0]?.approximateLng)
       });
       
-      sortedRecent = allCases
+      const withDistance = allCases
         .map((pub: PublicationSummary & { distance?: number }) => {
           // Calcular distancia si la publicación tiene coordenadas
           if (pub.approximateLat && pub.approximateLng) {
@@ -273,6 +273,12 @@ export function HomePage() {
         .sort((a: PublicationSummary & { distance?: number }, b: PublicationSummary & { distance?: number }) => 
           (a.distance || Infinity) - (b.distance || Infinity)
         );
+      
+      // Contar casos dentro de 10km
+      const nearby = withDistance.filter(c => c.distance !== undefined && c.distance <= 10).length;
+      setNearbyCount(nearby);
+      
+      sortedRecent = withDistance;
       console.log('✅ Ordenado. Primeros 3:', sortedRecent.slice(0, 3).map(c => ({ 
         title: c.title.substring(0, 20), 
         distance: c.distance?.toFixed(2),
@@ -280,6 +286,7 @@ export function HomePage() {
       })));
     } else {
       console.log('❌ Sin ubicación');
+      setNearbyCount(0);
     }
     
     setRecentCases(sortedRecent.slice(0, 6));
@@ -590,7 +597,7 @@ export function HomePage() {
                 Abrir mapa →
               </LinkButton>
             </div>
-            <MapPreview />
+            <MapPreview nearbyCount={nearbyCount} />
           </div>
         </section>
       </ScrollReveal>
