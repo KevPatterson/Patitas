@@ -1,18 +1,19 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Clock, X, MessageCircle } from 'lucide-react';
+import { useMap } from 'react-leaflet';
 import type { PublicationSummary } from '../../lib/supabase/publication-search';
 import { POST_TYPE_META, POST_STATUS_META, shouldRenderStatus, isValidPostType } from '../../lib/constants/map-popup';
 
 interface CasePopupProps {
   publication: PublicationSummary;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 const POPUP_WIDTH = 320;
 const IMAGE_HEIGHT = 168;
 const BUTTON_HEIGHT = 44;
 const BUTTON_RADIUS = 14;
-const CLOSE_BTN_SIZE = 44;
+const CLOSE_BTN_SIZE = 32;
 
 /**
  * Formato de fecha relativa en español usando Intl.RelativeTimeFormat.
@@ -57,6 +58,12 @@ function hasContactInfo(_pub: PublicationSummary): boolean {
 }
 
 export function CasePopup({ publication, onClose }: CasePopupProps) {
+  const map = useMap();
+  const closePopup = () => {
+    map.closePopup();
+    onClose?.();
+  };
+
   const typeMeta = isValidPostType(publication.type) ? POST_TYPE_META[publication.type] : POST_TYPE_META.LOST;
   const statusMeta = shouldRenderStatus(publication.status) ? POST_STATUS_META[publication.status] : null;
 
@@ -67,7 +74,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      onClose();
+      closePopup();
     }
   };
 
@@ -208,11 +215,11 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
                 )}
               </div>
 
-              {/* Botón cerrar */}
+              {/* Botón cerrar - más pequeño (32px) */}
               <button
                 type="button"
                 className="case-popup__close-btn"
-                onClick={onClose}
+                onClick={closePopup}
                 aria-label="Cerrar"
                 style={{
                   width: CLOSE_BTN_SIZE,
@@ -233,7 +240,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5ece4')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
               >
-                <X size={20} strokeWidth={2.5} color="#2a1408" aria-hidden="true" />
+                <X size={18} strokeWidth={2.5} color="#2a1408" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -308,7 +315,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
           <button
             type="button"
             className="case-popup__close-btn-compact"
-            onClick={onClose}
+            onClick={closePopup}
             aria-label="Cerrar"
             style={{
               width: CLOSE_BTN_SIZE,
@@ -320,7 +327,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '-6px -8px -6px 0',
+              margin: '-4px -6px -4px 0',
               transition: 'background-color 0.15s ease',
               flexShrink: 0,
               padding: 0,
@@ -330,7 +337,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5ece4')}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
-            <X size={20} strokeWidth={2.5} color="#2a1408" aria-hidden="true" />
+            <X size={18} strokeWidth={2.5} color="#2a1408" aria-hidden="true" />
           </button>
         </div>
       )}
@@ -397,6 +404,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
               fontSize: 13,
               color: '#7a6555',
               lineHeight: 1,
+              minWidth: 0, // permite que los hijos se encojan
             }}
           >
             {locationText && (
@@ -406,6 +414,8 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
+                  minWidth: 0,
+                  maxWidth: '100%',
                 }}
               >
                 <MapPin
@@ -415,7 +425,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
                   aria-hidden="true"
                   style={{ flexShrink: 0 }}
                 />
-                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{locationText}</span>
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, display: 'block' }}>{locationText}</span>
               </span>
             )}
 
@@ -459,7 +469,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
               flex: 1,
               height: BUTTON_HEIGHT,
               borderRadius: BUTTON_RADIUS,
-              backgroundColor: '#ff8c42', // var(--color-orange)
+              backgroundColor: '#ff8c42',
               color: '#2a1408',
               fontFamily: 'var(--font-display, Baloo 2)',
               fontWeight: 600,
@@ -472,7 +482,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
               transition: 'background-color 0.15s ease, transform 0.1s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f0721f'; // var(--color-orange-dark)
+              e.currentTarget.style.backgroundColor = '#f0721f';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = '#ff8c42';
