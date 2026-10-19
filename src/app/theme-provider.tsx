@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ThemeContext } from './theme-context';
-import type { Theme } from './theme-context';
+import type { Theme, ThemeContextValue } from './theme-types';
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light');
@@ -23,12 +23,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
 
-  if (!mounted) {
-    return <>{children}</>;
-  }
+  const value: ThemeContextValue = { theme, toggleTheme, setTheme, mounted };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
