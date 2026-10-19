@@ -640,7 +640,7 @@ export function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-3 justify-center">
             {/* Paso 1 */}
             <ScrollReveal animation="scale-in" delay={0}>
               <div className="group relative overflow-hidden rounded-2xl bg-white border-2 border-navy/10 p-8 shadow-md hover:shadow-xl transition-all duration-base hover:-translate-y-2">
