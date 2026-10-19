@@ -6,7 +6,6 @@ import { useAuth } from '../../app/auth-context';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
 import { supabase } from '../../lib/supabase/client';
 import { getOAuthAvatarUrl, AVATAR_UPDATED_EVENT } from '../../lib/supabase/profiles';
-import { Logo } from '../Logo';
 
 interface DevTeamMember {
   name: string;
@@ -297,7 +296,6 @@ export function SiteShell({ children }: SiteShellProps) {
             {/* ===== BRAND / IDENTITY ===== */}
             <section className="w-full lg:w-64 lg:flex-shrink-0" aria-label="Identidad de Patitas">
               <Link to="/" className="flex items-center gap-2 mb-4" aria-label="Patitas - Inicio">
-                <Logo className="size-8" aria-hidden="true" />
                 <span className="font-display font-bold text-xl text-cream">Patitas</span>
               </Link>
               <p className="text-cream/70 text-sm leading-relaxed mb-4">
