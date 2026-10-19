@@ -3,6 +3,9 @@ import { Home, Search, MapPinned, PlusCircle, Bell, Heart } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
 import { useAuth } from '../../app/auth-context';
+import { useTheme } from '../../app/use-theme';
+import { ThemeSwitch } from '../ui/theme-switch';
+
 interface NavItem {
   to: string;
   label: string;
@@ -15,6 +18,7 @@ export function BottomNav() {
   const { user } = useAuth();
   const unreadCount = useNotificationCount();
   const isLoggedIn = !!user;
+  const { theme, toggleTheme } = useTheme();
 
   const items: readonly NavItem[] = [
     { to: '/', label: 'Inicio', icon: Home },
@@ -81,6 +85,15 @@ export function BottomNav() {
           );
         })}
       </div>
+
+      {/* Theme Switch - Mobile */}
+      <button
+        onClick={toggleTheme}
+        className="absolute right-3 bottom-3 lg:hidden"
+        aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      >
+        <ThemeSwitch />
+      </button>
     </nav>
   );
 }

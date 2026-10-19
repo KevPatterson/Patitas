@@ -22,11 +22,11 @@ type DemoCase = { id: string; type: CaseType; x: number; y: number; protagonist?
 
 /** (x, y) = PUNTA del marcador. Todos sobre tierra y dentro del radio del radar. */
 const DEMO_CASES: DemoCase[] = [
-  { id: 'case-lost', type: 'LOST', x: 140, y: 140, protagonist: true },
-  { id: 'case-found', type: 'FOUND', x: 262, y: 142 },
-  { id: 'case-adoption', type: 'ADOPTION', x: 150, y: 190 },
-  { id: 'case-abandoned', type: 'ABANDONED', x: 255, y: 195 },
-  { id: 'case-sighting', type: 'SIGHTING', x: 205, y: 185 },
+  { id: 'case-lost', type: 'LOST', x: 155, y: 135, protagonist: true },
+  { id: 'case-found', type: 'FOUND', x: 285, y: 120 },
+  { id: 'case-adoption', type: 'ADOPTION', x: 110, y: 205 },
+  { id: 'case-abandoned', type: 'ABANDONED', x: 275, y: 210 },
+  { id: 'case-sighting', type: 'SIGHTING', x: 180, y: 105 },
 ];
 
 /**

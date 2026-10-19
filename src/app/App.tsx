@@ -6,6 +6,7 @@ import { SiteShell } from '../components/layout/site-shell';
 import { BottomNav } from '../components/layout/bottom-nav';
 import { ScrollToTop } from '../components/layout/scroll-to-top';
 import { PawLoader } from '../components/ui/paw-loader';
+import { ThemeProvider } from './theme-provider';
 
 /**
  * Code splitting por ruta (tarea 6.3).
@@ -126,38 +127,36 @@ function NotFound() {
     </div>
   );
 }
-
 export default function App() {
   return (
-    <SiteShell>
-      <ScrollToTop />
-      {/* El fallback usa el PawLoader de la marca: sin él, la primera visita a
-          cada ruta mostraría un hueco en blanco mientras baja el chunk. */}
-      <Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/auth/login" element={<LoginPage />} />
-          <Route path="/auth/register" element={<RegisterPage />} />
-          <Route path="/auth/callback" element={<CallbackPage />} />
-          <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/buscar" element={<SearchPage />} />
-          <Route path="/cerca-de-ti" element={<NearbyPage />} />
-          <Route path="/mapa" element={<MapPage />} />
-          <Route path="/publicar" element={<PublishPage />} />
-          <Route path="/adopciones" element={<AdoptionsPage />} />
-          <Route path="/p/:slug" element={<PublicationPage />} />
-          <Route path="/perfil/:username" element={<ProfilePage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          {/* Resolutor por id: las colas de administración conocen el uuid, no el slug. */}
-          <Route path="/admin/publicaciones/:id" element={<AdminPublicationPage />} />
-          <Route path="/notificaciones" element={<NotificationsPage />} />
-          <Route path="/como-funciona" element={<HowItWorksPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
-      <BottomNav />
-    </SiteShell>
+    <ThemeProvider>
+      <SiteShell>
+        <ScrollToTop />
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/auth/login" element={<LoginPage />} />
+            <Route path="/auth/register" element={<RegisterPage />} />
+            <Route path="/auth/callback" element={<CallbackPage />} />
+            <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/buscar" element={<SearchPage />} />
+            <Route path="/cerca-de-ti" element={<NearbyPage />} />
+            <Route path="/mapa" element={<MapPage />} />
+            <Route path="/publicar" element={<PublishPage />} />
+            <Route path="/adopciones" element={<AdoptionsPage />} />
+            <Route path="/p/:slug" element={<PublicationPage />} />
+            <Route path="/perfil/:username" element={<ProfilePage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/publicaciones/:id" element={<AdminPublicationPage />} />
+            <Route path="/notificaciones" element={<NotificationsPage />} />
+            <Route path="/como-funciona" element={<HowItWorksPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+        <BottomNav />
+      </SiteShell>
+    </ThemeProvider>
   );
 }

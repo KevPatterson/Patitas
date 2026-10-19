@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Bell, Search, MapPin, LogOut, User, PawPrint, type LucideIcon } from 'lucide-react';
+import { Bell, Search, MapPin, LogOut, User, type LucideIcon } from 'lucide-react';
 import { signOut } from '../../lib/supabase/auth';
 import { useAuth } from '../../app/auth-context';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
-import { supabase } from '../../lib/supabase/client';
 import { getOAuthAvatarUrl, AVATAR_UPDATED_EVENT } from '../../lib/supabase/profiles';
 import { Logo } from '../Logo';
+import { ThemeSwitch } from '../ui/theme-switch';
 
 interface DevTeamMember {
   name: string;
@@ -81,40 +81,23 @@ export function SiteShell({ children }: SiteShellProps) {
   const profileHref = username ? `/perfil/${username}` : '/dashboard';
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (user?.id) {
+      const avatar = getOAuthAvatarUrl(user);
+      if (avatar) setAvatarUrl(avatar);
+    } else {
+      setAvatarUrl(null);
+    }
+  }, [user, authLoading]);
 
-    let active = true;
-
-    const fetchProfile = async () => {
-      // La foto de Google/OAuth es el fallback inmediato mientras se sincroniza el perfil.
-      const oauthAvatar = getOAuthAvatarUrl(user);
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('id', user.id)
-          .single();
-        
-        if (active) {
-          setAvatarUrl((!error && data?.avatar_url) || oauthAvatar || null);
-        }
-      } catch {
-        if (active) setAvatarUrl(oauthAvatar);
+  useEffect(() => {
+    const handler = () => {
+      if (user?.id) {
+        const avatar = getOAuthAvatarUrl(user);
+        if (avatar) setAvatarUrl(avatar);
       }
     };
-
-    fetchProfile();
-
-    // Refrescar el avatar cuando el usuario lo cambia o lo elimina en otra vista.
-    const onAvatarUpdated = () => {
-      void fetchProfile();
-    };
-    window.addEventListener(AVATAR_UPDATED_EVENT, onAvatarUpdated);
-
-    return () => {
-      active = false;
-      window.removeEventListener(AVATAR_UPDATED_EVENT, onAvatarUpdated);
-    };
+    window.addEventListener(AVATAR_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(AVATAR_UPDATED_EVENT, handler);
   }, [user, authLoading]);
 
   return (
@@ -145,6 +128,11 @@ export function SiteShell({ children }: SiteShellProps) {
               {user && (
                 <NavItem href="/notificaciones" label="Avisos" Icon={Bell} badge={unreadCount} />
               )}
+            </div>
+            
+            {/* Theme Switch - Desktop */}
+            <div className="hidden lg:flex items-center ml-2">
+              <ThemeSwitch />
             </div>
             
             {/* CTA Publicar - Desktop y tablet */}
@@ -320,81 +308,35 @@ export function SiteShell({ children }: SiteShellProps) {
                     <div className="flex items-start gap-3 w-full">
                       <div className="relative flex-shrink-0">
                         {member.avatar ? (
-                          <img
-                            src={member.avatar}
-                            alt=""
-                            className="size-10 rounded-xl ring-2 ring-orange-500/30"
-                            loading="lazy"
+                          <img 
+                            src={member.avatar} 
+                            alt="" 
+                            className="size-10 rounded-full ring-2 ring-orange/30" 
                           />
                         ) : (
-                          <div className="flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-orange-500 to-orange-700 text-cream font-display font-extrabold text-sm shadow-md">
-                            {member.initials}
+                          <div className="size-10 rounded-full bg-orange/20 flex items-center justify-center ring-2 ring-orange/30">
+                            <span className="font-display font-bold text-orange-700 text-sm">
+                              {member.initials}
+                            </span>
                           </div>
                         )}
-                        <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-orange-400 flex items-center justify-center border border-navy" aria-hidden="true">
-                          <PawPrint className="size-1.5 text-navy" strokeWidth={2.5} />
-                        </span>
                       </div>
-                      <div className="min-w-0 text-left flex-1">
-                        <a
-                          href={member.github}
-                          target="_blank"
+                      <div className="min-w-0 flex-1">
+                        <a 
+                          href={member.github} 
+                          target="_blank" 
                           rel="noopener noreferrer"
-                          className="font-display font-semibold text-cream group-hover:text-orange-300 transition-colors text-sm truncate block"
-                          aria-label={`Ver perfil de GitHub de ${member.name}`}
+                          className="font-semibold text-cream group-hover:text-orange transition-colors truncate block"
                         >
                           {member.name}
                         </a>
-                        <p className="text-[10px] text-cream/60 truncate">{member.role}</p>
+                        <p className="text-cream/60 text-xs truncate">{member.role}</p>
                       </div>
-                    </div>
-                    <div className="flex justify-center gap-3 w-full pt-1" aria-label="Redes del miembro">
-                      <a
-                        href={member.github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex size-8 items-center justify-center rounded-lg text-cream/50 hover:text-orange-300 hover:bg-orange-500/10 transition-colors duration-base"
-                        aria-label={`GitHub de ${member.name}`}
-                      >
-                        <svg className="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                          <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z" />
-                        </svg>
-                      </a>
-                      <a
-                        href="https://wa.me/5356954200"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex size-8 items-center justify-center rounded-lg text-cream/50 hover:text-green-400 hover:bg-green-500/10 transition-colors duration-base"
-                        aria-label="Contactar por WhatsApp"
-                      >
-                        <svg className="size-4" viewBox="0 0 24 24" fill="currentColor" fillRule="evenodd" aria-hidden="true">
-                          <path d="M17.415 14.382c-.298-.149-1.759-.867-2.031-.967s-.47-.148-.669.15c-.198.297-.767.966-.94 1.164c-.174.199-.347.223-.644.075c-.297-.15-1.255-.463-2.39-1.475c-.883-.788-1.48-1.761-1.653-2.059c-.173-.297-.019-.458.13-.606c.134-.133.297-.347.446-.52s.198-.298.297-.497c.1-.198.05-.371-.025-.52c-.074-.149-.668-1.612-.916-2.207c-.241-.579-.486-.5-.668-.51c-.174-.008-.372-.01-.57-.01s-.52.074-.792.372c-.273.297-1.04 1.016-1.04 2.479c0 1.462 1.064 2.875 1.213 3.074s2.095 3.2 5.076 4.487c.71.306 1.263.489 1.694.625c.712.227 1.36.195 1.872.118c.57-.085 1.758-.719 2.006-1.413s.247-1.289.173-1.413s-.272-.198-.57-.347m-5.422 7.403h-.004a9.87 9.87 0 0 1-5.032-1.378l-.36-.214l-3.742.982l.999-3.648l-.235-.374a9.86 9.86 0 0 1-1.511-5.26c.002-5.45 4.436-9.884 9.889-9.884a9.8 9.8 0 0 1 6.988 2.899a9.82 9.82 0 0 1 2.892 6.992c-.002 5.45-4.436 9.885-9.884 9.885m8.412-18.297A11.82 11.82 0 0 0 11.992 0C5.438 0 .102 5.335.1 11.892a11.86 11.86 0 0 0 1.587 5.945L0 24l6.304-1.654a11.9 11.9 0 0 0 5.684 1.448h.005c6.554 0 11.89-5.335 11.892-11.893a11.82 11.82 0 0 0-3.48-8.413" clipRule="evenodd" />
-                        </svg>
-                      </a>
                     </div>
                   </li>
                 ))}
               </ul>
             </section>
-          </div>
-
-          {/* ===== DIVIDER ===== */}
-          <div className="my-8 border-t border-orange-200/30" aria-hidden="true" />
-
-          {/* ===== BOTTOM BAR: COPYRIGHT + LEGAL LINKS ===== */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-cream/60">
-            <p className="text-center sm:text-left">
-              © {new Date().getFullYear()} Patitas. Hecho con{' '}
-              <span className="text-orange-400" aria-hidden="true">♥</span>{' '}
-              para la comunidad cubana.
-            </p>
-            <nav className="flex flex-wrap items-center justify-center gap-4" aria-label="Enlaces legales rápidos">
-              <Link to="/privacidad" className="hover:text-cream transition-colors duration-base whitespace-nowrap">Privacidad</Link>
-              <span aria-hidden="true" className="text-cream/30">·</span>
-              <Link to="/terminos" className="hover:text-cream transition-colors duration-base whitespace-nowrap">Términos</Link>
-              <span aria-hidden="true" className="text-cream/30">·</span>
-              <Link to="/cookies" className="hover:text-cream transition-colors duration-base whitespace-nowrap">Cookies</Link>
-            </nav>
           </div>
         </div>
       </footer>

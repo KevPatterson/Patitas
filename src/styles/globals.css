@@ -1293,5 +1293,115 @@ video {
   .map-radar-sweep { opacity: 0.15; }
   .map-radar-halo { opacity: 0.15; }
 }
+/* ==================== THEME SWITCH ==================== */
 
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid var(--color-orange-300);
+  border-radius: var(--radius-pill);
+  background: var(--color-orange-100);
+  cursor: pointer;
+  transition: all var(--duration-base) var(--ease-smooth);
+}
+
+.dark .theme-switch {
+  border-color: var(--color-orange-600);
+  background: var(--color-orange-700);
+}
+
+.theme-switch:hover {
+  border-color: var(--color-orange-400);
+  transform: scale(1.05);
+}
+
+.dark .theme-switch:hover {
+  border-color: var(--color-orange-400);
+}
+
+.theme-switch:active {
+  transform: scale(0.98);
+}
+
+.theme-switch:focus-visible {
+  outline: 2px solid var(--color-orange-400);
+  outline-offset: 2px;
+}
+
+.theme-switch__track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  transition: background var(--duration-base) var(--ease-smooth);
+}
+
+.theme-switch__thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-surface-card);
+  box-shadow: var(--shadow-md);
+  transform: translateX(2px);
+  transition: transform 250ms var(--ease-bounce), background var(--duration-base) var(--ease-smooth);
+  z-index: 1;
+}
+
+.dark .theme-switch__thumb {
+  transform: translateX(30px);
+  background: var(--color-navy-light);
+}
+
+.theme-switch__icon {
+  position: absolute;
+  transition: opacity 200ms var(--ease-smooth), transform 250ms var(--ease-bounce);
+}
+
+.theme-switch__icon--sun {
+  color: var(--color-orange-400);
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.dark .theme-switch__icon--sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.5);
+}
+
+.theme-switch__icon--moon {
+  color: var(--color-purple);
+  opacity: 0;
+  transform: rotate(90deg) scale(0.5);
+}
+
+.dark .theme-switch__icon--moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.theme-switch__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==================== FIN THEME SWITCH ==================== */
 /* ==================== FIN MAP PREVIEW ==================== */
