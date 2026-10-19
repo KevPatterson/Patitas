@@ -10,6 +10,7 @@ import { setPageMeta } from '../lib/seo/page-meta';
 import { generateWebsiteStructuredData, injectStructuredData, removeStructuredData } from '../lib/seo/structured-data';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '../lib/config/site';
 import { searchPublications, countPublications, type PublicationSummary } from '../lib/supabase/publication-search';
+import { MapPreview } from '../components/home/map-preview';
 
 export function HomePage() {
   const [allCases, setAllCases] = useState<PublicationSummary[]>([]);
@@ -589,37 +590,7 @@ export function HomePage() {
                 Abrir mapa →
               </LinkButton>
             </div>
-            <div className="relative aspect-video rounded-2xl bg-linear-to-br from-turquoise/10 to-purple/10 border-2 border-navy/10 flex items-center justify-center overflow-hidden">
-              {/* Simulación visual de mapa con marcadores */}
-              <div className="absolute inset-0 opacity-20">
-                {/* Grid de fondo simulando calles */}
-                <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--color-orange-900)" strokeWidth="0.5" strokeOpacity="0.3"/>
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#grid)" />
-                </svg>
-              </div>
-              
-              {/* Marcadores de ubicación decorativos */}
-              <div className="absolute top-1/4 left-1/4 animate-paw-bounce">
-                <MapPin className="size-8 text-lost fill-lost/20" />
-              </div>
-              <div className="absolute top-1/3 right-1/3 animate-paw-bounce" style={{ animationDelay: '200ms' }}>
-                <MapPin className="size-6 text-found fill-found/20" />
-              </div>
-              <div className="absolute bottom-1/3 left-1/2 animate-paw-bounce" style={{ animationDelay: '400ms' }}>
-                <MapPin className="size-7 text-purple fill-purple/20" />
-              </div>
-              <div className="absolute bottom-1/4 right-1/4 animate-paw-bounce" style={{ animationDelay: '600ms' }}>
-                <MapPin className="size-5 text-turquoise fill-turquoise/20" />
-              </div>
-              
-              {/* Icono central */}
-              <MapIcon className="size-16 text-navy/30 relative z-10" />
-            </div>
+            <MapPreview />
           </div>
         </section>
       </ScrollReveal>

@@ -968,3 +968,447 @@ video {
   outline: 2px solid #ff8c42;
   outline-offset: 2px;
 }
+/* ==================== MAP PREVIEW (Home) ==================== */
+
+/* Contenedor principal */
+.map-preview-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 8 / 5; /* 400:250 = 8:5 */
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  background: var(--color-surface-card);
+  border: 2px solid var(--color-border-card);
+  box-shadow: var(--shadow-md);
+}
+
+.map-preview-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ========== CAPA 1: MAPA BASE ========== */
+
+/* Mar (arriba) - tono naranja claro */
+.map-sea {
+  fill: var(--color-orange-100);
+}
+
+.dark .map-sea {
+  fill: var(--color-orange-900);
+}
+
+/* Tierra (abajo) - tono más claro */
+.map-land {
+  fill: var(--color-orange-50);
+}
+
+.dark .map-land {
+  fill: var(--color-navy-dark);
+}
+
+/* Costa / Malecón - trazo naranja más fuerte, stroke ~4, round caps */
+.map-coastline {
+  fill: none;
+  stroke: var(--color-orange-400);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dark .map-coastline {
+  stroke: var(--color-orange-300);
+}
+
+/* Bahía como entrante */
+.map-bay {
+  fill: var(--color-orange-100);
+  stroke: var(--color-orange-300);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.dark .map-bay {
+  fill: var(--color-orange-900);
+  stroke: var(--color-orange-700);
+}
+
+/* Faro / Silueta del Morro */
+.map-lighthouse {
+  fill: var(--color-orange-600);
+}
+
+.dark .map-lighthouse {
+  fill: var(--color-orange-400);
+}
+
+.map-lighthouse-light {
+  fill: var(--color-orange-200);
+  animation: map-lighthouse-blink 3s ease-in-out infinite;
+}
+
+.dark .map-lighthouse-light {
+  fill: var(--color-orange-100);
+}
+
+@keyframes map-lighthouse-blink {
+  0%, 90%, 100% { opacity: 1; }
+  92%, 98% { opacity: 0.3; }
+}
+
+/* Zonas como manchas suaves */
+.map-zone {
+  fill: var(--color-orange-200);
+  opacity: 0.5;
+}
+
+.dark .map-zone {
+  fill: var(--color-orange-700);
+  opacity: 0.4;
+}
+
+.map-zone-label {
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--color-orange-900);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.dark .map-zone-label {
+  fill: var(--color-orange-200);
+}
+
+/* Calles en trazo fino */
+.map-streets {
+  fill: none;
+  stroke: var(--color-orange-300);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.6;
+}
+
+.dark .map-streets {
+  stroke: var(--color-orange-600);
+  opacity: 0.4;
+}
+
+/* ========== CAPA 2: RADAR ========== */
+
+.map-radar {
+  transform-origin: center center;
+}
+
+/* Anillos concéntricos finos */
+.map-radar-ring {
+  fill: none;
+  stroke: var(--color-orange-400);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.5;
+}
+
+.dark .map-radar-ring {
+  stroke: var(--color-orange-300);
+}
+
+/* Cruz punteada */
+.map-radar-cross {
+  stroke: var(--color-orange-400);
+  stroke-width: 0.5;
+  stroke-dasharray: 2 4;
+  opacity: 0.4;
+}
+
+.dark .map-radar-cross {
+  stroke: var(--color-orange-300);
+}
+
+/* Barrido: cuña naranja con opacidad .3, rota 360° en 6s */
+.map-radar-sweep {
+  fill: var(--color-orange-400);
+  opacity: 0.3;
+  transform-origin: 0 0;
+  animation: map-radar-sweep-rot 6s linear infinite;
+}
+
+.dark .map-radar-sweep {
+  fill: var(--color-orange-300);
+}
+
+@keyframes map-radar-sweep-rot {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Onda que se expande desde el centro cada 4s */
+.map-radar-wave {
+  fill: none;
+  stroke: var(--color-orange-400);
+  stroke-width: 1.5;
+  opacity: 0;
+  transform-origin: center center;
+  animation: map-radar-wave-expand 4s ease-out infinite;
+}
+
+.dark .map-radar-wave {
+  stroke: var(--color-orange-300);
+}
+
+@keyframes map-radar-wave-expand {
+  0% { r: 0; opacity: 0.6; }
+  100% { r: 120; opacity: 0; }
+}
+
+/* Punto central "Tú" con halo */
+.map-radar-halo {
+  fill: var(--color-orange-400);
+  opacity: 0.15;
+  animation: map-radar-halo-pulse 2s ease-in-out infinite;
+}
+
+.dark .map-radar-halo {
+  fill: var(--color-orange-300);
+}
+
+@keyframes map-radar-halo-pulse {
+  0%, 100% { r: 10; opacity: 0.15; }
+  50% { r: 16; opacity: 0.08; }
+}
+
+.map-radar-center {
+  fill: var(--color-orange-500);
+}
+
+.dark .map-radar-center {
+  fill: var(--color-orange-400);
+}
+
+.map-radar-label {
+  font-family: var(--font-sans);
+  font-size: 8px;
+  font-weight: 700;
+  fill: var(--color-orange-700);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+}
+
+.dark .map-radar-label {
+  fill: var(--color-orange-200);
+}
+
+.map-distance-label {
+  font-family: var(--font-sans);
+  font-size: 7px;
+  font-weight: 600;
+  fill: var(--color-orange-600);
+  pointer-events: none;
+}
+
+.dark .map-distance-label {
+  fill: var(--color-orange-300);
+}
+
+/* ========== CAPA 3: CASOS Y HISTORIA ========== */
+
+/* Animación pop del marcador: scale 0.3→1, transform-origin en la punta */
+@keyframes map-marker-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Desvanecer al final del ciclo */
+@keyframes map-fade-out {
+  0%, 90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Anillo de pulso en el suelo para protagonista LOST */
+@keyframes map-pulse-ring-anim {
+  0% { r: 18; stroke-opacity: 0.6; }
+  100% { r: 35; stroke-opacity: 0; }
+}
+
+.map-pulse-ring {
+  transform-origin: center center;
+}
+
+/* Tarjetita flotante slide-in */
+@keyframes map-card-slide-in {
+  0% { transform: translate(-50%, -120%) scale(0.9); opacity: 0; }
+  100% { transform: translate(-50%, -120%) scale(1); opacity: 1; }
+}
+
+.map-card-container {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Estilo base de la tarjetita píldora */
+.map-floating-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.1);
+  background: var(--color-surface-card);
+  border: 1.5px solid var(--color-orange-300);
+  color: var(--color-orange-900);
+}
+
+.dark .map-floating-card {
+  background: var(--color-navy-light);
+  border-color: var(--color-orange-600);
+  color: var(--color-cream);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.map-card-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.map-card-dot.lost {
+  background: var(--color-lost);
+  box-shadow: 0 0 8px var(--color-lost);
+}
+
+.map-card-dot.found {
+  background: var(--color-found);
+  box-shadow: 0 0 8px var(--color-found);
+}
+
+.map-card-lost {
+  /* Estilo para fase LOST */
+}
+
+.map-card-found {
+  /* Estilo para fase FOUND */
+}
+
+/* Confeti: patitas que suben y se desvanecen */
+@keyframes map-confetti-rise {
+  0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-60px) scale(0.5) rotate(180deg); opacity: 0; }
+}
+
+.map-confetti {
+  position: absolute;
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Chip fijo: "5 casos cerca de ti" */
+.map-nearby-chip {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.1);
+  background: var(--color-surface-card);
+  border: 1.5px solid var(--color-orange-300);
+  color: var(--color-orange-900);
+  z-index: 20;
+}
+
+.dark .map-nearby-chip {
+  background: var(--color-navy-light);
+  border-color: var(--color-orange-600);
+  color: var(--color-cream);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.map-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-orange-400);
+  box-shadow: 0 0 8px var(--color-orange-400);
+}
+
+.dark .map-chip-dot {
+  background: var(--color-orange-300);
+  box-shadow: 0 0 8px var(--color-orange-300);
+}
+
+@keyframes map-chip-slide-in {
+  0% { transform: translateX(-100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* Pausar animaciones cuando no visible */
+.map-preview-container.paused,
+.map-preview-container.paused * {
+  animation-play-state: paused !important;
+}
+
+/* ========== ACCESIBILIDAD: REDUCED MOTION ========== */
+@media (prefers-reduced-motion: reduce) {
+  .map-radar-sweep,
+  .map-radar-wave,
+  .map-radar-halo,
+  .map-lighthouse-light,
+  .map-pulse-ring,
+  .map-floating-card,
+  .map-confetti,
+  .map-nearby-chip {
+    animation: none !important;
+  }
+  
+  .map-radar-sweep {
+    opacity: 0.15;
+  }
+  
+  .map-radar-wave {
+    display: none;
+  }
+  
+  .map-radar-halo {
+    opacity: 0.15;
+    r: 12;
+  }
+  
+  .map-pulse-ring {
+    display: none;
+  }
+  
+  .map-floating-card,
+  .map-nearby-chip {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  
+  /* Mostrar marcadores en estado final */
+  .map-cases-layer g {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+    animation: none !important;
+  }
+}
+
+/* ==================== FIN MAP PREVIEW ==================== */
