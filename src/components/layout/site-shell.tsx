@@ -132,22 +132,33 @@ export function SiteShell({ children }: SiteShellProps) {
               className="mr-auto flex items-center gap-2.5 text-navy no-underline transition-transform duration-[250ms] hover:-rotate-[12deg] hover:scale-[1.08] focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
               aria-label="Patitas - inicio"
             >
-              <div className="flex size-[34px] items-center justify-center rounded-xl border-[2.5px] border-navy bg-orange transition-transform duration-[250ms]">
-                <svg 
-                  width="20" 
-                  height="20" 
-                  viewBox="0 0 120 120" 
-                  fill="currentColor" 
-                  className="text-navy"
-                  aria-hidden="true"
-                >
-                  <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" />
-                  <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" />
-                  <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" />
-                  <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" />
-                  <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" />
-                </svg>
-              </div>
+              <svg
+                width="34"
+                height="34"
+                viewBox="0 0 120 120"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+                className="transition-transform duration-[250ms]"
+              >
+                {/* Fondo */}
+                <rect width="120" height="120" rx="24" fill="#FF8C42"/>
+                
+                {/* 4 dedos */}
+                <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" fill="#3D1D0B"/>
+                <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" fill="#3D1D0B"/>
+                <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" fill="#3D1D0B"/>
+                <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" fill="#3D1D0B"/>
+                
+                {/* Almohadilla con hueco transparente */}
+                <defs>
+                  <mask id="paw-mask-navbar">
+                    <rect width="120" height="120" fill="white"/>
+                    <circle cx="60" cy="75" r="8" fill="black"/>
+                  </mask>
+                </defs>
+                <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" fill="#3D1D0B" mask="url(#paw-mask-navbar)"/>
+              </svg>
               <span className="font-display text-[1.65rem] font-extrabold leading-none tracking-[-0.02em]">
                 patitas
               </span>
