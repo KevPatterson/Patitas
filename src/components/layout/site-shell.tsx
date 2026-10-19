@@ -6,6 +6,7 @@ import { useAuth } from '../../app/auth-context';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
 import { supabase } from '../../lib/supabase/client';
 import { getOAuthAvatarUrl, AVATAR_UPDATED_EVENT } from '../../lib/supabase/profiles';
+import { Logo } from '../Logo';
 
 interface DevTeamMember {
   name: string;
@@ -125,42 +126,13 @@ export function SiteShell({ children }: SiteShellProps) {
             className="flex items-center gap-2 rounded-[22px] border-2 border-navy bg-white px-4 py-2 shadow-[0_4px_0_var(--color-orange-900)]"
             aria-label="Principal"
           >
-            {/* Logo con icono de huella en cuadrito */}
+            {/* Logo con componente Logo unificado */}
             <Link 
               to="/" 
               className="mr-auto flex items-center gap-2.5 text-navy no-underline transition-transform duration-[250ms] hover:-rotate-[12deg] hover:scale-[1.08] focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
               aria-label="Patitas - inicio"
             >
-              <div className="flex size-10 items-center justify-center rounded-full bg-orange border-2 border-navy shrink-0 overflow-hidden">
-                <svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 120 120"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                  className="transition-transform duration-[250ms]"
-                  style={{ overflow: 'hidden' }}
-                >
-                  {/* Fondo naranja sin rx para que no sobresalga del círculo */}
-                  <rect width="120" height="120" fill="#FF8C42"/>
-                  
-                  {/* 4 dedos */}
-                  <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" fill="#3D1D0B"/>
-                  <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" fill="#3D1D0B"/>
-                  <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" fill="#3D1D0B"/>
-                  <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" fill="#3D1D0B"/>
-                  
-                  {/* Almohadilla con hueco transparente (icono ubicación) */}
-                  <defs>
-                    <mask id="paw-mask-navbar">
-                      <rect width="120" height="120" fill="white"/>
-                      <circle cx="60" cy="75" r="8" fill="black"/>
-                    </mask>
-                  </defs>
-                  <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" fill="#3D1D0B" mask="url(#paw-mask-navbar)"/>
-                </svg>
-              </div>
+              <Logo variant="full" size={40} animated />
               <span className="hidden min-[375px]:inline font-display text-[1.65rem] font-extrabold leading-none tracking-[-0.02em] truncate max-w-[160px]">
                 patitas
               </span>
@@ -297,30 +269,7 @@ export function SiteShell({ children }: SiteShellProps) {
             {/* ===== BRAND / IDENTITY ===== */}
             <section className="w-full lg:w-64 lg:flex-shrink-0" aria-label="Identidad de Patitas">
               <Link to="/" className="flex items-center gap-2 mb-4" aria-label="Patitas - Inicio">
-                <div className="flex size-10 items-center justify-center rounded-full bg-orange border-2 border-navy shrink-0 overflow-hidden">
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 120 120"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <rect width="120" height="120" fill="#FF8C42"/>
-                    <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" fill="#3D1D0B"/>
-                    <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" fill="#3D1D0B"/>
-                    <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" fill="#3D1D0B"/>
-                    <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" fill="#3D1D0B"/>
-                    <defs>
-                      <mask id="paw-mask-footer">
-                        <rect width="120" height="120" fill="white"/>
-                        <circle cx="60" cy="75" r="8" fill="black"/>
-                      </mask>
-                    </defs>
-                    <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" fill="#3D1D0B" mask="url(#paw-mask-footer)"/>
-                  </svg>
-                </div>
+                <Logo variant="full" size={40} />
                 <span className="font-display font-bold text-xl text-cream">Patitas</span>
               </Link>
               <p className="text-cream/70 text-sm leading-relaxed mb-4">
