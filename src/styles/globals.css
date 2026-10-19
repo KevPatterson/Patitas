@@ -687,3 +687,284 @@ video {
   background: white;
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
+
+/* ==================== CASE POPUP (Mapa de casos) ==================== */
+
+/* Wrapper del popup de Leaflet: quita padding, borde, sombra y botón de cierre por defecto */
+.case-popup-wrapper .leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 12px 32px rgba(42, 20, 8, 0.22) !important;
+  background: transparent !important;
+  border: none !important;
+  max-width: 320px !important;
+  width: 320px !important;
+}
+
+.case-popup-wrapper .leaflet-popup-content {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 320px !important;
+  max-width: 320px !important;
+}
+
+/* Ocultar botón de cierre nativo de Leaflet (usamos el nuestro) */
+.case-popup-wrapper .leaflet-popup-close-button {
+  display: none !important;
+}
+
+/* Colita (tip) del popup: cuadrado blanco 18px rotado 45 grados con sombra suave */
+.case-popup-wrapper .leaflet-popup-tip {
+  width: 18px !important;
+  height: 18px !important;
+  background: #fff !important;
+  box-shadow: 4px 4px 8px rgba(42, 20, 8, 0.12) !important;
+  margin-top: -9px !important;
+  border-radius: 2px !important;
+}
+
+/* Ajuste para pantallas estrechas */
+@media (max-width: 380px) {
+  .case-popup-wrapper .leaflet-popup-content-wrapper,
+  .case-popup-wrapper .leaflet-popup-content {
+    max-width: calc(100vw - 32px) !important;
+    width: calc(100vw - 32px) !important;
+  }
+}
+
+/* Autopan padding para que el popup completo (incluida la colita) quede visible */
+.leaflet-container .case-popup-wrapper {
+  z-index: 1000;
+}
+
+/* Estilos internos del componente CasePopup (fallback por si se usa fuera de Leaflet) */
+.case-popup {
+  width: 320px;
+  max-width: 320px;
+  background: #fff;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(42, 20, 8, 0.22);
+  font-family: var(--font-sans, Figtree), sans-serif;
+}
+
+.case-popup__image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 168px;
+  overflow: hidden;
+}
+
+.case-popup__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.case-popup__image-fallback {
+  display: none;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f6dfcc, #e9b996);
+}
+
+.case-popup__top-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 8px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  z-index: 1;
+}
+
+.case-popup__chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.case-popup__type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-family: var(--font-sans, Figtree), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.case-popup__status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-family: var(--font-sans, Figtree), sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.case-popup__close-btn,
+.case-popup__close-btn-compact {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.case-popup__close-btn {
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(42, 20, 8, 0.15);
+}
+
+.case-popup__close-btn:hover {
+  background-color: #f5ece4;
+}
+
+.case-popup__close-btn-compact {
+  background-color: transparent;
+  margin: -6px -8px -6px 0;
+  color: #2a1408;
+}
+
+.case-popup__close-btn-compact:hover {
+  background-color: #f5ece4;
+}
+
+.case-popup__header-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 0 20px;
+  gap: 12px;
+}
+
+.case-popup__body {
+  padding: 16px 20px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.case-popup__title {
+  margin: 0;
+  font-family: var(--font-display, Baloo 2), cursive;
+  font-weight: 800;
+  font-size: 21px;
+  line-height: 1.2;
+  color: #2a1408;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.case-popup__description {
+  margin: 0;
+  font-family: var(--font-sans, Figtree), sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #5b4636;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.case-popup__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  font-family: var(--font-sans, Figtree), sans-serif;
+  font-size: 13px;
+  color: #7a6555;
+  line-height: 1;
+}
+
+.case-popup__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.case-popup__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.case-popup__btn-primary {
+  flex: 1;
+  height: 44px;
+  border-radius: 14px;
+  background-color: #ff8c42;
+  color: #2a1408;
+  font-family: var(--font-display, Baloo 2), cursive;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.case-popup__btn-primary:hover {
+  background-color: #f0721f;
+}
+
+.case-popup__btn-primary:active {
+  transform: scale(0.98);
+}
+
+.case-popup__btn-contact {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background-color: #f5ece4;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.case-popup__btn-contact:hover {
+  background-color: #e9dccf;
+}
+
+/* Focus visible para accesibilidad */
+.case-popup__close-btn:focus-visible,
+.case-popup__close-btn-compact:focus-visible,
+.case-popup__btn-primary:focus-visible,
+.case-popup__btn-contact:focus-visible {
+  outline: 2px solid #ff8c42;
+  outline-offset: 2px;
+}
