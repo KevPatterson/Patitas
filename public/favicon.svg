@@ -1,6 +1,9 @@
 <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Fondo naranja sólido -->
-  <rect width="120" height="120" fill="#FF8C42"/>
+  <!-- Círculo exterior con borde navy (simula el contenedor redondeado) -->
+  <circle cx="60" cy="60" r="56" fill="#FF8C42" stroke="#3D1D0B" stroke-width="4"/>
+  
+  <!-- Fondo naranja interior (área de la patita) -->
+  <circle cx="60" cy="60" r="52" fill="#FF8C42"/>
   
   <!-- 4 dedos - navy -->
   <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" fill="#3D1D0B"/>
