@@ -26,7 +26,7 @@ const DEMO_CASES: DemoCase[] = [
   { id: 'case-found', type: 'FOUND', x: 285, y: 120 },
   { id: 'case-adoption', type: 'ADOPTION', x: 110, y: 205 },
   { id: 'case-abandoned', type: 'ABANDONED', x: 275, y: 210 },
-  { id: 'case-sighting', type: 'SIGHTING', x: 145, y: 110 },
+  { id: 'case-sighting', type: 'SIGHTING', x: 130, y: 185 },
 ];
 
 /**
