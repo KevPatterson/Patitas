@@ -272,7 +272,7 @@ export function SiteShell({ children }: SiteShellProps) {
       </header>
 
       {/* Main content */}
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-24 lg:pb-16 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-40 lg:pb-16 sm:px-6 lg:px-8">
         {children}
       </main>
 

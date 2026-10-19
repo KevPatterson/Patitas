@@ -325,16 +325,8 @@ export function MapPage() {
             {/* Renderizar marcadores sin clustering para que siempre se vean las patitas */}
             {publications.map((pub) => {
                 if (!pub.approximateLat || !pub.approximateLng) {
-                  console.warn('Publicación sin coordenadas válidas:', pub.title);
                   return null;
                 }
-
-                console.log('Renderizando marcador:', {
-                  title: pub.title,
-                  lat: pub.approximateLat,
-                  lng: pub.approximateLng,
-                  type: pub.type
-                });
 
                 return (
                   <Marker
@@ -342,22 +334,22 @@ export function MapPage() {
                     position={[pub.approximateLat, pub.approximateLng]}
                     icon={MARKER_ICONS[pub.type]}
                   >
-                    <Popup maxWidth={380} className="custom-popup leaflet-popup-custom">
-                      <div className="flex flex-col w-full">
+                    <Popup maxWidth={420} className="custom-popup leaflet-popup-custom">
+                      <div className="flex flex-col w-full min-w-0">
                         {/* Header con tipo y status */}
-                        <div className="flex items-center justify-between border-b border-navy/10 px-4 py-3 bg-navy/5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl" aria-hidden="true">
+                        <div className="flex items-center justify-between border-b border-navy/10 px-4 py-3 bg-navy/5 flex-shrink-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xl shrink-0" aria-hidden="true">
                               {typeEmojis[pub.type]}
                             </span>
-                            <span className="font-display text-sm font-bold text-navy capitalize">{pub.type.toLowerCase()}</span>
+                            <span className="font-display text-sm font-bold text-navy capitalize truncate">{pub.type.toLowerCase()}</span>
                           </div>
-                          <StatusBadge status={pub.status} />
+                          <StatusBadge status={pub.status} className="shrink-0" />
                         </div>
 
                         {/* Contenido con scroll */}
-                        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 max-h-[400px] pb-4" style={{ scrollbarGutter: 'stable' }}>
-                          <h3 className="font-display text-base font-bold text-navy line-clamp-2">
+                        <div className="overflow-y-auto px-4 py-3 space-y-3 max-h-[420px] flex-shrink-0" style={{ scrollbarGutter: 'stable' }}>
+                          <h3 className="font-display text-base font-bold text-navy line-clamp-2 flex-shrink-0">
                             {pub.title}
                           </h3>
 
@@ -365,51 +357,56 @@ export function MapPage() {
                             <img
                               src={pub.coverImageUrl}
                               alt={pub.title}
-                              className="w-full h-44 object-cover rounded-xl shadow-sm"
+                              className="w-full h-44 object-cover rounded-xl shadow-sm flex-shrink-0"
                               loading="lazy"
                             />
                           )}
 
-                          <p className="text-sm text-navy/70 leading-relaxed whitespace-pre-line">
+                          <p className="text-sm text-navy/70 leading-relaxed whitespace-pre-line flex-shrink-0">
                             {pub.description}
                           </p>
 
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-1.5 flex-shrink-0">
                             {pub.species && (
-                              <span className="rounded-full bg-turquoise/10 border border-turquoise/20 px-2.5 py-1 font-medium text-turquoise-dark text-xs">
+                              <span className="rounded-full bg-turquoise/10 border border-turquoise/20 px-2.5 py-1 font-medium text-turquoise-dark text-xs whitespace-nowrap">
                                 {SPECIES_LABELS[pub.species as keyof typeof SPECIES_LABELS] || pub.species}
                               </span>
                             )}
-                            {pub.color && (
-                              <span className="rounded-full bg-purple/10 border border-purple/20 px-2.5 py-1 font-medium text-purple-dark text-xs">
-                                {pub.color}
-                              </span>
-                            )}
                             {pub.breed && (
-                              <span className="rounded-full bg-orange/10 border border-orange/20 px-2.5 py-1 font-medium text-orange-dark text-xs">
+                              <span className="rounded-full bg-orange/10 border border-orange/20 px-2.5 py-1 font-medium text-orange-dark text-xs whitespace-nowrap">
                                 {pub.breed}
                               </span>
                             )}
+                            {pub.color && (
+                              <span className="rounded-full bg-purple/10 border border-purple/20 px-2.5 py-1 font-medium text-purple-dark text-xs whitespace-nowrap">
+                                {pub.color}
+                              </span>
+                            )}
                             {pub.sex && (
-                              <span className="rounded-full bg-emerald/10 border border-emerald/20 px-2.5 py-1 font-medium text-emerald-dark text-xs">
+                              <span className="rounded-full bg-emerald/10 border border-emerald/20 px-2.5 py-1 font-medium text-emerald-dark text-xs whitespace-nowrap">
                                 {pub.sex}
+                              </span>
+                            )}
+                            {pub.size && (
+                              <span className="rounded-full bg-amber/10 border border-amber/20 px-2.5 py-1 font-medium text-amber-dark text-xs whitespace-nowrap">
+                                {pub.size}
                               </span>
                             )}
                           </div>
 
-                          <div className="flex items-center gap-2 text-xs text-navy/60 pt-1 border-t border-navy/5">
-                            <MapPin className="size-3.5 text-orange" aria-hidden="true" />
-                            <span className="truncate">{[pub.zone, pub.municipality, pub.province].filter(Boolean).join(', ')}</span>
+                          <div className="flex items-center gap-2 text-xs text-navy/60 pt-1 border-t border-navy/5 flex-shrink-0">
+                            <MapPin className="size-3.5 text-orange shrink-0" aria-hidden="true" />
+                            <span className="truncate">{[pub.zone, pub.municipality, pub.province].filter(Boolean).join(', ') || 'Ubicación no especificada'}</span>
                           </div>
 
-                          <p className="text-xs text-navy/50 flex items-center gap-1">
-                            <Calendar className="size-3.5" aria-hidden="true" />
+                          <p className="text-xs text-navy/50 flex items-center gap-1 flex-shrink-0">
+                            <Calendar className="size-3.5 shrink-0" aria-hidden="true" />
                             <span>Publicado {new Date(pub.publishedAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                           </p>
                         </div>
 
                         {/* Footer con botón de acción */}
-                        <div className="border-t border-navy/10 px-4 py-3 bg-navy/5">
+                        <div className="border-t border-navy/10 px-4 py-3 bg-navy/5 flex-shrink-0">
                           <Link to={`/p/${pub.slug}`}>
                             <Button variant="primary" className="w-full text-sm py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
                               Ver detalles →
