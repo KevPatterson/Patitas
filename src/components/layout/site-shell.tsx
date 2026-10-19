@@ -132,7 +132,7 @@ export function SiteShell({ children }: SiteShellProps) {
               className="mr-auto flex items-center gap-2.5 text-navy no-underline transition-transform duration-[250ms] hover:-rotate-[12deg] hover:scale-[1.08] focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
               aria-label="Patitas - inicio"
             >
-              <Logo variant="full" size={40} animated />
+              <Logo variant="mark" size={40} animated />
               <span className="hidden min-[375px]:inline font-display text-[1.65rem] font-extrabold leading-none tracking-[-0.02em] truncate max-w-[160px]">
                 patitas
               </span>
@@ -269,7 +269,7 @@ export function SiteShell({ children }: SiteShellProps) {
             {/* ===== BRAND / IDENTITY ===== */}
             <section className="w-full lg:w-64 lg:flex-shrink-0" aria-label="Identidad de Patitas">
               <Link to="/" className="flex items-center gap-2 mb-4" aria-label="Patitas - Inicio">
-                <Logo variant="full" size={40} />
+                <Logo variant="mark" size={40} />
                 <span className="font-display font-bold text-xl text-cream">Patitas</span>
               </Link>
               <p className="text-cream/70 text-sm leading-relaxed mb-4">
