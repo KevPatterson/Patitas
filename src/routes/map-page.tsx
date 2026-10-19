@@ -305,7 +305,7 @@ export function MapPage() {
           <MapContainer
             center={mapCenter}
             zoom={7}
-            className="h-[600px] w-full"
+            className="h-[600px] w-full patitas-map"
             scrollWheelZoom={true}
           >
             <TileLayer

@@ -45,10 +45,16 @@ export function SightingForm({ publicationId, userId, onSuccess }: SightingFormP
   };
 
   return (
-    <div className="space-y-4 rounded-3xl border-2 border-[#CFEFE6] bg-[#CFEFE6]/15 p-5">
+    <div
+      className="space-y-4 rounded-3xl border-2 p-5"
+      style={{
+        borderColor: '#CFEFE6',
+        backgroundColor: 'rgba(207,239,230,0.15)',
+      }}
+    >
       <div>
-        <p className="font-semibold text-[#0B3B3C]">¿Viste a esta mascota?</p>
-        <p className="mt-1 text-sm text-[#0B3B3C]/70">Reporta un avistamiento para ayudar a ubicarla. Cada detalle cuenta.</p>
+        <p className="font-semibold" style={{ color: '#0B3B3C' }}>¿Viste a esta mascota?</p>
+        <p className="mt-1 text-sm" style={{ color: 'rgba(11,59,60,0.7)' }}>Reporta un avistamiento para ayudar a ubicarla. Cada detalle cuenta.</p>
       </div>
 
       <TextareaField
@@ -61,7 +67,15 @@ export function SightingForm({ publicationId, userId, onSuccess }: SightingFormP
       <TextField label="Fecha y hora (opcional)" type="datetime-local" value={occurredAt} onChange={(event) => setOccurredAt(event.target.value)} />
 
       {errorMessage ? (
-        <p className="rounded-2xl bg-[#C2332C]/10 px-4 py-3 text-sm font-medium text-[#C2332C]">{errorMessage}</p>
+        <p
+          className="rounded-2xl px-4 py-3 text-sm font-medium"
+          style={{
+            backgroundColor: 'rgba(194,51,44,0.1)',
+            color: '#C2332C',
+          }}
+        >
+          {errorMessage}
+        </p>
       ) : null}
 
       <Button type="button" onClick={handleSubmit} disabled={submitting}>

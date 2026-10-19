@@ -37,7 +37,7 @@ function NavItem({ href, label, Icon, badge }: { href: string; label: string; Ic
         'relative flex items-center gap-2 rounded-[14px] border-2 px-3.5 py-2 text-sm font-semibold transition-all duration-base',
         isActive
           ? 'border-navy bg-orange-100 text-navy'
-          : 'border-transparent text-[var(--color-text-secondary)] hover:bg-orange-100 hover:text-navy',
+          : 'border-transparent text-[hsl(var(--muted-foreground))] hover:bg-orange-100 hover:text-navy',
       ].join(' ')}
     >
       {({ isActive: _isActive }) => (
@@ -155,6 +155,11 @@ export function SiteShell({ children }: SiteShellProps) {
               Publicar
             </Link>
             
+            {/* Theme Switch - Móvil (compacto) */}
+            <div className="lg:hidden ml-2">
+              <ThemeSwitch compact />
+            </div>
+            
             {/* User Actions - Desktop y Móvil */}
             {!authLoading && (
               user ? (
@@ -183,7 +188,7 @@ export function SiteShell({ children }: SiteShellProps) {
                     <button
                       onClick={handleLogout}
                       disabled={loggingOut}
-                      className="flex size-[42px] items-center justify-center rounded-[14px] border-2 border-transparent bg-transparent text-[var(--color-text-secondary)] transition-all duration-base hover:border-navy hover:bg-orange-100 hover:text-navy active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
+                      className="flex size-[42px] items-center justify-center rounded-[14px] border-2 border-transparent bg-transparent text-[hsl(var(--muted-foreground))] transition-all duration-base hover:border-navy hover:bg-orange-100 hover:text-navy active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
                       aria-label="Salir"
                     >
                       <LogOut className="size-5" strokeWidth={2} aria-hidden="true" />
@@ -210,11 +215,10 @@ export function SiteShell({ children }: SiteShellProps) {
                       </div>
                     </Link>
                     
-                    {/* Salir */}
                     <button
                       onClick={handleLogout}
                       disabled={loggingOut}
-                      className="flex size-[42px] items-center justify-center rounded-[14px] border-2 border-transparent bg-transparent text-[var(--color-text-secondary)] transition-all duration-base hover:border-navy hover:bg-orange-100 hover:text-navy active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
+                      className="flex size-[42px] items-center justify-center rounded-[14px] border-2 border-transparent bg-transparent text-[hsl(var(--muted-foreground))] transition-all duration-base hover:border-navy hover:bg-orange-100 hover:text-navy active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
                       aria-label="Salir"
                     >
                       <LogOut className="size-5" strokeWidth={2} aria-hidden="true" />

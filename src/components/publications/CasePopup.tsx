@@ -3,6 +3,7 @@ import { MapPin, Clock, X, MessageCircle } from 'lucide-react';
 import { useMap } from 'react-leaflet';
 import type { PublicationSummary } from '../../lib/supabase/publication-search';
 import { POST_TYPE_META, POST_STATUS_META, shouldRenderStatus, isValidPostType } from '../../lib/constants/map-popup';
+import './CasePopup.css';
 
 interface CasePopupProps {
   publication: PublicationSummary;
@@ -10,10 +11,6 @@ interface CasePopupProps {
 }
 
 const POPUP_WIDTH = 320;
-const IMAGE_HEIGHT = 168;
-const BUTTON_HEIGHT = 44;
-const BUTTON_RADIUS = 14;
-const CLOSE_BTN_SIZE = 32;
 
 /**
  * Formato de fecha relativa en español usando Intl.RelativeTimeFormat.
@@ -28,23 +25,15 @@ function formatRelativeTime(dateString: string): string {
 
   try {
     const rtf = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
-
-    if (diffDays >= 1) {
-      return rtf.format(-diffDays, 'day');
-    }
-    if (diffHours >= 1) {
-      return rtf.format(-diffHours, 'hour');
-    }
-    if (diffMinutes >= 1) {
-      return rtf.format(-diffMinutes, 'minute');
-    }
-    return rtf.format(-1, 'second');
+    if (diffDays > 0) return rtf.format(-diffDays, 'day');
+    if (diffHours > 0) return rtf.format(-diffHours, 'hour');
+    if (diffMinutes > 0) return rtf.format(-diffMinutes, 'minute');
+    return 'Justo ahora';
   } catch {
-    // Fallback si Intl no está disponible
-    if (diffDays >= 1) return `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
-    if (diffHours >= 1) return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
-    if (diffMinutes >= 1) return `Hace ${diffMinutes} min`;
-    return 'Ahora mismo';
+    if (diffDays > 0) return `hace ${diffDays}d`;
+    if (diffHours > 0) return `hace ${diffHours}h`;
+    if (diffMinutes > 0) return `hace ${diffMinutes}m`;
+    return 'Justo ahora';
   }
 }
 
@@ -59,9 +48,10 @@ function hasContactInfo(_pub: PublicationSummary): boolean {
 
 export function CasePopup({ publication, onClose }: CasePopupProps) {
   const map = useMap();
+
   const closePopup = () => {
-    map.closePopup();
     onClose?.();
+    map.closePopup();
   };
 
   const typeMeta = isValidPostType(publication.type) ? POST_TYPE_META[publication.type] : POST_TYPE_META.LOST;
@@ -73,14 +63,13 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
   const relativeTime = formatRelativeTime(publication.publishedAt);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      closePopup();
-    }
+    if (e.key === 'Escape') closePopup();
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    e.currentTarget.style.display = 'none';
-    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+    const target = e.currentTarget;
+    target.style.display = 'none';
+    const fallback = target.nextElementSibling as HTMLElement;
     if (fallback) fallback.style.display = 'flex';
   };
 
@@ -100,39 +89,22 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
       {/* ===== VARIANTE CON IMAGEN ===== */}
       {hasImage && (
         <>
-          <div className="case-popup__image-wrapper" style={{ position: 'relative', width: '100%', height: IMAGE_HEIGHT, overflow: 'hidden' }} aria-hidden="true">
+          <div className="case-popup__image-wrapper" aria-hidden="true">
             <img
               src={publication.coverImageUrl!}
               alt={publication.title}
               loading="lazy"
               className="case-popup__image"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: 'block',
-              }}
               onError={handleImageError}
             />
             {/* Fallback si falla la imagen */}
-            <div
-              className="case-popup__image-fallback"
-              style={{
-                display: 'none',
-                width: '100%',
-                height: '100%',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'linear-gradient(135deg, #f6dfcc, #e9b996)',
-              }}
-              aria-hidden="true"
-            >
+            <div className="case-popup__image-fallback" aria-hidden="true">
               <svg
                 width="72"
                 height="72"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="rgba(122,74,42,0.35)"
+                stroke="hsl(var(--muted-foreground) / 0.35)"
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -146,47 +118,13 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
             </div>
 
             {/* Overlay superior: chip de tipo + badge de estado (izq) + botón cerrar (der) */}
-            <div
-              className="case-popup__top-bar"
-              style={{
-                position: 'absolute',
-                top: 12,
-                left: 12,
-                right: 8,
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                gap: 8,
-                zIndex: 1,
-              }}
-            >
-              <div className="case-popup__chips" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div className="case-popup__top-bar">
+              <div className="case-popup__chips">
                 {/* Chip de tipo */}
-                <span
-                  className="case-popup__type-chip"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '4px 10px',
-                    borderRadius: 9999,
-                    backgroundColor: typeMeta.chipBg,
-                    color: typeMeta.chipText,
-                    fontFamily: 'var(--font-sans, Figtree)',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    lineHeight: 1,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
+                <span className="case-popup__type-chip" style={{ backgroundColor: typeMeta.chipBg, color: typeMeta.chipText }}>
                   <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      backgroundColor: typeMeta.stroke,
-                      flexShrink: 0,
-                    }}
+                    className="case-popup__type-dot"
+                    style={{ backgroundColor: typeMeta.stroke }}
                     aria-hidden="true"
                   />
                   {typeMeta.label}
@@ -196,19 +134,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
                 {statusMeta && (
                   <span
                     className="case-popup__status-badge"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '4px 10px',
-                      borderRadius: 9999,
-                      backgroundColor: statusMeta.bg,
-                      color: statusMeta.text,
-                      fontFamily: 'var(--font-sans, Figtree)',
-                      fontSize: 12,
-                      fontWeight: 500,
-                      lineHeight: 1,
-                      whiteSpace: 'nowrap',
-                    }}
+                    style={{ backgroundColor: statusMeta.bg, color: statusMeta.text }}
                   >
                     {statusMeta.label}
                   </span>
@@ -221,26 +147,8 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
                 className="case-popup__close-btn"
                 onClick={closePopup}
                 aria-label="Cerrar"
-                style={{
-                  width: CLOSE_BTN_SIZE,
-                  height: CLOSE_BTN_SIZE,
-                  borderRadius: '50%',
-                  backgroundColor: '#fff',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 8px rgba(42,20,8,0.15)',
-                  transition: 'background-color 0.15s ease',
-                  flexShrink: 0,
-                  padding: 0,
-                  lineHeight: 0,
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5ece4')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#fff')}
               >
-                <X size={18} strokeWidth={2.5} color="#2a1408" aria-hidden="true" />
+                <X size={18} strokeWidth={2.5} color="hsl(var(--foreground))" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -249,42 +157,12 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
 
       {/* ===== VARIANTE SIN IMAGEN: Cabecera compacta ===== */}
       {!hasImage && (
-        <div
-          className="case-popup__header-compact"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '16px 20px 0 20px',
-            gap: 12,
-          }}
-        >
-          <div className="case-popup__chips" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span
-              className="case-popup__type-chip"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 10px',
-                borderRadius: 9999,
-                backgroundColor: typeMeta.chipBg,
-                color: typeMeta.chipText,
-                fontFamily: 'var(--font-sans, Figtree)',
-                fontSize: 13,
-                fontWeight: 500,
-                lineHeight: 1,
-                whiteSpace: 'nowrap',
-              }}
-            >
+        <div className="case-popup__header-compact">
+          <div className="case-popup__chips">
+            <span className="case-popup__type-chip" style={{ backgroundColor: typeMeta.chipBg, color: typeMeta.chipText }}>
               <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  backgroundColor: typeMeta.stroke,
-                  flexShrink: 0,
-                }}
+                className="case-popup__type-dot"
+                style={{ backgroundColor: typeMeta.stroke }}
                 aria-hidden="true"
               />
               {typeMeta.label}
@@ -293,19 +171,7 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
             {statusMeta && (
               <span
                 className="case-popup__status-badge"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '4px 10px',
-                  borderRadius: 9999,
-                  backgroundColor: statusMeta.bg,
-                  color: statusMeta.text,
-                  fontFamily: 'var(--font-sans, Figtree)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  lineHeight: 1,
-                  whiteSpace: 'nowrap',
-                }}
+                style={{ backgroundColor: statusMeta.bg, color: statusMeta.text }}
               >
                 {statusMeta.label}
               </span>
@@ -317,133 +183,48 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
             className="case-popup__close-btn-compact"
             onClick={closePopup}
             aria-label="Cerrar"
-            style={{
-              width: CLOSE_BTN_SIZE,
-              height: CLOSE_BTN_SIZE,
-              borderRadius: '50%',
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '-4px -6px -4px 0',
-              transition: 'background-color 0.15s ease',
-              flexShrink: 0,
-              padding: 0,
-              lineHeight: 0,
-              color: '#2a1408',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5ece4')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
-            <X size={18} strokeWidth={2.5} color="#2a1408" aria-hidden="true" />
+            <X size={18} strokeWidth={2.5} color="hsl(var(--foreground))" aria-hidden="true" />
           </button>
         </div>
       )}
 
       {/* ===== CUERPO COMÚN ===== */}
-      <div
-        className="case-popup__body"
-        style={{
-          padding: '16px 20px 20px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-        }}
-      >
+      <div className="case-popup__body">
         {/* Título */}
-        <h2
-          className="case-popup__title"
-          style={{
-            margin: 0,
-            fontFamily: 'var(--font-display, Baloo 2)',
-            fontWeight: 800,
-            fontSize: 21,
-            lineHeight: 1.2,
-            color: '#2a1408',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}
-        >
+        <h2 className="case-popup__title">
           {publication.title}
         </h2>
 
         {/* Descripción */}
-        <p
-          className="case-popup__description"
-          style={{
-            margin: 0,
-            fontFamily: 'var(--font-sans, Figtree)',
-            fontSize: 15,
-            lineHeight: 1.55,
-            color: '#5b4636',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-          }}
-        >
+        <p className="case-popup__description">
           {publication.description}
         </p>
 
         {/* Meta: ubicación + fecha relativa */}
         {(locationText || relativeTime) && (
-          <div
-            className="case-popup__meta"
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: '6px 16px',
-              fontFamily: 'var(--font-sans, Figtree)',
-              fontSize: 13,
-              color: '#7a6555',
-              lineHeight: 1,
-              minWidth: 0, // permite que los hijos se encojan
-            }}
-          >
+          <div className="case-popup__meta">
             {locationText && (
-              <span
-                className="case-popup__meta-item"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  minWidth: 0,
-                  maxWidth: '100%',
-                }}
-              >
+              <span className="case-popup__meta-item">
                 <MapPin
                   size={16}
                   strokeWidth={2}
                   color="currentColor"
                   aria-hidden="true"
-                  style={{ flexShrink: 0 }}
+                  className="case-popup__meta-icon"
                 />
                 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, display: 'block' }}>{locationText}</span>
               </span>
             )}
 
             {relativeTime && (
-              <span
-                className="case-popup__meta-item"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
+              <span className="case-popup__meta-item">
                 <Clock
                   size={16}
                   strokeWidth={2}
                   color="currentColor"
                   aria-hidden="true"
-                  style={{ flexShrink: 0 }}
+                  className="case-popup__meta-icon"
                 />
                 <span>{relativeTime}</span>
               </span>
@@ -452,43 +233,11 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
         )}
 
         {/* Acciones */}
-        <div
-          className="case-popup__actions"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            marginTop: 6,
-          }}
-        >
+        <div className="case-popup__actions">
           {/* Botón principal: Ver publicación */}
           <Link
             to={`/p/${publication.slug}`}
             className="case-popup__btn-primary"
-            style={{
-              flex: 1,
-              height: BUTTON_HEIGHT,
-              borderRadius: BUTTON_RADIUS,
-              backgroundColor: '#ff8c42',
-              color: '#2a1408',
-              fontFamily: 'var(--font-display, Baloo 2)',
-              fontWeight: 600,
-              fontSize: 16,
-              lineHeight: 1,
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background-color 0.15s ease, transform 0.1s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f0721f';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#ff8c42';
-            }}
-            onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.98)')}
-            onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
             Ver publicación
           </Link>
@@ -499,25 +248,8 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
               type="button"
               className="case-popup__btn-contact"
               aria-label="Contactar"
-              style={{
-                width: BUTTON_HEIGHT,
-                height: BUTTON_HEIGHT,
-                borderRadius: BUTTON_RADIUS,
-                backgroundColor: '#f5ece4',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'background-color 0.15s ease',
-                flexShrink: 0,
-                padding: 0,
-                lineHeight: 0,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#e9dccf')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f5ece4')}
             >
-              <MessageCircle size={20} strokeWidth={2} color="#2a1408" aria-hidden="true" />
+              <MessageCircle size={20} strokeWidth={2} color="hsl(var(--primary-foreground))" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -525,3 +257,5 @@ export function CasePopup({ publication, onClose }: CasePopupProps) {
     </div>
   );
 }
+
+export default CasePopup;

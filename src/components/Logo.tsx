@@ -18,14 +18,12 @@ export function Logo({ variant = 'full', size = 40, className = '', animated = f
       className={`inline-flex items-center gap-2 ${className} ${animated ? 'group' : ''}`}
       style={{ color: 'currentColor' }}
     >
-      {/* Contenedor circular con borde navy */}
+      {/* Contenedor circular con borde - usa clases CSS para soporte dark mode */}
       <div
-        className={`flex shrink-0 items-center justify-center rounded-full border-2 ${animated ? 'transition-transform duration-base group-hover:scale-110 group-hover:-rotate-5' : ''}`}
+        className={`logo-mark flex shrink-0 items-center justify-center rounded-full border-2 ${animated ? 'transition-transform duration-base group-hover:scale-110 group-hover:-rotate-5' : ''}`}
         style={{
           width: containerSize,
           height: containerSize,
-          backgroundColor: '#FF8C42',
-          borderColor: '#3D1D0B',
           overflow: 'hidden',
         }}
       >
@@ -38,14 +36,14 @@ export function Logo({ variant = 'full', size = 40, className = '', animated = f
           aria-hidden="true"
           style={{ overflow: 'hidden' }}
         >
-          {/* Fondo naranja sólido */}
-          <rect width="120" height="120" fill="#FF8C42"/>
+          {/* Fondo naranja sólido - usa fill: currentColor desde CSS */}
+          <rect width="120" height="120" className="logo-bg" />
           
-          {/* 4 dedos - navy */}
-          <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" fill="#3D1D0B"/>
-          <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" fill="#3D1D0B"/>
-          <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" fill="#3D1D0B"/>
-          <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" fill="#3D1D0B"/>
+          {/* 4 dedos - usan currentColor desde CSS */}
+          <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" />
+          <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" />
+          <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" />
+          <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" />
           
           {/* Almohadilla con hueco transparente (icono ubicación) */}
           <defs>
@@ -56,7 +54,6 @@ export function Logo({ variant = 'full', size = 40, className = '', animated = f
           </defs>
           <path 
             d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" 
-            fill="#3D1D0B" 
             mask={`url(#paw-mask-logo-${size}-${variant})`} 
           />
         </svg>

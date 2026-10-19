@@ -89,50 +89,81 @@
 
 @layer base {
   :root {
+    color-scheme: light dark;
     /* Tokens Patitas Anime Edition - Monocromático Naranja - Modo claro */
-    --background: 38 100% 97%;  /* orange-50 */
-    --foreground: 24 35% 14%;  /* orange-900 */
-    --card: 40 100% 99%;  /* surface-card */
+    --background: 38 100% 97%;  /* orange-50 #fff4ea */
+    --foreground: 24 35% 14%;  /* orange-900 #3d1d0b */
+    --card: 40 100% 99%;  /* surface-card #fffaf5 */
     --card-foreground: 24 35% 14%;
     --popover: 40 100% 99%;
     --popover-foreground: 24 35% 14%;
-    --primary: 22 100% 63%;  /* orange-400 */
+    --primary: 22 100% 63%;  /* orange-400 #ff8c42 */
     --primary-foreground: 24 35% 14%;  /* orange-900 for contrast on orange-400 */
-    --secondary: 32 100% 89%;  /* orange-200 */
+    --secondary: 32 100% 89%;  /* orange-200 #ffcfa8 */
     --secondary-foreground: 24 35% 14%;
     --muted: 38 100% 97%;
-    --muted-foreground: 24 25% 40%;
+    --muted-foreground: 24 25% 40%;  /* #8a5a3c */
     --accent: 22 100% 63%;
     --accent-foreground: 24 35% 14%;
-    --destructive: 0 84% 60%;  /* lost red */
+    --destructive: 0 84% 60%;  /* lost red #ef4444 */
     --destructive-foreground: 0 0% 100%;
-    --border: 32 80% 88%;  /* orange-200 */
+    --border: 32 80% 88%;  /* orange-200 #ffd9bb */
     --input: 32 80% 88%;
     --ring: 22 100% 63%;
     --radius: 1rem;
   }
 
   .dark {
-    --background: 24 35% 14%;
-    --foreground: 38 100% 97%;
-    --card: 24 30% 18%;
+    /* Paleta oscura monocromática naranja según especificación */
+    --background: 20 30% 6%;    /* #1c0e05 - Fondo de página */
+    --foreground: 38 100% 97%;  /* #fff4ea - Texto principal */
+    --card: 20 25% 10%;         /* #2a1608 - Superficie cards, header, footer, navbar */
     --card-foreground: 38 100% 97%;
-    --popover: 24 30% 18%;
+    --popover: 20 25% 10%;
     --popover-foreground: 38 100% 97%;
-    --primary: 22 100% 63%;
-    --primary-foreground: 38 100% 97%;
-    --secondary: 32 80% 40%;
+    --primary: 22 100% 63%;     /* #ff8c42 - PRINCIPAL (igual que claro) */
+    --primary-foreground: 20 25% 10%; /* #2a1608 - Texto SOBRE botón naranja (oscuro, nunca blanco) */
+    --secondary: 22 50% 15%;    /* #3a1f0d - Superficie suave (chips, hover nav, tab activo) */
     --secondary-foreground: 38 100% 97%;
-    --muted: 24 25% 24%;
-    --muted-foreground: 38 50% 72%;
+    --muted: 20 25% 12%;        /* #3a1f0d / #4d2a12 - Tono medio */
+    --muted-foreground: 32 40% 70%; /* #c9a07e - Texto secundario */
     --accent: 22 100% 63%;
     --accent-foreground: 38 100% 97%;
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 60%;   /* lost #ef4444 - NO cambia */
     --destructive-foreground: 0 0% 100%;
-    --border: 24 25% 26%;
-    --input: 24 25% 26%;
+    --border: 20 30% 18%;       /* #4d2a12 - Bordes */
+    --input: 20 30% 18%;
     --ring: 22 100% 63%;
+    --radius: 1rem;
   }
+}
+
+/* Logo component styles */
+.logo-mark {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--foreground));
+}
+
+.dark .logo-mark {
+  border-color: var(--color-orange-300); /* #ffb078 en oscuro */
+}
+
+.logo-mark svg {
+  color: hsl(var(--foreground));
+}
+
+.dark .logo-mark svg {
+  color: hsl(var(--foreground)); /* #fff4ea en oscuro */
+}
+
+.logo-mark rect,
+.logo-bg {
+  fill: hsl(var(--primary));
+}
+
+.logo-mark ellipse,
+.logo-mark path[fill] {
+  fill: currentColor;
 }
 
 @layer base {
@@ -147,8 +178,8 @@
   body {
     margin: 0;
     min-width: 320px;
-    background-color: var(--color-cream);
-    color: var(--color-navy);
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -172,14 +203,13 @@
 }
 
 ::selection {
-  background: rgba(255, 140, 66, 0.25);
-  color: var(--color-navy);
+  background: hsl(var(--primary) / 0.25);
+  color: hsl(var(--foreground));
 }
-
 /* Panel suave con nueva estética */
 .soft-panel {
-  background: var(--color-surface-card);
-  border: 2px solid var(--color-border-card);
+  background: hsl(var(--card));
+  border: 2px solid hsl(var(--border));
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-md);
   transition: all var(--duration-base) var(--ease-smooth);
@@ -547,30 +577,30 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-cream);
+  background: hsl(var(--muted));
   border-radius: var(--radius-pill);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--color-orange) 0%, var(--color-orange-dark) 100%);
+  background: linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
   border-radius: var(--radius-pill);
-  border: 2px solid var(--color-cream);
+  border: 2px solid hsl(var(--muted));
   transition: background var(--duration-base) var(--ease-smooth);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, var(--color-orange-light) 0%, var(--color-orange) 100%);
-  border-color: var(--color-cream-dark);
+  background: linear-gradient(180deg, hsl(var(--primary) / 0.9) 0%, hsl(var(--primary)) 100%);
+  border-color: hsl(var(--muted) / 0.8);
 }
 
 ::-webkit-scrollbar-thumb:active {
-  background: var(--color-orange-dark);
+  background: hsl(var(--primary) / 0.8);
 }
 
 /* Para Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-orange) var(--color-cream);
+  scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
 }
 
 /* Scrollbar en hover para un efecto más sutil */
@@ -586,7 +616,7 @@ html {
   }
   
   ::-webkit-scrollbar-thumb {
-    border: 1px solid var(--color-cream);
+    border: 1px solid hsl(var(--muted));
   }
 }
 
@@ -598,7 +628,7 @@ html {
 
 .overflow-auto::-webkit-scrollbar-thumb,
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background: var(--color-orange);
+  background: hsl(var(--primary));
   border-radius: var(--radius-pill);
 }
 
@@ -988,86 +1018,80 @@ video {
 }
 
 /* ---------- Capa 1: mapa base ---------- */
-.map-sea { fill: var(--color-orange-100); }
-.dark .map-sea { fill: var(--color-orange-900); }
+.map-sea { fill: hsl(var(--secondary)); }
+.dark .map-sea { fill: hsl(var(--muted)); }
 
-.map-land { fill: var(--color-orange-50); }
-.dark .map-land { fill: var(--color-navy-dark); }
+.map-land { fill: hsl(var(--background)); }
+.dark .map-land { fill: hsl(var(--card)); }
 
 .map-coastline {
   fill: none;
-  stroke: var(--color-orange-400);
+  stroke: hsl(var(--primary));
   stroke-width: 4;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.dark .map-coastline { stroke: var(--color-orange-300); }
+.dark .map-coastline { stroke: hsl(var(--primary) / 0.8); }
 
-.map-bay { fill: var(--color-orange-100); stroke: none; }
-.dark .map-bay { fill: var(--color-orange-900); }
+.map-bay { fill: hsl(var(--secondary)); stroke: none; }
+.dark .map-bay { fill: hsl(var(--muted)); }
 
-.map-lighthouse { fill: var(--color-orange-600); }
-.dark .map-lighthouse { fill: var(--color-orange-400); }
+.map-lighthouse { fill: hsl(var(--primary) / 0.7); }
+.dark .map-lighthouse { fill: hsl(var(--primary)); }
 .map-lighthouse-light {
-  fill: var(--color-orange-200);
+  fill: hsl(var(--secondary));
   animation: map-lighthouse-blink 3s ease-in-out infinite;
 }
-.dark .map-lighthouse-light { fill: var(--color-orange-100); }
+.dark .map-lighthouse-light { fill: hsl(var(--secondary) / 0.8); }
 @keyframes map-lighthouse-blink {
   0%, 90%, 100% { opacity: 1; }
   92%, 98% { opacity: 0.3; }
 }
 
-.map-zone { fill: var(--color-orange-200); opacity: 0.5; }
-.dark .map-zone { fill: var(--color-orange-700); opacity: 0.4; }
+.map-zone { fill: hsl(var(--secondary)); opacity: 0.5; }
+.dark .map-zone { fill: hsl(var(--muted)); opacity: 0.4; }
 
 .map-zone-label {
   font-family: var(--font-sans);
   font-size: 9px;
   font-weight: 700;
-  fill: var(--color-orange-900);
+  fill: hsl(var(--primary) / 0.8);
   text-anchor: middle;
   dominant-baseline: middle;
-  letter-spacing: 0.08em;
-  pointer-events: none;
-  opacity: 0.7;
 }
-.dark .map-zone-label { fill: var(--color-orange-200); }
+.dark .map-zone-label { fill: hsl(var(--primary) / 0.9); }
 
 .map-streets {
   fill: none;
-  stroke: var(--color-orange-300);
+  stroke: hsl(var(--primary) / 0.5);
   stroke-width: 1.5;
   stroke-linecap: round;
-  opacity: 0.6;
 }
-.dark .map-streets { stroke: var(--color-orange-600); opacity: 0.4; }
+.dark .map-streets { stroke: hsl(var(--primary) / 0.4); opacity: 0.4; }
 
 /* ---------- Capa 2: radar (todo con transform-origin: 0 0 dentro del <g> trasladado al centro) ---------- */
 .map-radar-ring {
   fill: none;
-  stroke: var(--color-orange-400);
+  stroke: hsl(var(--primary) / 0.4);
   stroke-width: 1;
   stroke-dasharray: 4 4;
-  opacity: 0.5;
 }
-.dark .map-radar-ring { stroke: var(--color-orange-300); }
+.dark .map-radar-ring { stroke: hsl(var(--primary) / 0.3); }
 
 .map-radar-cross {
-  stroke: var(--color-orange-400);
+  stroke: hsl(var(--primary) / 0.4);
   stroke-width: 0.5;
   stroke-dasharray: 2 4;
-  opacity: 0.4;
 }
-.dark .map-radar-cross { stroke: var(--color-orange-300); }
+.dark .map-radar-cross { stroke: hsl(var(--primary) / 0.3); }
 
 .map-radar-sweep {
-  fill: var(--color-orange-400);
+  fill: hsl(var(--primary));
   opacity: 0.3;
   transform-origin: 0 0;
   animation: map-radar-sweep-rot 6s linear infinite;
 }
-.dark .map-radar-sweep { fill: var(--color-orange-300); }
+.dark .map-radar-sweep { fill: hsl(var(--primary) / 0.8); }
 @keyframes map-radar-sweep-rot {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -1075,56 +1099,54 @@ video {
 
 .map-radar-wave {
   fill: none;
-  stroke: var(--color-orange-400);
+  stroke: hsl(var(--primary));
   stroke-width: 1.5;
-  opacity: 0;
+  opacity: 0.5;
   transform-origin: 0 0;
   animation: map-radar-wave-expand 4s ease-out infinite;
 }
-.dark .map-radar-wave { stroke: var(--color-orange-300); }
+.dark .map-radar-wave { stroke: hsl(var(--primary) / 0.8); }
 @keyframes map-radar-wave-expand {
   0% { transform: scale(0.05); opacity: 0.6; }
   100% { transform: scale(1); opacity: 0; }
 }
 
 .map-radar-halo {
-  fill: var(--color-orange-400);
+  fill: hsl(var(--primary));
   opacity: 0.18;
   transform-origin: 0 0;
   animation: map-radar-halo-pulse 2s ease-in-out infinite;
 }
-.dark .map-radar-halo { fill: var(--color-orange-300); }
+.dark .map-radar-halo { fill: hsl(var(--primary) / 0.8); }
 @keyframes map-radar-halo-pulse {
   0%, 100% { transform: scale(1); opacity: 0.18; }
   50% { transform: scale(1.4); opacity: 0.08; }
 }
 
 .map-radar-center {
-  fill: var(--color-orange-500);
-  stroke: var(--color-surface-card);
+  fill: hsl(var(--primary) / 0.9);
+  stroke: hsl(var(--card));
   stroke-width: 2;
 }
-.dark .map-radar-center { fill: var(--color-orange-400); }
+.dark .map-radar-center { fill: hsl(var(--primary)); }
 
 .map-radar-label {
   font-family: var(--font-sans);
   font-size: 8px;
   font-weight: 700;
-  fill: var(--color-orange-700);
-  letter-spacing: 0.05em;
-  pointer-events: none;
+  fill: hsl(var(--primary) / 0.8);
+  text-anchor: middle;
+  dominant-baseline: middle;
 }
-.dark .map-radar-label { fill: var(--color-orange-200); }
-
+.dark .map-radar-label { fill: hsl(var(--primary) / 0.9); }
 .map-distance-label {
   font-family: var(--font-sans);
   font-size: 7px;
   font-weight: 600;
-  fill: var(--color-orange-600);
+  fill: hsl(var(--primary) / 0.7);
   pointer-events: none;
 }
-.dark .map-distance-label { fill: var(--color-orange-300); }
-
+.dark .map-distance-label { fill: hsl(var(--primary) / 0.9); }
 /* ---------- Capa 3: casos e historia ---------- */
 .map-case {
   opacity: 0;
@@ -1134,7 +1156,7 @@ video {
 .map-case--lost { animation-name: map-case-lost; }
 .map-case--found { animation-name: map-case-found; }
 
-.map-case-disc { fill: var(--color-surface-card); opacity: 0.9; }
+.map-case-disc { fill: hsl(var(--card)); opacity: 0.9; }
 
 @keyframes map-case-cycle {
   0% { opacity: 0; transform: scale(0.3); }
@@ -1204,16 +1226,16 @@ video {
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
-  background: var(--color-surface-card);
-  border: 1.5px solid var(--color-orange-300);
-  color: var(--color-orange-900);
+  background: hsl(var(--card));
+  border: 1.5px solid hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.1);
   opacity: 0;
 }
 .dark .map-floating-card {
-  background: var(--color-navy-light);
-  border-color: var(--color-orange-600);
-  color: var(--color-cream);
+  background: hsl(var(--card));
+  border-color: hsl(var(--primary) / 0.8);
+  color: hsl(var(--primary-foreground));
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
@@ -1250,17 +1272,17 @@ video {
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
-  background: var(--color-surface-card);
-  border: 1.5px solid var(--color-orange-300);
-  color: var(--color-orange-900);
+  background: hsl(var(--card));
+  border: 1.5px solid hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.1);
   z-index: 20;
   animation: map-chip-slide-in 0.5s ease-out 0.3s both;
 }
 .dark .map-nearby-chip {
-  background: var(--color-navy-light);
-  border-color: var(--color-orange-600);
-  color: var(--color-cream);
+  background: hsl(var(--card));
+  border-color: hsl(var(--primary) / 0.8);
+  color: hsl(var(--primary-foreground));
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 .map-chip-dot {
@@ -1405,3 +1427,129 @@ video {
 
 /* ==================== FIN THEME SWITCH ==================== */
 /* ==================== FIN MAP PREVIEW ==================== */
+
+/* ==================== THEME SWITCH (BINARIO CON PATITA) ==================== */
+.theme-switch {
+  --ts-track: #ffcfa8;
+  --ts-border: #ffb078;
+  --ts-thumb: #ff8c42;
+  --ts-thumb-border: #3d1d0b;
+  --ts-thumb-ink: #3d1d0b;
+  position: relative;
+  flex: none;
+  width: 76px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.theme-switch::after { content: ''; position: absolute; inset: -4px; }
+.theme-switch[aria-checked='true'] {
+  --ts-track: #3a1f0d;
+  --ts-border: #7a3a12;
+  --ts-thumb-border: #ffb078;
+  --ts-thumb-ink: #fff4ea;
+}
+.theme-switch:focus-visible { outline: 3px solid #ff8c42; outline-offset: 3px; }
+
+.theme-switch__track {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--ts-track);
+  border: 2px solid var(--ts-border);
+  box-shadow: 0 3px 0 var(--ts-border);
+  overflow: hidden;
+  transition: background 0.4s, border-color 0.4s, box-shadow 0.4s;
+}
+.theme-switch__sun,
+.theme-switch__moon,
+.theme-switch__star { position: absolute; transition: opacity 0.35s, transform 0.45s; }
+.theme-switch__sun { right: 9px; top: 9px; }
+.theme-switch__moon { left: 10px; top: 9px; opacity: 0; transform: translateX(-10px); }
+.theme-switch__star { width: 3px; height: 3px; border-radius: 50%; background: #ffe6d1; opacity: 0; }
+.theme-switch__star--1 { left: 30px; top: 9px; }
+.theme-switch__star--2 { left: 24px; top: 24px; width: 2px; height: 2px; }
+.theme-switch__star--3 { left: 38px; top: 19px; width: 2px; height: 2px; }
+
+.theme-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ts-thumb);
+  border: 2.5px solid var(--ts-thumb-border);
+  color: var(--ts-thumb-ink);
+  box-shadow: 0 2px 0 rgba(61, 29, 11, 0.25);
+  transition: transform 0.5s cubic-bezier(0.68, -0.35, 0.3, 1.35), border-color 0.4s, width 0.15s;
+}
+
+.theme-switch[aria-checked='true'] .theme-switch__sun { opacity: 0; transform: translateX(10px); }
+.theme-switch[aria-checked='true'] .theme-switch__moon { opacity: 1; transform: none; }
+.theme-switch[aria-checked='true'] .theme-switch__star { opacity: 0.9; }
+.theme-switch[aria-checked='true'] .theme-switch__thumb { transform: translateX(36px) rotate(360deg); }
+
+.theme-switch:active .theme-switch__thumb { width: 38px; }
+.theme-switch[aria-checked='true']:active .theme-switch__thumb { width: 38px; margin-left: -6px; }
+
+.theme-switch--compact { transform: scale(0.85); transform-origin: right center; margin-left: -11px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch__track,
+  .theme-switch__thumb,
+  .theme-switch__sun,
+  .theme-switch__moon,
+  .theme-switch__star { transition: none; }
+  .theme-switch[aria-checked='true'] .theme-switch__thumb { transform: translateX(36px); }
+  .theme-switch:active .theme-switch__thumb { width: 32px; margin-left: 0; }
+}
+
+/* ==================== MAP TILES DARK MODE FILTER ==================== */
+.patitas-map .leaflet-tile-pane {
+  transition: filter 0.3s ease;
+}
+
+.dark .patitas-map .leaflet-tile-pane {
+  /* Filtro para teñir los tiles de OpenStreetMap hacia naranja oscuro */
+  filter: brightness(0.45) sepia(0.3) hue-rotate(25deg) saturate(1.2) contrast(1.1);
+}
+
+/* Controles de zoom y atribución en oscuro */
+.dark .patitas-map .leaflet-control-zoom {
+  border-color: hsl(var(--border));
+}
+
+.dark .patitas-map .leaflet-control-zoom a {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.dark .patitas-map .leaflet-control-zoom a:hover {
+  background-color: hsl(var(--secondary));
+}
+
+.dark .patitas-map .leaflet-control-attribution {
+  background-color: hsl(var(--card) / 0.9);
+  color: hsl(var(--muted-foreground));
+}
+
+/* Popups en oscuro (CasePopup ya maneja su propio dark mode) */
+.dark .patitas-map .leaflet-popup-content-wrapper {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.dark .patitas-map .leaflet-popup-tip {
+  background: hsl(var(--card));
+}
+/* ==================== FIN MAP TILES DARK MODE FILTER ==================== */

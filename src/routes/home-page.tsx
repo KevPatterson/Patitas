@@ -371,50 +371,50 @@ export function HomePage() {
                 {/* Logo grande central */}
                 <div className="relative z-10 scale-150 transform">
                   <svg
-                    width="120"
-                    height="120"
                     viewBox="0 0 120 120"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
                     className="drop-shadow-xl"
+                    style={{ color: 'hsl(var(--primary))' }}
                   >
                     {/* 4 dedos - naranja */}
-                    <ellipse 
-                      cx="24" 
-                      cy="48" 
-                      rx="9" 
-                      ry="12" 
-                      transform="rotate(-22 24 48)" 
-                      fill="#ff8c42"
+                    <ellipse
+                      cx="24"
+                      cy="48"
+                      rx="9"
+                      ry="12"
+                      transform="rotate(-22 24 48)"
+                      fill="currentColor"
                       className="animate-paw-bounce"
                     />
-                    <ellipse 
-                      cx="45" 
-                      cy="28" 
-                      rx="9" 
-                      ry="13" 
-                      transform="rotate(-8 45 28)" 
-                      fill="#ff8c42"
+                    <ellipse
+                      cx="45"
+                      cy="28"
+                      rx="9"
+                      ry="13"
+                      transform="rotate(-8 45 28)"
+                      fill="currentColor"
                       className="animate-paw-bounce"
                       style={{ animationDelay: '100ms' }}
                     />
-                    <ellipse 
-                      cx="75" 
-                      cy="28" 
-                      rx="9" 
-                      ry="13" 
-                      transform="rotate(8 75 28)" 
-                      fill="#ff8c42"
+                    <ellipse
+                      cx="75"
+                      cy="28"
+                      rx="9"
+                      ry="13"
+                      transform="rotate(8 75 28)"
+                      fill="currentColor"
                       className="animate-paw-bounce"
                       style={{ animationDelay: '200ms' }}
                     />
-                    <ellipse 
-                      cx="96" 
-                      cy="48" 
-                      rx="9" 
-                      ry="12" 
-                      transform="rotate(22 96 48)" 
-                      fill="#ff8c42"
+                    <ellipse
+                      cx="96"
+                      cy="48"
+                      rx="9"
+                      ry="12"
+                      transform="rotate(22 96 48)"
+                      fill="currentColor"
                       className="animate-paw-bounce"
                       style={{ animationDelay: '300ms' }}
                     />
@@ -422,8 +422,8 @@ export function HomePage() {
                     {/* Almohadilla con gradiente */}
                     <defs>
                       <linearGradient id="paw-gradient" x1="60" y1="54" x2="60" y2="110" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stopColor="#ff8c42" />
-                        <stop offset="100%" stopColor="#f0721f" />
+                        <stop offset="0%" stopColor="hsl(var(--primary))" />
+                        <stop offset="100%" stopColor="hsl(var(--primary) / 0.9)" />
                       </linearGradient>
                       <mask id="paw-mask-hero">
                         <rect width="120" height="120" fill="white" />

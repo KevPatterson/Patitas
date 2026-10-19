@@ -3,9 +3,6 @@ import { Home, Search, MapPinned, PlusCircle, Bell, Heart } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
 import { useAuth } from '../../app/auth-context';
-import { useTheme } from '../../app/use-theme';
-import { ThemeSwitch } from '../ui/theme-switch';
-
 interface NavItem {
   to: string;
   label: string;
@@ -18,7 +15,6 @@ export function BottomNav() {
   const { user } = useAuth();
   const unreadCount = useNotificationCount();
   const isLoggedIn = !!user;
-  const { theme, toggleTheme } = useTheme();
 
   const items: readonly NavItem[] = [
     { to: '/', label: 'Inicio', icon: Home },
@@ -32,8 +28,13 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t-2 border-navy/10 bg-white/95 px-2 py-2 backdrop-blur-md shadow-lg lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 px-2 py-2 lg:hidden"
       aria-label="Navegación móvil"
+      style={{
+        borderTop: '2px solid hsl(var(--border))',
+        backgroundColor: 'hsl(var(--card) / 0.95)',
+        boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.15)',
+      }}
     >
       <div className="mx-auto grid max-w-3xl grid-cols-5 gap-1">
         {items.map((item) => {
@@ -48,15 +49,18 @@ export function BottomNav() {
                 to={item.to}
                 className="flex flex-col items-center justify-center relative -mt-6"
               >
-                <div className={[
-                  'flex size-14 items-center justify-center rounded-2xl shadow-lg transition-all duration-base ease-smooth',
-                  isActive
-                    ? 'bg-orange-dark scale-110'
-                    : 'bg-orange hover:bg-orange-dark hover:scale-105',
-                ].join(' ')}>
-                  <Icon className="size-6 text-white" aria-hidden="true" />
+                <div
+                  className={[
+                    'flex size-14 items-center justify-center rounded-2xl shadow-lg transition-all duration-base ease-smooth',
+                    isActive ? 'scale-110' : 'hover:scale-105',
+                  ].join(' ')}
+                  style={{
+                    backgroundColor: isActive ? 'hsl(var(--primary) / 0.9)' : 'hsl(var(--primary))',
+                  }}
+                >
+                  <Icon className="size-6" aria-hidden="true" style={{ color: 'hsl(var(--primary-foreground))' }} />
                 </div>
-                <span className="mt-1 text-[10px] font-bold text-navy">
+                <span className="mt-1 text-[10px] font-bold" style={{ color: 'hsl(var(--foreground))' }}>
                   {item.label}
                 </span>
               </NavLink>
@@ -69,15 +73,20 @@ export function BottomNav() {
               to={item.to}
               className={[
                 'flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-center text-[10px] font-bold transition-all duration-base ease-smooth relative',
-                isActive
-                  ? 'bg-navy text-white scale-105'
-                  : 'text-navy/60 hover:bg-navy/5 hover:text-navy',
+                isActive ? 'scale-105' : '',
               ].join(' ')}
+              style={{
+                backgroundColor: isActive ? 'hsl(var(--foreground))' : 'transparent',
+                color: isActive ? 'hsl(var(--background))' : 'hsl(var(--muted-foreground))',
+              }}
             >
-              <Icon className="size-5" aria-hidden="true" />
-              {item.label}
+              <Icon className="size-5" aria-hidden="true" style={{ color: isActive ? 'hsl(var(--background))' : 'hsl(var(--muted-foreground))' }} />
+              <span style={{ color: isActive ? 'hsl(var(--background))' : 'hsl(var(--muted-foreground))' }}>{item.label}</span>
               {showBadge && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full bg-lost text-white text-[8px] font-bold flex items-center justify-center shadow-sm animate-paw-pulse">
+                <span
+                  className="absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full text-white text-[8px] font-bold flex items-center justify-center shadow-sm animate-paw-pulse"
+                  style={{ backgroundColor: 'hsl(var(--destructive))' }}
+                >
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -85,15 +94,6 @@ export function BottomNav() {
           );
         })}
       </div>
-
-      {/* Theme Switch - Mobile */}
-      <button
-        onClick={toggleTheme}
-        className="absolute right-3 bottom-3 lg:hidden"
-        aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-      >
-        <ThemeSwitch />
-      </button>
     </nav>
   );
 }

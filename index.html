@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ff8c42" />
+    <meta name="theme-color" id="theme-color-meta" content="#ff8c42" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -40,6 +40,17 @@
       content="Plataforma comunitaria para reencontrar mascotas perdidas, reportar encontradas y promover adopciones responsables."
     />
     <meta name="twitter:image" content="/og-image.png" />
+    <script>
+      (function () {
+        var storageKey = 'patitas-theme';
+        var theme = localStorage.getItem(storageKey);
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = theme === 'dark' || (!theme && prefersDark);
+        document.documentElement.classList.toggle('dark', isDark);
+        var meta = document.getElementById('theme-color-meta');
+        if (meta) meta.setAttribute('content', isDark ? '#1c0e05' : '#ff8c42');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
