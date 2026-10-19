@@ -26,7 +26,7 @@ const DEMO_CASES: DemoCase[] = [
   { id: 'case-found', type: 'FOUND', x: 285, y: 120 },
   { id: 'case-adoption', type: 'ADOPTION', x: 110, y: 205 },
   { id: 'case-abandoned', type: 'ABANDONED', x: 275, y: 210 },
-  { id: 'case-sighting', type: 'SIGHTING', x: 130, y: 185 },
+  { id: 'case-sighting', type: 'SIGHTING', x: 140, y: 230 },
 ];
 
 /**
@@ -240,7 +240,7 @@ export function MapPreview({ nearbyCount = 5 }: { nearbyCount?: number }) {
       >
         <div className="map-floating-card map-card--lost" style={{ animationDelay: `${PROTAGONIST.delay}s` }}>
           <span className="map-card-dot map-card-dot--lost" />
-          <span>Perro mestizo · Perdida</span>
+          <span>Perra mestiza · Perdida</span>
         </div>
         <div className="map-floating-card map-card--found" style={{ animationDelay: `${PROTAGONIST.delay}s` }}>
           <span className="map-card-dot map-card-dot--found" />
