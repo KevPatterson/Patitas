@@ -26,7 +26,7 @@ export function PublicationCard({ publication, distance }: PublicationCardProps)
   return (
     <Link
       to={`/p/${publication.slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-navy/10 bg-white shadow-md transition-all duration-base ease-smooth hover:-translate-y-2 hover:shadow-xl hover:border-orange/30"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-foreground/10 bg-surface shadow-md transition-all duration-base ease-smooth hover:-translate-y-2 hover:shadow-xl hover:border-orange/30"
     >
       {/* Imagen con overlay decorativo */}
       <div className="relative aspect-4/3 overflow-hidden bg-linear-to-br from-orange/10 to-turquoise/10">
@@ -38,7 +38,7 @@ export function PublicationCard({ publication, distance }: PublicationCardProps)
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-navy/20">
+          <div className="flex h-full w-full items-center justify-center text-foreground/20">
             <PawPrint className="size-16 animate-paw-bounce" aria-hidden="true" strokeWidth={1.5} />
           </div>
         )}
@@ -69,18 +69,18 @@ export function PublicationCard({ publication, distance }: PublicationCardProps)
         {/* Título con emoji */}
         <div className="flex items-start gap-2">
           <span className="text-lg shrink-0 mt-0.5">{typeEmojis[publication.type]}</span>
-          <h2 className="line-clamp-2 min-h-[3.25rem] font-display text-xl font-extrabold leading-tight text-navy group-hover:text-orange transition-colors">
+          <h2 className="line-clamp-2 min-h-[3.25rem] font-display text-xl font-extrabold leading-tight text-foreground group-hover:text-orange transition-colors">
             {publication.title}
           </h2>
         </div>
 
         {/* Descripción */}
-        <p className="line-clamp-2 min-h-[3rem] text-sm leading-relaxed text-navy/70">
+        <p className="line-clamp-2 min-h-[3rem] text-sm leading-relaxed text-foreground/70">
           {publication.description}
         </p>
 
         {/* Metadatos */}
-        <div className="flex min-h-4 flex-wrap items-center gap-3 text-xs font-semibold text-navy/60">
+        <div className="flex min-h-4 flex-wrap items-center gap-3 text-xs font-semibold text-foreground/60">
           {(publication.municipality || publication.province) && (
             <div className="flex items-center gap-1">
               <MapPin className="size-3.5" aria-hidden="true" />
@@ -98,12 +98,12 @@ export function PublicationCard({ publication, distance }: PublicationCardProps)
         {/* Detalles adicionales */}
         <div className="flex min-h-7 flex-wrap gap-2">
           {publication.species && (
-            <span className="inline-flex items-center rounded-lg bg-navy/5 px-2.5 py-1 text-xs font-medium text-navy">
+            <span className="inline-flex items-center rounded-lg bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground">
               {SPECIES_LABELS[publication.species] ?? publication.species}
             </span>
           )}
           {publication.breed && (
-            <span className="inline-flex items-center rounded-lg bg-navy/5 px-2.5 py-1 text-xs font-medium text-navy">
+            <span className="inline-flex items-center rounded-lg bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground">
               {publication.breed}
             </span>
           )}

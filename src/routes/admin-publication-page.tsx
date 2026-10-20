@@ -66,7 +66,7 @@ export function AdminPublicationPage() {
       <section className="grid min-h-[60vh] place-items-center py-10">
         <div className="flex flex-col items-center gap-4">
           <PawLoader size="lg" />
-          <p className="font-display text-lg font-semibold text-navy">Abriendo la publicación…</p>
+          <p className="font-display text-lg font-semibold text-foreground">Abriendo la publicación…</p>
         </div>
       </section>
     );
@@ -74,12 +74,12 @@ export function AdminPublicationPage() {
 
   return (
     <section className="grid min-h-[60vh] place-items-center py-10">
-      <div className="w-full max-w-md space-y-5 rounded-3xl border-2 border-navy/10 bg-white p-8 text-center shadow-md">
+      <div className="w-full max-w-md space-y-5 rounded-3xl border-2 border-foreground/10 bg-surface p-8 text-center shadow-md">
         <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-lost/10">
           <AlertCircle className="size-7 text-lost" aria-hidden />
         </div>
-        <h1 className="font-display text-xl font-extrabold text-navy">Publicación no disponible</h1>
-        <p className="text-sm text-navy/70">{error}</p>
+        <h1 className="font-display text-xl font-extrabold text-foreground">Publicación no disponible</h1>
+        <p className="text-sm text-foreground/70">{error}</p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <LinkButton href="/admin">Volver al panel</LinkButton>
           <Link className="text-sm font-semibold text-orange hover:text-orange-dark" to="/buscar">

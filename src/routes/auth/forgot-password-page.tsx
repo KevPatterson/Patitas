@@ -51,7 +51,7 @@ export function ForgotPasswordPage() {
         title="🔑 Restablecer contraseña"
         description="Te enviaremos un enlace seguro para volver a entrar sin perder tus publicaciones."
         footer={
-          <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3 text-sm text-navy/70">
+          <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3 text-sm text-foreground/70">
             <Link className="font-semibold text-orange hover:text-orange-dark transition-colors" to="/auth/login">
               Volver al acceso
             </Link>

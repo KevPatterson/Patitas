@@ -140,7 +140,7 @@ export function NotificationsPage() {
       case 'PUBLICATION_UPDATE':
         return <AlertCircle className="size-5 text-purple" />;
       default:
-        return <Bell className="size-5 text-navy" />;
+        return <Bell className="size-5 text-foreground" />;
     }
   };
 
@@ -152,7 +152,7 @@ export function NotificationsPage() {
     return (
       <section className="flex flex-col items-center justify-center min-h-[60vh] gap-4 py-10">
         <PawLoader size="lg" />
-        <p className="font-display text-lg font-semibold text-navy">Cargando notificaciones...</p>
+        <p className="font-display text-lg font-semibold text-foreground">Cargando notificaciones...</p>
       </section>
     );
   }
@@ -160,16 +160,16 @@ export function NotificationsPage() {
   return (
     <section className="space-y-6 py-8">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-orange/10 via-cream to-turquoise/10 border-2 border-navy/10 p-8 shadow-md">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-orange/10 via-app to-turquoise/10 border-2 border-foreground/10 p-8 shadow-md">
         <div className="blob-decoration absolute top-5 right-5 size-24 bg-purple/20" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Bell className="size-5 text-orange" />
-              <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Actualizaciones</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Actualizaciones</span>
             </div>
-            <h1 className="font-display text-4xl font-extrabold text-navy">Notificaciones</h1>
-            <p className="text-navy/60 mt-1">
+            <h1 className="font-display text-4xl font-extrabold text-foreground">Notificaciones</h1>
+            <p className="text-foreground/60 mt-1">
               {unreadCount > 0 
                 ? `Tienes ${unreadCount} notificación${unreadCount !== 1 ? 'es' : ''} sin leer`
                 : 'Estás al día'
@@ -192,8 +192,8 @@ export function NotificationsPage() {
           className={[
             'px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-base',
             filter === 'all'
-              ? 'bg-navy text-white shadow-md'
-              : 'bg-white text-navy/70 border-2 border-navy/10 hover:bg-navy/5',
+              ? 'bg-ink text-white shadow-md'
+              : 'bg-surface text-foreground/70 border-2 border-foreground/10 hover:bg-foreground/5',
           ].join(' ')}
         >
           Todas ({notifications.length})
@@ -203,8 +203,8 @@ export function NotificationsPage() {
           className={[
             'px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-base',
             filter === 'unread'
-              ? 'bg-navy text-white shadow-md'
-              : 'bg-white text-navy/70 border-2 border-navy/10 hover:bg-navy/5',
+              ? 'bg-ink text-white shadow-md'
+              : 'bg-surface text-foreground/70 border-2 border-foreground/10 hover:bg-foreground/5',
           ].join(' ')}
         >
           Sin leer ({unreadCount})
@@ -235,9 +235,9 @@ export function NotificationsPage() {
             <article
               key={notification.id}
               className={[
-                'group relative overflow-hidden rounded-2xl border-2 bg-white p-5 shadow-sm transition-all hover:shadow-md',
+                'group relative overflow-hidden rounded-2xl border-2 bg-surface p-5 shadow-sm transition-all hover:shadow-md',
                 notification.is_read
-                  ? 'border-navy/10'
+                  ? 'border-foreground/10'
                   : 'border-orange/30 bg-orange/5',
               ].join(' ')}
             >
@@ -250,7 +250,7 @@ export function NotificationsPage() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3 mb-2">
-                    <h3 className="font-display text-lg font-bold text-navy">
+                    <h3 className="font-display text-lg font-bold text-foreground">
                       {notification.title}
                     </h3>
                     {!notification.is_read && (
@@ -258,12 +258,12 @@ export function NotificationsPage() {
                     )}
                   </div>
                   
-                  <p className="text-navy/70 leading-relaxed mb-3">
+                  <p className="text-foreground/70 leading-relaxed mb-3">
                     {notification.body}
                   </p>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <time className="text-xs font-medium text-navy/50">
+                    <time className="text-xs font-medium text-foreground/50">
                       {new Intl.RelativeTimeFormat('es', { numeric: 'auto' }).format(
                         Math.round((new Date(notification.created_at).getTime() - Date.now()) / 86400000),
                         'day'

@@ -99,9 +99,9 @@ export function PendingReviewQueue() {
 
 
   function getConfidenceColor(confidence: number): string {
-    if (confidence >= 0.7) return 'bg-green/10 text-green-700';
-    if (confidence >= 0.4) return 'bg-yellow/10 text-yellow-700';
-    return 'bg-red/10 text-red-700';
+    if (confidence >= 0.7) return 'bg-found/10 text-found';
+    if (confidence >= 0.4) return 'bg-orange/10 text-orange';
+    return 'bg-lost/10 text-lost';
   }
 
   function getConfidenceLabel(confidence: number): string {
@@ -111,8 +111,8 @@ export function PendingReviewQueue() {
   }
 
   function getPlatformIcon(platform: 'TELEGRAM' | 'FACEBOOK_PUBLIC'): React.ReactNode {
-    if (platform === 'TELEGRAM') return <Globe className="size-4 text-blue-600" />;
-    return <Image className="size-4 text-blue-600" />;
+    if (platform === 'TELEGRAM') return <Globe className="size-4 text-orange" />;
+    return <Image className="size-4 text-orange" />;
   }
 
   if (loading) {
@@ -126,9 +126,9 @@ export function PendingReviewQueue() {
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
-        <Shield className="size-16 text-navy/20 mx-auto mb-4" />
-        <h3 className="font-display text-lg font-bold text-navy">No hay posts pendientes</h3>
-        <p className="text-navy/60 mt-1">Todos los posts importados han sido revisados.</p>
+        <Shield className="size-16 text-foreground/20 mx-auto mb-4" />
+        <h3 className="font-display text-lg font-bold text-foreground">No hay posts pendientes</h3>
+        <p className="text-foreground/60 mt-1">Todos los posts importados han sido revisados.</p>
       </div>
     );
   }
@@ -136,7 +136,7 @@ export function PendingReviewQueue() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-xl font-bold text-navy">
+        <h2 className="font-display text-xl font-bold text-foreground">
           Cola de revisión de importaciones
         </h2>
         <span className="rounded-full bg-orange/20 px-3 py-1 text-sm font-bold text-orange-dark">
@@ -154,17 +154,17 @@ export function PendingReviewQueue() {
           return (
             <div
               key={post.id}
-              className="rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-sm"
+              className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-sm"
             >
               {/* Header */}
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-xl bg-blue/10 flex items-center justify-center">
+                  <div className="size-10 rounded-xl bg-secondary flex items-center justify-center">
                     {getPlatformIcon(post.platform)}
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-navy">
+                      <span className="font-semibold text-foreground">
                         {post.source?.name ?? post.source?.handle_or_url ?? 'Fuente desconocida'}
                       </span>
                       <span
@@ -173,13 +173,13 @@ export function PendingReviewQueue() {
                         {getConfidenceLabel(post.confidence)} ({Math.round(post.confidence * 100)}%)
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-navy/60">
+                    <div className="flex items-center gap-2 text-xs text-foreground/60">
                       <span>Post original:</span>
                       <a
                         href={safeLinkUrl(post.source_url) ?? undefined}
                         target="_blank"
                         rel="noopener noreferrer nofollow ugc"
-                        className="hover:underline text-blue-600 truncate max-w-xs inline-block"
+                        className="hover:underline text-orange truncate max-w-xs inline-block"
                       >
                         {post.external_id}
                       </a>
@@ -188,7 +188,7 @@ export function PendingReviewQueue() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-navy/50">
+                  <span className="text-xs text-foreground/50">
                     {new Date(post.fetched_at).toLocaleDateString('es-ES', {
                       day: 'numeric',
                       month: 'short',
@@ -197,7 +197,7 @@ export function PendingReviewQueue() {
                     })}
                   </span>
                   {canAutoPublish && (
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green/10 text-green-700">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-found/10 text-found">
                       <Star className="size-3" />
                       Auto-publicable
                     </span>
@@ -214,16 +214,16 @@ export function PendingReviewQueue() {
               {/* Side-by-side: Original vs Extraído */}
               <div className="grid gap-4 md:grid-cols-2">
                 {/* Columna izquierda: Contenido original */}
-                <div className="rounded-xl bg-navy/5 border border-navy/10 p-4">
-                  <h4 className="font-semibold text-navy mb-3 flex items-center gap-2">
+                <div className="rounded-xl bg-foreground/5 border border-foreground/10 p-4">
+                  <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                     <AlertTriangle className="size-4 text-orange" />
                     Contenido original
                   </h4>
                   
                   {post.raw_text && (
                     <div className="mb-4">
-                      <p className="text-xs text-navy/50 mb-1">Texto completo:</p>
-                      <div className="whitespace-pre-wrap text-sm text-navy/80 max-h-48 overflow-auto bg-white/50 p-3 rounded-lg border border-navy/10">
+                      <p className="text-xs text-foreground/50 mb-1">Texto completo:</p>
+                      <div className="whitespace-pre-wrap text-sm text-foreground/80 max-h-48 overflow-auto bg-surface/50 p-3 rounded-lg border border-foreground/10">
                         {post.raw_text}
                       </div>
                     </div>
@@ -231,10 +231,10 @@ export function PendingReviewQueue() {
 
                   {hasImages && (
                     <div>
-                      <p className="text-xs text-navy/50 mb-2">Imágenes ({post.image_paths.length}):</p>
+                      <p className="text-xs text-foreground/50 mb-2">Imágenes ({post.image_paths.length}):</p>
                       <div className="grid gap-2 sm:grid-cols-3">
                         {post.image_paths.slice(0, 6).map((imgPath, idx) => (
-                          <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-navy/10">
+                          <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-foreground/10">
                             <img
                               src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/external-imports/${imgPath}`}
                               alt={`Imagen ${idx + 1}`}
@@ -244,8 +244,8 @@ export function PendingReviewQueue() {
                           </div>
                         ))}
                         {post.image_paths.length > 6 && (
-                          <div className="relative aspect-square rounded-lg bg-navy/5 border border-navy/10 flex items-center justify-center">
-                            <span className="text-xs text-navy/60">+{post.image_paths.length - 6} más</span>
+                          <div className="relative aspect-square rounded-lg bg-foreground/5 border border-foreground/10 flex items-center justify-center">
+                            <span className="text-xs text-foreground/60">+{post.image_paths.length - 6} más</span>
                           </div>
                         )}
                       </div>
@@ -254,9 +254,9 @@ export function PendingReviewQueue() {
                 </div>
 
                 {/* Columna derecha: Datos extraídos */}
-                <div className="rounded-xl bg-green/5 border border-green/10 p-4">
-                  <h4 className="font-semibold text-navy mb-3 flex items-center gap-2">
-                    <CheckCircle className="size-4 text-green-600" />
+                <div className="rounded-xl bg-found/5 border border-green/10 p-4">
+                  <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <CheckCircle className="size-4 text-found" />
                     Datos extraídos por IA
                   </h4>
                   
@@ -271,8 +271,8 @@ export function PendingReviewQueue() {
                         .replace(/\b\w/g, (c) => c.toUpperCase());
 
                       return (
-                        <div key={key} className="bg-white/50 rounded-xl p-3 border border-navy/10">
-                          <label className="block text-xs font-semibold text-navy/60 mb-1 flex items-center gap-1">
+                        <div key={key} className="bg-surface/50 rounded-xl p-3 border border-foreground/10">
+                          <label className="block text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1">
                             {label}
                             {fieldConfidence > 0 && (
                               <span
@@ -283,7 +283,7 @@ export function PendingReviewQueue() {
                               </span>
                             )}
                           </label>
-                          <div className="font-medium text-navy text-sm">
+                          <div className="font-medium text-foreground text-sm">
                             {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                           </div>
                         </div>
@@ -294,7 +294,7 @@ export function PendingReviewQueue() {
               </div>
 
               {/* Actions */}
-              <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-navy/10">
+              <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-foreground/10">
                 <Button
                   variant="primary"
                   onClick={() => handleApprove(post.id)}

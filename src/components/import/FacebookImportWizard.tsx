@@ -62,9 +62,9 @@ type ExtractedApiData = {
 
 
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.7) return 'text-green-600';
-  if (confidence >= 0.4) return 'text-yellow-600';
-  return 'text-red-600';
+  if (confidence >= 0.7) return 'text-found';
+  if (confidence >= 0.4) return 'text-orange';
+  return 'text-lost';
 }
 
 function getConfidenceLabel(confidence: number): string {
@@ -272,17 +272,17 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
-            <Globe className="size-8 text-blue-600" />
-            <h2 className="font-display text-2xl font-bold text-navy">Importar desde Facebook</h2>
+            <Globe className="size-8 text-orange" />
+            <h2 className="font-display text-2xl font-bold text-foreground">Importar desde Facebook</h2>
           </div>
-          <p className="text-navy/60">
+          <p className="text-foreground/60">
             Pega un enlace público de Facebook o sube una captura de pantalla.
             La IA extraerá la información para pre-llenar el formulario.
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-navy/5 rounded-xl p-1" role="tablist">
+        <div className="flex bg-foreground/5 rounded-xl p-1" role="tablist">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -291,8 +291,8 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
                 activeTab === tab.id
-                  ? 'bg-white text-navy shadow-md'
-                  : 'text-navy/60 hover:text-navy'
+                  ? 'bg-surface text-foreground shadow-md'
+                  : 'text-foreground/60 hover:text-foreground'
               }`}
             >
               {tab.icon}
@@ -319,10 +319,10 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
                 Importar desde enlace
               </Button>
               {error && (
-                <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">
+                <div className="flex items-center gap-2 text-lost text-sm bg-lost/10 px-3 py-2 rounded-lg">
                   <AlertCircle className="size-4" />
                   <span>{error}</span>
-                  {error.includes('login') && <span className="text-navy/50">→ Prueba subiendo una captura</span>}
+                  {error.includes('login') && <span className="text-foreground/50">→ Prueba subiendo una captura</span>}
                 </div>
               )}
             </form>
@@ -330,7 +330,7 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
 
           {activeTab === 'screenshot' && (
             <form onSubmit={handleScreenshotSubmit} className="space-y-4">
-              <div className="border-2 border-dashed border-navy/20 rounded-2xl p-6 text-center hover:border-primary/50 transition-colors">
+              <div className="border-2 border-dashed border-foreground/20 rounded-2xl p-6 text-center hover:border-primary/50 transition-colors">
                 <input
                   type="file"
                   name="image"
@@ -341,18 +341,18 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
                   onChange={(e) => e.currentTarget.files?.[0] && setImagePreview(URL.createObjectURL(e.currentTarget.files[0]))}
                 />
                 <label htmlFor="screenshot-upload" className="cursor-pointer flex flex-col items-center gap-3">
-                  <Image className="size-12 text-navy/30" />
-                  <span className="font-medium text-navy">Sube una captura de pantalla</span>
-                  <span className="text-sm text-navy/50">JPG, PNG, WebP · Máx 8MB</span>
+                  <Image className="size-12 text-foreground/30" />
+                  <span className="font-medium text-foreground">Sube una captura de pantalla</span>
+                  <span className="text-sm text-foreground/50">JPG, PNG, WebP · Máx 8MB</span>
                 </label>
               </div>
               {imagePreview && (
-                <div className="relative rounded-xl overflow-hidden border-2 border-navy/10">
+                <div className="relative rounded-xl overflow-hidden border-2 border-foreground/10">
                   <img src={imagePreview} alt="Preview" className="w-full max-h-64 object-cover" />
                   <button
                     type="button"
                     onClick={() => { setImagePreview(null); URL.revokeObjectURL(imagePreview); }}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    className="absolute top-2 right-2 bg-lost/100 text-white rounded-full p-1 hover:bg-lost-dark"
                   >
                     <X className="size-4" />
                   </button>
@@ -363,7 +363,7 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
                 Analizar captura con IA
               </Button>
               {error && (
-                <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">
+                <div className="flex items-center gap-2 text-lost text-sm bg-lost/10 px-3 py-2 rounded-lg">
                   <AlertCircle className="size-4" />
                   <span>{error}</span>
                 </div>
@@ -372,12 +372,12 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
           )}
 
           {/* Info box */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="bg-secondary/40 border border-border rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <span className="size-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                <Globe className="size-4 text-blue-600" />
+              <span className="size-8 rounded-lg bg-secondary flex items-center justify-center">
+                <Globe className="size-4 text-orange" />
               </span>
-              <div className="text-sm text-navy/70 space-y-1">
+              <div className="text-sm text-foreground/70 space-y-1">
                 <p className="font-medium">¿Qué hace esta función?</p>
                 <ul className="list-disc list-inside space-y-1">
                   <li>Lee metadatos públicos (Open Graph) de enlaces de Facebook</li>
@@ -423,10 +423,10 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <CheckCircle className="size-8 text-green-600" />
+          <CheckCircle className="size-8 text-found" />
           <div>
-            <h2 className="font-display text-xl font-bold text-navy">Datos extraídos</h2>
-            <p className="text-sm text-navy/60">Revisa y corrige antes de continuar al formulario</p>
+            <h2 className="font-display text-xl font-bold text-foreground">Datos extraídos</h2>
+            <p className="text-sm text-foreground/60">Revisa y corrige antes de continuar al formulario</p>
           </div>
         </div>
         <Button variant="ghost" onClick={handleCancel}>
@@ -437,7 +437,7 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
 
       {/* Image preview */}
       {imagePreview && (
-        <div className="relative rounded-xl overflow-hidden border-2 border-navy/10 max-w-md mx-auto">
+        <div className="relative rounded-xl overflow-hidden border-2 border-foreground/10 max-w-md mx-auto">
           <img src={imagePreview} alt="Imagen importada" className="w-full h-48 object-cover" />
         </div>
       )}
@@ -452,8 +452,8 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
           if (!hasValue && confidence === 0) return null;
           
           return (
-            <div key={field.key} className="bg-white/50 rounded-xl p-4 border border-navy/10">
-              <label className="block text-xs font-semibold text-navy/60 mb-1 flex items-center gap-1">
+            <div key={field.key} className="bg-surface/50 rounded-xl p-4 border border-foreground/10">
+              <label className="block text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1">
                 {field.label}
                 {confidence > 0 && (
                   <span
@@ -464,17 +464,17 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
                   </span>
                 )}
               </label>
-              <div className="font-medium text-navy min-h-[1.5rem]">
+              <div className="font-medium text-foreground min-h-[1.5rem]">
                 {field.type === 'boolean' ? (
                   value ? (
-                    <span className="inline-flex items-center gap-1 text-green-600">
+                    <span className="inline-flex items-center gap-1 text-found">
                       <CheckCircle className="size-3.5" /> Sí
                     </span>
                   ) : (
-                    <span className="text-navy/40">No detectado</span>
+                    <span className="text-foreground/40">No detectado</span>
                   )
                 ) : (
-                  value ?? <span className="text-navy/30 italic">No detectado</span>
+                  value ?? <span className="text-foreground/30 italic">No detectado</span>
                 )}
               </div>
             </div>
@@ -484,9 +484,9 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
 
       {/* Source URL */}
       {extractedData.sourceUrl && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <p className="text-sm font-medium text-blue-800 mb-1">Fuente original</p>
-          <a href={safeLinkUrl(extractedData.sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer nofollow ugc" className="flex items-center gap-2 text-blue-600 hover:underline text-sm">
+        <div className="bg-secondary/40 border border-border rounded-xl p-4">
+          <p className="text-sm font-medium text-foreground mb-1">Fuente original</p>
+          <a href={safeLinkUrl(extractedData.sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer nofollow ugc" className="flex items-center gap-2 text-orange hover:underline text-sm">
             <ExternalLink className="size-3.5" />
             Ver post en Facebook
           </a>
@@ -494,7 +494,7 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
       )}
 
       {/* Actions */}
-      <div className="flex gap-3 pt-4 border-t border-navy/10">
+      <div className="flex gap-3 pt-4 border-t border-foreground/10">
         <Button variant="secondary" onClick={handleCancel} className="flex-1">
           Editar manualmente
         </Button>

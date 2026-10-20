@@ -33,15 +33,15 @@ const toneByStatus: Record<string, string> = {
   ABANDONED: 'bg-orange text-white shadow-sm',
   avistamiento: 'bg-orange-200 text-[var(--color-orange-900)] shadow-sm',
   SIGHTING: 'bg-orange-200 text-[var(--color-orange-900)] shadow-sm',
-  activa: 'bg-orange-100 text-[var(--color-orange-700)] border border-orange-200',
-  ACTIVE: 'bg-orange-100 text-[var(--color-orange-700)] border border-orange-200',
+  activa: 'bg-highlight text-foreground border border-orange-200',
+  ACTIVE: 'bg-highlight text-foreground border border-orange-200',
   resuelta: 'bg-[var(--color-orange-900)] text-[var(--color-orange-50)] shadow-sm',
   RESOLVED: 'bg-[var(--color-orange-900)] text-[var(--color-orange-50)] shadow-sm',
 };
 
 export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
   const label = labels[status] ?? status;
-  const tone = toneByStatus[status] ?? 'bg-navy/10 text-navy border border-navy/20';
+  const tone = toneByStatus[status] ?? 'bg-foreground/10 text-foreground border border-foreground/20';
   return (
     <span
       className={`inline-flex items-center rounded-pill px-3.5 py-1.5 text-xs font-bold tracking-wide transition-all duration-base hover:scale-105 ${tone} ${className}`}

@@ -31,43 +31,35 @@ export function SightingsTimeline({ sightings }: SightingsTimelineProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <h3 className="font-display text-2xl font-extrabold" style={{ fontFamily: '"Baloo 2", cursive', color: '#0B3B3C' }}>
+        <h3 className="font-display text-2xl font-extrabold text-foreground" style={{ fontFamily: '"Baloo 2", cursive' }}>
           Avistamientos
         </h3>
-        <span className="rounded-full px-3 py-1 text-sm font-bold text-white" style={{ backgroundColor: '#0E7C66' }}>{sightings.length}</span>
+        <span className="rounded-full bg-found px-3 py-1 text-sm font-bold text-white">{sightings.length}</span>
       </div>
 
       <div className="space-y-3">
         {sightings.map((sighting, index) => (
           <div
             key={sighting.id}
-            className="relative rounded-2xl border-2 p-5 shadow-sm"
-            style={{
-              borderColor: '#CFEFE6',
-              backgroundColor: 'hsl(var(--card))',
-            }}
+            className="relative rounded-2xl border-2 border-found/30 bg-surface p-5 shadow-sm"
           >
             <div
-              className="absolute -left-3 top-6 flex size-6 items-center justify-center rounded-full text-xs font-bold shadow-md"
-              style={{
-                backgroundColor: '#FF6B35',
-                color: '#0B3B3C',
-              }}
+              className="absolute -left-3 top-6 flex size-6 items-center justify-center rounded-full bg-orange text-xs font-bold text-primary-foreground shadow-md"
             >
               {sightings.length - index}
             </div>
 
             <div className="space-y-2 pl-4">
-              <p className="text-sm font-semibold" style={{ color: 'rgba(11,59,60,0.6)' }}>{formatDate(sighting.occurred_at ?? sighting.created_at)}</p>
+              <p className="text-sm font-semibold text-foreground/60">{formatDate(sighting.occurred_at ?? sighting.created_at)}</p>
 
               {sighting.location ? (
-                <p className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: '#0B3B3C' }}>
-                  <MapPin className="size-4" aria-hidden="true" style={{ color: '#FF6B35' }} />
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <MapPin className="size-4 text-orange" aria-hidden="true" />
                   {[sighting.location.zone, sighting.location.municipality, sighting.location.province].filter(Boolean).join(', ')}
                 </p>
               ) : null}
 
-              <p className="leading-7" style={{ color: '#0B3B3C' }}>{sighting.note}</p>
+              <p className="leading-7 text-foreground">{sighting.note}</p>
             </div>
           </div>
         ))}

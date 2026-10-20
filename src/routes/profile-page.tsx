@@ -147,7 +147,7 @@ export function ProfilePage() {
     return (
       <section className="flex flex-col items-center justify-center min-h-[60vh] gap-4 py-10">
         <PawLoader size="lg" />
-        <p className="font-display text-lg font-semibold text-navy">Cargando perfil...</p>
+        <p className="font-display text-lg font-semibold text-foreground">Cargando perfil...</p>
       </section>
     );
   }
@@ -155,13 +155,13 @@ export function ProfilePage() {
   if (error || !profile) {
     return (
       <section className="py-10">
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-12 text-center shadow-md">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-12 text-center shadow-md">
           <div className="mx-auto max-w-md space-y-4">
             <div className="size-16 rounded-2xl bg-lost/10 flex items-center justify-center mx-auto">
               <User className="size-8 text-lost" />
             </div>
-            <h1 className="font-display text-2xl font-extrabold text-navy">{error ?? 'Perfil no encontrado'}</h1>
-            <p className="text-navy/70">Verifica el nombre de usuario o vuelve al inicio.</p>
+            <h1 className="font-display text-2xl font-extrabold text-foreground">{error ?? 'Perfil no encontrado'}</h1>
+            <p className="text-foreground/70">Verifica el nombre de usuario o vuelve al inicio.</p>
             <Link to="/">
               <Button variant="primary">Volver al inicio</Button>
             </Link>
@@ -232,7 +232,7 @@ export function ProfilePage() {
   return (
     <section className="space-y-8 py-10">
       {/* Hero del perfil */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-purple/10 via-cream to-turquoise/10 border-2 border-navy/10 p-8 shadow-md">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-purple/10 via-app to-turquoise/10 border-2 border-foreground/10 p-8 shadow-md">
         <div className="blob-decoration absolute top-5 right-5 size-24 bg-orange/20" />
         <div className="relative flex flex-col md:flex-row items-center gap-6">
           {isOwner ? (
@@ -243,7 +243,7 @@ export function ProfilePage() {
                   onClick={() => avatarInputRef.current?.click()}
                   disabled={avatarSaving}
                   aria-label={displayedAvatar ? 'Cambiar foto de perfil' : 'Añadir foto de perfil'}
-                  className="relative flex size-24 items-center justify-center overflow-hidden rounded-2xl border-4 border-navy/10 bg-linear-to-br from-orange to-turquoise font-display text-4xl font-extrabold text-white shadow-lg transition-transform duration-base hover:scale-105 disabled:cursor-not-allowed"
+                  className="relative flex size-24 items-center justify-center overflow-hidden rounded-2xl border-4 border-foreground/10 bg-linear-to-br from-orange to-turquoise font-display text-4xl font-extrabold text-white shadow-lg transition-transform duration-base hover:scale-105 disabled:cursor-not-allowed"
                 >
                   {displayedAvatar ? (
                     <img
@@ -258,14 +258,14 @@ export function ProfilePage() {
 
                 {/* Overlay de cámara al pasar el cursor */}
                 {!avatarSaving && (
-                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-navy/60 opacity-0 transition-opacity duration-base group-hover:opacity-100">
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-ink/60 opacity-0 transition-opacity duration-base group-hover:opacity-100">
                     <Camera className="size-7 text-white" aria-hidden="true" />
                   </span>
                 )}
 
                 {/* Estado de guardado */}
                 {avatarSaving && (
-                  <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-navy/80">
+                  <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-ink/80">
                     <PawLoader size="sm" />
                   </span>
                 )}
@@ -293,13 +293,13 @@ export function ProfilePage() {
                 aria-label="Seleccionar foto de perfil"
               />
 
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-navy/60">
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-foreground/60">
                 <Pencil className="size-3" aria-hidden="true" />
                 {canDeleteAvatar ? 'Cambiar o eliminar foto' : displayedAvatar ? 'Cambiar foto' : 'Añadir foto'}
               </span>
             </div>
           ) : (
-            <div className="size-24 rounded-2xl overflow-hidden border-4 border-navy/10 shadow-lg bg-linear-to-br from-orange to-turquoise flex items-center justify-center text-white text-4xl font-display font-extrabold">
+            <div className="size-24 rounded-2xl overflow-hidden border-4 border-foreground/10 shadow-lg bg-linear-to-br from-orange to-turquoise flex items-center justify-center text-white text-4xl font-display font-extrabold">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
@@ -313,12 +313,12 @@ export function ProfilePage() {
           )}
           <div className="flex-1 text-center md:text-left">
             <div className="flex items-center gap-2 justify-center md:justify-start mb-2">
-              <User className="size-5 text-navy/60" />
-              <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Perfil público</span>
+              <User className="size-5 text-foreground/60" />
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Perfil público</span>
             </div>
-            <h1 className="font-display text-4xl font-extrabold text-navy mb-2">@{profile.username}</h1>
-            {profile.full_name && <p className="font-semibold text-navy">{profile.full_name}</p>}
-            <p className="text-sm text-navy/60 flex items-center gap-1 justify-center md:justify-start mt-1">
+            <h1 className="font-display text-4xl font-extrabold text-foreground mb-2">@{profile.username}</h1>
+            {profile.full_name && <p className="font-semibold text-foreground">{profile.full_name}</p>}
+            <p className="text-sm text-foreground/60 flex items-center gap-1 justify-center md:justify-start mt-1">
               <Calendar className="size-4" />
               Miembro desde {new Date(profile.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}
             </p>
@@ -333,18 +333,18 @@ export function ProfilePage() {
       <div className="grid gap-6 sm:grid-cols-3">
         <div className="group rounded-2xl border-2 border-orange/20 bg-orange/5 p-6 text-center transition-all hover:shadow-lg hover:-translate-y-1">
           <PawPrint className="size-8 text-orange mx-auto mb-2" />
-          <p className="font-display text-3xl font-extrabold text-navy">{stats.total}</p>
-          <p className="text-sm font-medium text-navy/70">Publicaciones</p>
+          <p className="font-display text-3xl font-extrabold text-foreground">{stats.total}</p>
+          <p className="text-sm font-medium text-foreground/70">Publicaciones</p>
         </div>
         <div className="group rounded-2xl border-2 border-turquoise/20 bg-turquoise/5 p-6 text-center transition-all hover:shadow-lg hover:-translate-y-1">
           <MapPin className="size-8 text-turquoise mx-auto mb-2" />
-          <p className="font-display text-3xl font-extrabold text-navy">{stats.active}</p>
-          <p className="text-sm font-medium text-navy/70">Casos activos</p>
+          <p className="font-display text-3xl font-extrabold text-foreground">{stats.active}</p>
+          <p className="text-sm font-medium text-foreground/70">Casos activos</p>
         </div>
         <div className="group rounded-2xl border-2 border-purple/20 bg-purple/5 p-6 text-center transition-all hover:shadow-lg hover:-translate-y-1">
           <CheckCircle className="size-8 text-purple mx-auto mb-2" />
-          <p className="font-display text-3xl font-extrabold text-navy">{stats.resolved}</p>
-          <p className="text-sm font-medium text-navy/70">Resueltos</p>
+          <p className="font-display text-3xl font-extrabold text-foreground">{stats.resolved}</p>
+          <p className="text-sm font-medium text-foreground/70">Resueltos</p>
         </div>
       </div>
 
@@ -362,7 +362,7 @@ export function ProfilePage() {
         />
       ) : (
         <div className="space-y-4">
-          <h2 className="font-display text-2xl font-extrabold text-navy flex items-center gap-2">
+          <h2 className="font-display text-2xl font-extrabold text-foreground flex items-center gap-2">
             <Eye className="size-6 text-orange" />
             Publicaciones de @{profile.username}
           </h2>

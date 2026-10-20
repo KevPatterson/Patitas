@@ -6,7 +6,7 @@ type StatCardProps = {
 };
 
 const toneStyles = {
-  default: 'text-[var(--color-orange-900)]',
+  default: 'text-foreground',
   success: 'text-found',
   warning: 'text-lost',
   danger: 'text-lost',

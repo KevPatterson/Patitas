@@ -81,7 +81,7 @@ function RouteFallback() {
     <div className="grid min-h-[60vh] place-items-center py-10">
       <div className="flex flex-col items-center gap-3">
         <PawLoader size="lg" />
-        <p className="font-display text-sm font-semibold text-navy/70">Cargando…</p>
+        <p className="font-display text-sm font-semibold text-foreground/70">Cargando…</p>
       </div>
     </div>
   );
@@ -91,7 +91,7 @@ function NotFound() {
   return (
     <div className="flex items-center justify-center min-h-[60vh] py-16 px-4">
       <div className="max-w-lg w-full">
-        <div className="relative overflow-hidden rounded-3xl border-2 border-navy/10 bg-white p-10 text-center shadow-xl">
+        <div className="relative overflow-hidden rounded-3xl border-2 border-foreground/10 bg-surface p-10 text-center shadow-xl">
           {/* Decoraciones de fondo */}
           <div className="blob-decoration absolute top-5 right-5 size-20 bg-orange/10" />
           <div className="blob-decoration absolute bottom-5 left-5 size-16 bg-turquoise/10" style={{ animationDelay: '2s' }} />
@@ -103,10 +103,10 @@ function NotFound() {
             </div>
             
             <div className="space-y-3">
-              <h1 className="font-display text-3xl md:text-4xl font-extrabold text-navy leading-tight">
+              <h1 className="font-display text-3xl md:text-4xl font-extrabold text-foreground leading-tight">
                 ¡Ups! Esta patita se perdió
               </h1>
-              <p className="text-navy/70 leading-relaxed">
+              <p className="text-foreground/70 leading-relaxed">
                 La página que buscas no existe o se movió. Pero ninguna patita se queda sin casa — te ayudamos a volver.
               </p>
             </div>

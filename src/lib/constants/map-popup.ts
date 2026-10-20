@@ -15,31 +15,31 @@ export const POST_TYPE_META: Record<
     label: 'Perdida',
     stroke: '#ef4444',
     chipBg: 'rgba(239,68,68,0.15)',
-    chipText: '#9f1d22',
+    chipText: 'var(--chip-lost-text)',
   },
   FOUND: {
     label: 'Encontrada',
     stroke: '#10b981',
     chipBg: 'rgba(16,185,129,0.15)',
-    chipText: '#065f46',
+    chipText: 'var(--chip-found-text)',
   },
   ABANDONED: {
     label: 'Abandonada',
     stroke: '#ff8c42',
     chipBg: 'rgba(255,140,66,0.15)',
-    chipText: '#8a3f08',
+    chipText: 'var(--chip-abandoned-text)',
   },
   ADOPTION: {
     label: 'En adopción',
     stroke: '#a78bfa',
     chipBg: 'rgba(167,139,250,0.15)',
-    chipText: '#4c2fa3',
+    chipText: 'var(--chip-adoption-text)',
   },
   SIGHTING: {
     label: 'Avistamiento',
     stroke: '#ffb078',
     chipBg: 'rgba(255,176,120,0.20)',
-    chipText: '#7a3d0a',
+    chipText: 'var(--chip-sighting-text)',
   },
 } as const;
 
@@ -57,18 +57,18 @@ export const POST_STATUS_META: Record<
 > = {
   ACTIVE: {
     label: 'Activa',
-    bg: '#dcf5e4',
-    text: '#14633a',
+    bg: 'var(--chip-active-bg)',
+    text: 'var(--chip-active-text)',
   },
   RESOLVED: {
     label: 'Resuelta',
-    bg: '#e6edf5',
-    text: '#2b4a6b',
+    bg: 'var(--chip-resolved-bg)',
+    text: 'var(--chip-resolved-text)',
   },
   EXPIRED: {
     label: 'Expirada',
-    bg: '#efe9e4',
-    text: '#5b4636',
+    bg: 'var(--chip-expired-bg)',
+    text: 'var(--chip-expired-text)',
   },
 } as const;
 

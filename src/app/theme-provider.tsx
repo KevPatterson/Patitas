@@ -7,7 +7,7 @@ const STORAGE_KEY = 'patitas-theme';
 function updateThemeColorMeta(isDark: boolean) {
   const meta = document.getElementById('theme-color-meta');
   if (meta) {
-    meta.setAttribute('content', isDark ? '#1c0e05' : '#ff8c42');
+    meta.setAttribute('content', isDark ? '#170d07' : '#ff8c42');
   }
 }
 

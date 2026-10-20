@@ -55,10 +55,10 @@ export function DuplicateWarning({ publicationId, onViewDuplicate }: DuplicateWa
         <AlertTriangle className="size-5 text-orange shrink-0 mt-0.5" />
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-display text-sm font-bold text-navy mb-1">
+          <h3 className="font-display text-sm font-bold text-foreground mb-1">
             Posible publicación duplicada
           </h3>
-          <p className="text-sm text-navy/70 mb-3">
+          <p className="text-sm text-foreground/70 mb-3">
             Detectamos una publicación similar a esta (
             {Math.round(topDuplicate.duplicate_probability * 100)}% de probabilidad).
             {duplicates.length > 1 && ` Y ${duplicates.length - 1} más.`}
@@ -99,13 +99,13 @@ export function DuplicateWarning({ publicationId, onViewDuplicate }: DuplicateWa
             <Button
               variant="ghost"
               onClick={() => setDismissed(true)}
-              className="h-9 px-4 text-sm text-navy/60 hover:text-navy"
+              className="h-9 px-4 text-sm text-foreground/60 hover:text-foreground"
             >
               Ignorar
             </Button>
           </div>
 
-          <p className="mt-3 text-xs text-navy/60 leading-relaxed">
+          <p className="mt-3 text-xs text-foreground/60 leading-relaxed">
             ℹ️ Si esta es una publicación diferente, puedes ignorar esta advertencia. Los
             moderadores revisarán los duplicados periódicamente.
           </p>

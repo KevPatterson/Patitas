@@ -79,7 +79,7 @@ export function PublicationTakedownButton({
         variant="ghost"
         size="sm"
         onClick={() => setShowModal(true)}
-        className="text-red-600 hover:bg-red-50 hover:text-red-700 gap-1"
+        className="text-lost hover:bg-lost/10 hover:text-lost-dark gap-1"
         aria-label="Solicitar retirada de esta publicación"
       >
         <Flag className="size-3.5" />
@@ -88,17 +88,17 @@ export function PublicationTakedownButton({
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white rounded-3xl border-2 border-navy/10 shadow-2xl p-6">
+          <div className="w-full max-w-md bg-surface rounded-3xl border-2 border-foreground/10 shadow-2xl p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="font-display text-lg font-bold text-navy">Solicitar retirada</h3>
-                <p className="text-sm text-navy/60 mt-1">
+                <h3 className="font-display text-lg font-bold text-foreground">Solicitar retirada</h3>
+                <p className="text-sm text-foreground/60 mt-1">
                   La publicación se ocultará inmediatamente. Un moderador revisará la solicitud.
                 </p>
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-navy/40 hover:text-navy/70 p-1"
+                className="text-foreground/40 hover:text-foreground/70 p-1"
                 aria-label="Cerrar"
               >
                 <X className="size-5" />
@@ -107,24 +107,24 @@ export function PublicationTakedownButton({
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {isImported && sourceUrl && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                  <p className="text-xs font-medium text-blue-800 mb-1">Publicación importada</p>
-                  <a href={safeLinkUrl(sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer nofollow ugc" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                <div className="bg-secondary/40 border border-border rounded-xl p-3">
+                  <p className="text-xs font-medium text-foreground mb-1">Publicación importada</p>
+                  <a href={safeLinkUrl(sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer nofollow ugc" className="text-xs text-orange hover:underline flex items-center gap-1">
                     <span>Ver fuente original →</span>
                   </a>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-semibold text-navy mb-2">Motivo *</label>
+                <label className="block text-sm font-semibold text-foreground mb-2">Motivo *</label>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {(Object.keys(REASON_LABELS) as TakedownReason[]).map((reason) => (
                     <label
                       key={reason}
                       className={`relative cursor-pointer rounded-xl border-2 p-3 transition-all ${
                         selectedReason === reason
-                          ? 'border-red-500 bg-red-50'
-                          : 'border-navy/10 hover:border-navy/20'
+                          ? 'border-red-500 bg-lost/10'
+                          : 'border-foreground/10 hover:border-foreground/20'
                       }`}
                     >
                       <input
@@ -137,7 +137,7 @@ export function PublicationTakedownButton({
                       />
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="size-4 text-red-500" />
-                        <span className="text-sm font-medium text-navy">{REASON_LABELS[reason]}</span>
+                        <span className="text-sm font-medium text-foreground">{REASON_LABELS[reason]}</span>
                       </div>
                     </label>
                   ))}
@@ -145,7 +145,7 @@ export function PublicationTakedownButton({
               </div>
 
               <div>
-                <label htmlFor="contactEmail" className="block text-sm font-semibold text-navy mb-1">
+                <label htmlFor="contactEmail" className="block text-sm font-semibold text-foreground mb-1">
                   Email de contacto (opcional)
                 </label>
                 <input
@@ -154,13 +154,13 @@ export function PublicationTakedownButton({
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder="tu@email.com"
-                  className="w-full h-12 rounded-2xl border-2 border-navy/10 bg-white px-4 text-base text-navy outline-none transition focus:border-red-500 focus:ring-4 focus:ring-red-500/20"
+                  className="w-full h-12 rounded-2xl border-2 border-foreground/10 bg-surface px-4 text-base text-foreground outline-none transition focus:border-red-500 focus:ring-4 focus:ring-red-500/20"
                 />
-                <p className="text-xs text-navy/50 mt-1">Para que podamos contactarte si necesitamos más información.</p>
+                <p className="text-xs text-foreground/50 mt-1">Para que podamos contactarte si necesitamos más información.</p>
               </div>
 
               <div>
-                <label htmlFor="details" className="block text-sm font-semibold text-navy mb-1">
+                <label htmlFor="details" className="block text-sm font-semibold text-foreground mb-1">
                   Detalles adicionales (opcional)
                 </label>
                 <textarea
@@ -169,12 +169,12 @@ export function PublicationTakedownButton({
                   onChange={(e) => setDetails(e.target.value)}
                   placeholder="Explica brevemente por qué solicitas la retirada..."
                   rows={3}
-                  className="w-full rounded-2xl border-2 border-navy/10 bg-white px-4 py-3 text-base text-navy outline-none transition focus:border-red-500 focus:ring-4 focus:ring-red-500/20 resize-none"
+                  className="w-full rounded-2xl border-2 border-foreground/10 bg-surface px-4 py-3 text-base text-foreground outline-none transition focus:border-red-500 focus:ring-4 focus:ring-red-500/20 resize-none"
                 />
               </div>
 
               {error && (
-                <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700 flex items-start gap-2">
+                <div className="rounded-xl bg-lost/10 border border-lost/20 px-3 py-2 text-sm text-lost flex items-start gap-2">
                   <AlertTriangle className="size-4 mt-0.5 flex-shrink-0" />
                   <span>{error}</span>
                 </div>

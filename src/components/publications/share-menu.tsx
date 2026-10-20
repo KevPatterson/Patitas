@@ -58,21 +58,13 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
       </Button>
       {showMenu ? (
         <div
-          className="absolute right-0 top-full z-10 mt-3 w-64 space-y-2 rounded-2xl border-2 p-4"
-          style={{
-            borderColor: '#CFEFE6',
-            backgroundColor: 'hsl(var(--card))',
-            boxShadow: '0 18px 50px rgba(11,59,60,0.08)',
-          }}
+          className="absolute right-0 top-full z-10 mt-3 w-64 space-y-2 rounded-2xl border-2 border-found/30 bg-surface p-4 shadow-lg"
         >
           {canUseWebShare() ? (
             <button
               type="button"
               onClick={handleWebShare}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold"
-              style={{ color: '#0B3B3C' }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F5FBF9')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-found/10"
             >
               <Share2 className="size-4" aria-hidden="true" />
               <span>Compartir</span>
@@ -119,7 +111,7 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F5FBF9')}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
-            {copied ? <Check className="size-4" style={{ color: '#0E7C66' }} aria-hidden="true" /> : <Link2 className="size-4" aria-hidden="true" />}
+            {copied ? <Check className="size-4 text-found" aria-hidden="true" /> : <Link2 className="size-4" aria-hidden="true" />}
             <span>{copied ? 'Copiado' : 'Copiar enlace'}</span>
           </button>
         </div>

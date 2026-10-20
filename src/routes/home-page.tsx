@@ -310,7 +310,7 @@ export function HomePage() {
   return (
     <div className="space-y-16 pb-16 pt-6 md:pt-10">
       {/* 🎨 HERO ANIME - Sección principal */}
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-orange/5 via-cream to-turquoise/5 border-2 border-navy/10 shadow-xl">
+      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-orange/5 via-app to-turquoise/5 border-2 border-foreground/10 shadow-xl">
         {/* Decoraciones de fondo */}
         <div className="absolute inset-0 hero-gradient" />
         <div className="blob-decoration absolute top-10 right-10 size-32 bg-orange/20" />
@@ -320,16 +320,16 @@ export function HomePage() {
         <div className="relative grid gap-8 lg:grid-cols-2 lg:gap-12 p-8 md:p-12 lg:p-16">
           {/* Lado izquierdo: Texto y CTAs */}
           <div className="flex flex-col justify-center space-y-6 z-10">
-            <div className="inline-flex items-center gap-2 rounded-pill bg-white/80 backdrop-blur-sm px-4 py-2 text-sm font-bold text-navy shadow-sm border border-navy/10 self-start">
+            <div className="inline-flex items-center gap-2 rounded-pill bg-surface/80 backdrop-blur-sm px-4 py-2 text-sm font-bold text-foreground shadow-sm border border-foreground/10 self-start">
               <PawPrint className="size-4 text-orange animate-paw-bounce" aria-hidden="true" />
               Plataforma comunitaria cubana
             </div>
             
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-navy animate-fade-up">
+            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-foreground animate-fade-up">
               Cada patita merece volver a casa
             </h1>
             
-            <p className="text-lg md:text-xl leading-relaxed text-navy/70 max-w-xl animate-fade-up" style={{ animationDelay: '100ms' }}>
+            <p className="text-lg md:text-xl leading-relaxed text-foreground/70 max-w-xl animate-fade-up" style={{ animationDelay: '100ms' }}>
               Ayuda a encontrar, proteger y dar un nuevo hogar a quienes más lo necesitan. Juntos hacemos la diferencia.
             </p>
             
@@ -346,17 +346,17 @@ export function HomePage() {
 
             {/* Mini stats en el hero */}
             <div className="grid grid-cols-3 gap-3 pt-4 animate-fade-up" style={{ animationDelay: '300ms' }}>
-              <div className="rounded-xl bg-white/60 backdrop-blur-sm p-3 border border-navy/10">
+              <div className="rounded-xl bg-surface/60 backdrop-blur-sm p-3 border border-foreground/10">
                 <p className="font-display text-2xl font-extrabold text-lost">{stats.LOST}</p>
-                <p className="text-xs font-medium text-navy/70">Perdidos</p>
+                <p className="text-xs font-medium text-foreground/70">Perdidos</p>
               </div>
-              <div className="rounded-xl bg-white/60 backdrop-blur-sm p-3 border border-navy/10">
+              <div className="rounded-xl bg-surface/60 backdrop-blur-sm p-3 border border-foreground/10">
                 <p className="font-display text-2xl font-extrabold text-found">{stats.FOUND}</p>
-                <p className="text-xs font-medium text-navy/70">Encontrados</p>
+                <p className="text-xs font-medium text-foreground/70">Encontrados</p>
               </div>
-              <div className="rounded-xl bg-white/60 backdrop-blur-sm p-3 border border-navy/10">
+              <div className="rounded-xl bg-surface/60 backdrop-blur-sm p-3 border border-foreground/10">
                 <p className="font-display text-2xl font-extrabold text-purple">{stats.ADOPTION}</p>
-                <p className="text-xs font-medium text-navy/70">En adopción</p>
+                <p className="text-xs font-medium text-foreground/70">En adopción</p>
               </div>
             </div>
           </div>
@@ -371,6 +371,8 @@ export function HomePage() {
                 {/* Logo grande central */}
                 <div className="relative z-10 scale-150 transform">
                   <svg
+                    width="120"
+                    height="120"
                     viewBox="0 0 120 120"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
@@ -378,47 +380,6 @@ export function HomePage() {
                     className="drop-shadow-xl"
                     style={{ color: 'hsl(var(--primary))' }}
                   >
-                    {/* 4 dedos - naranja */}
-                    <ellipse
-                      cx="24"
-                      cy="48"
-                      rx="9"
-                      ry="12"
-                      transform="rotate(-22 24 48)"
-                      fill="currentColor"
-                      className="animate-paw-bounce"
-                    />
-                    <ellipse
-                      cx="45"
-                      cy="28"
-                      rx="9"
-                      ry="13"
-                      transform="rotate(-8 45 28)"
-                      fill="currentColor"
-                      className="animate-paw-bounce"
-                      style={{ animationDelay: '100ms' }}
-                    />
-                    <ellipse
-                      cx="75"
-                      cy="28"
-                      rx="9"
-                      ry="13"
-                      transform="rotate(8 75 28)"
-                      fill="currentColor"
-                      className="animate-paw-bounce"
-                      style={{ animationDelay: '200ms' }}
-                    />
-                    <ellipse
-                      cx="96"
-                      cy="48"
-                      rx="9"
-                      ry="12"
-                      transform="rotate(22 96 48)"
-                      fill="currentColor"
-                      className="animate-paw-bounce"
-                      style={{ animationDelay: '300ms' }}
-                    />
-                    
                     {/* Almohadilla con gradiente */}
                     <defs>
                       <linearGradient id="paw-gradient" x1="60" y1="54" x2="60" y2="110" gradientUnits="userSpaceOnUse">
@@ -430,12 +391,47 @@ export function HomePage() {
                         <circle cx="60" cy="75" r="8" fill="black" />
                       </mask>
                     </defs>
-                    <path
-                      d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z"
-                      fill="url(#paw-gradient)"
-                      mask="url(#paw-mask-hero)"
-                      className="animate-float"
-                    />
+
+                    {/* Toda la huella (dedos + almohadilla) se anima como una sola unidad */}
+                    <g className="animate-float">
+                      <ellipse
+                        cx="24"
+                        cy="48"
+                        rx="9"
+                        ry="12"
+                        transform="rotate(-22 24 48)"
+                        fill="currentColor"
+                      />
+                      <ellipse
+                        cx="45"
+                        cy="28"
+                        rx="9"
+                        ry="13"
+                        transform="rotate(-8 45 28)"
+                        fill="currentColor"
+                      />
+                      <ellipse
+                        cx="75"
+                        cy="28"
+                        rx="9"
+                        ry="13"
+                        transform="rotate(8 75 28)"
+                        fill="currentColor"
+                      />
+                      <ellipse
+                        cx="96"
+                        cy="48"
+                        rx="9"
+                        ry="12"
+                        transform="rotate(22 96 48)"
+                        fill="currentColor"
+                      />
+                      <path
+                        d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z"
+                        fill="url(#paw-gradient)"
+                        mask="url(#paw-mask-hero)"
+                      />
+                    </g>
                   </svg>
                 </div>
                 
@@ -465,9 +461,9 @@ export function HomePage() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <MapPin className="size-5 text-turquoise" />
-                <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Casos activos</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Casos activos</span>
               </div>
-              <h2 className="font-display text-3xl md:text-4xl font-extrabold text-navy">
+              <h2 className="font-display text-3xl md:text-4xl font-extrabold text-foreground">
                 {userLocation ? '🐾 Casos cerca de ti' : '🐾 Casos recientes'}
               </h2>
               {loadingLocation && (
@@ -482,7 +478,7 @@ export function HomePage() {
                 </div>
               )}
               {!loadingLocation && (
-                <p className="text-navy/60 mt-1 flex items-center gap-2">
+                <p className="text-foreground/60 mt-1 flex items-center gap-2">
                   {userLocation ? (
                     'Ordenados por proximidad a tu ubicación'
                   ) : (
@@ -499,7 +495,7 @@ export function HomePage() {
           {loading ? (
             <div className="flex flex-col items-center justify-center gap-4 py-16">
               <PawTrail />
-              <p className="text-sm text-navy/60">Cargando casos recientes...</p>
+              <p className="text-sm text-foreground/60">Cargando casos recientes...</p>
             </div>
           ) : recentCases.length === 0 ? (
             <EmptyState
@@ -536,12 +532,12 @@ export function HomePage() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Heart className="size-5 text-purple" />
-                <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Adopta, no compres</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Adopta, no compres</span>
               </div>
-              <h2 className="font-display text-3xl md:text-4xl font-extrabold text-navy">
+              <h2 className="font-display text-3xl md:text-4xl font-extrabold text-foreground">
                 💜 Buscan un hogar
               </h2>
-              <p className="text-navy/60 mt-1">Estas patitas están esperando por ti</p>
+              <p className="text-foreground/60 mt-1">Estas patitas están esperando por ti</p>
             </div>
             <LinkButton href="/adopciones" variant="ghost" className="hidden sm:flex">
               Ver todas →
@@ -551,7 +547,7 @@ export function HomePage() {
           {loading ? (
             <div className="flex flex-col items-center justify-center gap-4 py-16">
               <PawTrail />
-              <p className="text-sm text-navy/60">Cargando adopciones...</p>
+              <p className="text-sm text-foreground/60">Cargando adopciones...</p>
             </div>
           ) : adoptionCases.length === 0 ? (
             <EmptyState
@@ -580,17 +576,17 @@ export function HomePage() {
 
       {/* 🗺️ EXPLORA EN EL MAPA */}
       <ScrollReveal animation="fade-in-left">
-        <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-turquoise/10 to-purple/10 border-2 border-navy/10 p-8 md:p-12">
+        <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-turquoise/10 to-purple/10 border-2 border-foreground/10 p-8 md:p-12">
           <div className="relative z-10 grid gap-8 lg:grid-cols-2 items-center">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <MapIcon className="size-5 text-turquoise" />
-                <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Geolocalización</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Geolocalización</span>
               </div>
-              <h2 className="font-display text-3xl md:text-4xl font-extrabold text-navy mb-4">
+              <h2 className="font-display text-3xl md:text-4xl font-extrabold text-foreground mb-4">
                 🗺️ Explora en el mapa
               </h2>
-              <p className="text-lg text-navy/70 mb-6 leading-relaxed">
+              <p className="text-lg text-foreground/70 mb-6 leading-relaxed">
                 Visualiza todos los casos cerca de ti. Cada marcador es una historia esperando un final feliz.
               </p>
               <LinkButton href="/mapa" variant="secondary">
@@ -608,12 +604,12 @@ export function HomePage() {
           <div className="text-center space-y-3">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Heart className="size-5 text-orange" />
-              <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Modo rescate</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Modo rescate</span>
             </div>
-            <h2 className="font-display text-3xl md:text-4xl font-extrabold text-navy">
+            <h2 className="font-display text-3xl md:text-4xl font-extrabold text-foreground">
               Es más fácil de lo que piensas
             </h2>
-            <p className="text-navy/60 max-w-2xl mx-auto">
+            <p className="text-foreground/60 max-w-2xl mx-auto">
               Tres pasos simples para hacer la diferencia
             </p>
           </div>
@@ -621,14 +617,14 @@ export function HomePage() {
           <div className="grid gap-6 md:grid-cols-3 justify-center">
             {/* Paso 1 */}
             <ScrollReveal animation="scale-in" delay={0}>
-              <div className="group relative overflow-hidden rounded-2xl bg-white border-2 border-navy/10 p-8 shadow-md hover:shadow-xl transition-all duration-base hover:-translate-y-2">
+              <div className="group relative overflow-hidden rounded-2xl bg-surface border-2 border-foreground/10 p-8 shadow-md hover:shadow-xl transition-all duration-base hover:-translate-y-2">
                 <div className="absolute top-4 right-4 text-6xl font-display font-extrabold text-orange/10">01</div>
                 <div className="relative space-y-4">
                   <div className="size-12 rounded-xl bg-orange/10 flex items-center justify-center">
                     <PawPrint className="size-6 text-orange" />
                   </div>
-                  <h3 className="font-display text-2xl font-extrabold text-navy">PUBLICA</h3>
-                  <p className="text-navy/70 leading-relaxed">
+                  <h3 className="font-display text-2xl font-extrabold text-foreground">PUBLICA</h3>
+                  <p className="text-foreground/70 leading-relaxed">
                     Describe la mascota y comparte su ubicación. Todo es seguro y privado.
                   </p>
                 </div>
@@ -637,14 +633,14 @@ export function HomePage() {
 
             {/* Paso 2 */}
             <ScrollReveal animation="scale-in" delay={150}>
-              <div className="group relative overflow-hidden rounded-2xl bg-white border-2 border-navy/10 p-8 shadow-md hover:shadow-xl transition-all duration-base hover:-translate-y-2">
+              <div className="group relative overflow-hidden rounded-2xl bg-surface border-2 border-foreground/10 p-8 shadow-md hover:shadow-xl transition-all duration-base hover:-translate-y-2">
                 <div className="absolute top-4 right-4 text-6xl font-display font-extrabold text-turquoise/10">02</div>
                 <div className="relative space-y-4">
                   <div className="size-12 rounded-xl bg-turquoise/10 flex items-center justify-center">
                     <Users className="size-6 text-turquoise" />
                   </div>
-                  <h3 className="font-display text-2xl font-extrabold text-navy">CONECTA</h3>
-                  <p className="text-navy/70 leading-relaxed">
+                  <h3 className="font-display text-2xl font-extrabold text-foreground">CONECTA</h3>
+                  <p className="text-foreground/70 leading-relaxed">
                     La comunidad ayuda a difundir el caso. Miles de ojos buscando.
                   </p>
                 </div>
@@ -653,14 +649,14 @@ export function HomePage() {
 
             {/* Paso 3 */}
             <ScrollReveal animation="scale-in" delay={300}>
-              <div className="group relative overflow-hidden rounded-2xl bg-white border-2 border-navy/10 p-8 shadow-md hover:shadow-xl transition-all duration-base hover:-translate-y-2">
+              <div className="group relative overflow-hidden rounded-2xl bg-surface border-2 border-foreground/10 p-8 shadow-md hover:shadow-xl transition-all duration-base hover:-translate-y-2">
                 <div className="absolute top-4 right-4 text-6xl font-display font-extrabold text-purple/10">03</div>
                 <div className="relative space-y-4">
                   <div className="size-12 rounded-xl bg-purple/10 flex items-center justify-center">
                     <BadgeCheck className="size-6 text-purple" />
                   </div>
-                  <h3 className="font-display text-2xl font-extrabold text-navy">REENCUENTRA</h3>
-                  <p className="text-navy/70 leading-relaxed">
+                  <h3 className="font-display text-2xl font-extrabold text-foreground">REENCUENTRA</h3>
+                  <p className="text-foreground/70 leading-relaxed">
                     La historia termina con una mascota de vuelta en casa. ❤️
                   </p>
                 </div>

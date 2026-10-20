@@ -104,7 +104,7 @@ export function ImageAnalyzerButton({ imageUrl, onDataExtracted, disabled }: Ima
       )}
 
       {!analyzing && !error && (
-        <p className="text-xs text-navy/60 text-center">
+        <p className="text-xs text-foreground/60 text-center">
           La IA extraerá información de la imagen automáticamente
         </p>
       )}

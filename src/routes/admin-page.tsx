@@ -196,7 +196,7 @@ export function AdminPage() {
         <div className="size-16 rounded-2xl bg-orange/10 flex items-center justify-center animate-paw-bounce">
           <Shield className="size-8 text-orange" />
         </div>
-        <p className="font-display text-lg font-semibold text-navy">Cargando panel administrativo...</p>
+        <p className="font-display text-lg font-semibold text-foreground">Cargando panel administrativo...</p>
       </section>
     );
   }
@@ -204,14 +204,14 @@ export function AdminPage() {
   if (!user) {
     return (
       <section className="py-10">
-        <div className="max-w-2xl mx-auto rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md text-center">
+        <div className="max-w-2xl mx-auto rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md text-center">
           <div className="w-16 h-16 rounded-2xl bg-lost/10 flex items-center justify-center mx-auto mb-4">
             <Shield className="h-8 w-8 text-lost" />
           </div>
-          <h2 className="font-display text-2xl font-extrabold text-navy mb-3">
+          <h2 className="font-display text-2xl font-extrabold text-foreground mb-3">
             Acceso restringido
           </h2>
-          <p className="text-navy/70 mb-6">
+          <p className="text-foreground/70 mb-6">
             Debes iniciar sesión con una cuenta autorizada para acceder al panel administrativo.
           </p>
           <Link to="/auth/login">
@@ -225,14 +225,14 @@ export function AdminPage() {
   if (!isPrivileged) {
     return (
       <section className="py-10">
-        <div className="max-w-2xl mx-auto rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md text-center">
+        <div className="max-w-2xl mx-auto rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md text-center">
           <div className="w-16 h-16 rounded-2xl bg-lost/10 flex items-center justify-center mx-auto mb-4">
             <Shield className="h-8 w-8 text-lost" />
           </div>
-          <h2 className="font-display text-2xl font-extrabold text-navy mb-3">
+          <h2 className="font-display text-2xl font-extrabold text-foreground mb-3">
             Sin permisos
           </h2>
-          <p className="text-navy/70 mb-6">
+          <p className="text-foreground/70 mb-6">
             No tienes permisos para acceder a esta sección. Solo moderadores y administradores pueden gestionar el panel.
           </p>
           <Link to="/">
@@ -260,7 +260,7 @@ export function AdminPage() {
   return (
     <section className="space-y-8 py-10">
       {/* Hero del Admin */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-purple/10 via-cream to-orange/10 border-2 border-navy/10 p-8 shadow-md">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-purple/10 via-app to-orange/10 border-2 border-foreground/10 p-8 shadow-md">
         <div className="blob-decoration absolute top-5 right-5 size-32 bg-orange/20" />
         <div className="blob-decoration absolute bottom-5 left-5 size-24 bg-purple/15" style={{ animationDelay: '2s' }} />
         
@@ -268,10 +268,10 @@ export function AdminPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Shield className="size-6 text-purple animate-paw-bounce" />
-              <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Administración</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Administración</span>
             </div>
-            <h1 className="font-display text-4xl md:text-5xl font-extrabold text-navy">Panel administrativo</h1>
-            <p className="text-lg text-navy/70 leading-relaxed max-w-2xl">
+            <h1 className="font-display text-4xl md:text-5xl font-extrabold text-foreground">Panel administrativo</h1>
+            <p className="text-lg text-foreground/70 leading-relaxed max-w-2xl">
               Resumen operativo para revisar actividad, reportes y casos resueltos.
             </p>
           </div>
@@ -291,8 +291,8 @@ export function AdminPage() {
             className={[
               'flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all duration-base shrink-0',
               activeTab === tab.id
-                ? 'bg-navy text-white shadow-md scale-105'
-                : 'text-navy/70 hover:bg-navy/5 hover:text-navy hover:scale-105',
+                ? 'bg-ink text-white shadow-md scale-105'
+                : 'text-foreground/70 hover:bg-foreground/5 hover:text-foreground hover:scale-105',
             ].join(' ')}
           >
             {tab.icon} {tab.label}
@@ -306,8 +306,8 @@ export function AdminPage() {
             <Shield className="size-5 text-lost" />
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-navy mb-1">Error en la operación</p>
-            <p className="text-sm text-navy/70">{actionError}</p>
+            <p className="font-semibold text-foreground mb-1">Error en la operación</p>
+            <p className="text-sm text-foreground/70">{actionError}</p>
           </div>
         </div>
       )}
@@ -319,10 +319,10 @@ export function AdminPage() {
               <div className="size-12 rounded-xl bg-orange/10 flex items-center justify-center">
                 <UserPlus className="size-6 text-orange" />
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Publicaciones</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-foreground/60">Publicaciones</p>
             </div>
-            <p className="font-display text-4xl font-extrabold text-navy">{counts.activePublications}</p>
-            <p className="text-sm font-medium text-navy/70 mt-2">Casos activos</p>
+            <p className="font-display text-4xl font-extrabold text-foreground">{counts.activePublications}</p>
+            <p className="text-sm font-medium text-foreground/70 mt-2">Casos activos</p>
           </div>
           
           <div className="group rounded-2xl border-2 border-lost/20 bg-lost/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
@@ -330,10 +330,10 @@ export function AdminPage() {
               <div className="size-12 rounded-xl bg-lost/10 flex items-center justify-center">
                 <Shield className="size-6 text-lost" />
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Reportes</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-foreground/60">Reportes</p>
             </div>
-            <p className="font-display text-4xl font-extrabold text-navy">{counts.pendingReports}</p>
-            <p className="text-sm font-medium text-navy/70 mt-2">Pendientes</p>
+            <p className="font-display text-4xl font-extrabold text-foreground">{counts.pendingReports}</p>
+            <p className="text-sm font-medium text-foreground/70 mt-2">Pendientes</p>
           </div>
           
           <div className="group rounded-2xl border-2 border-found/20 bg-found/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
@@ -341,10 +341,10 @@ export function AdminPage() {
               <div className="size-12 rounded-xl bg-found/10 flex items-center justify-center">
                 <UserPlus className="size-6 text-found" />
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Resueltos</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-foreground/60">Resueltos</p>
             </div>
-            <p className="font-display text-4xl font-extrabold text-navy">{counts.resolvedCases}</p>
-            <p className="text-sm font-medium text-navy/70 mt-2">Casos cerrados</p>
+            <p className="font-display text-4xl font-extrabold text-foreground">{counts.resolvedCases}</p>
+            <p className="text-sm font-medium text-foreground/70 mt-2">Casos cerrados</p>
           </div>
           
           <div className="group rounded-2xl border-2 border-turquoise/20 bg-turquoise/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
@@ -352,10 +352,10 @@ export function AdminPage() {
               <div className="size-12 rounded-xl bg-turquoise/10 flex items-center justify-center">
                 <UserPlus className="size-6 text-turquoise" />
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Usuarios</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-foreground/60">Usuarios</p>
             </div>
-            <p className="font-display text-4xl font-extrabold text-navy">{counts.totalUsers}</p>
-            <p className="text-sm font-medium text-navy/70 mt-2">Total registrados</p>
+            <p className="font-display text-4xl font-extrabold text-foreground">{counts.totalUsers}</p>
+            <p className="text-sm font-medium text-foreground/70 mt-2">Total registrados</p>
           </div>
           
           <div className="group rounded-2xl border-2 border-purple/20 bg-purple/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
@@ -363,51 +363,51 @@ export function AdminPage() {
               <div className="size-12 rounded-xl bg-purple/10 flex items-center justify-center">
                 <UserPlus className="size-6 text-purple" />
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Avistamientos</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-foreground/60">Avistamientos</p>
             </div>
-            <p className="font-display text-4xl font-extrabold text-navy">{counts.recentSightings}</p>
-            <p className="text-sm font-medium text-navy/70 mt-2">Últimos 7 días</p>
+            <p className="font-display text-4xl font-extrabold text-foreground">{counts.recentSightings}</p>
+            <p className="text-sm font-medium text-foreground/70 mt-2">Últimos 7 días</p>
           </div>
           
-          <div className="group rounded-2xl border-2 border-red/20 bg-red/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
+          <div className="group rounded-2xl border-2 border-lost/20 bg-lost/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
             <div className="flex items-center gap-3 mb-3">
-              <div className="size-12 rounded-xl bg-red/10 flex items-center justify-center">
-                <Flag className="size-6 text-red-600" />
+              <div className="size-12 rounded-xl bg-lost/10 flex items-center justify-center">
+                <Flag className="size-6 text-lost" />
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Retiradas pendientes</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-foreground/60">Retiradas pendientes</p>
             </div>
-            <p className="font-display text-4xl font-extrabold text-navy">{counts.pendingTakedowns}</p>
-            <p className="text-sm font-medium text-navy/70 mt-2">Requieren revisión</p>
+            <p className="font-display text-4xl font-extrabold text-foreground">{counts.pendingTakedowns}</p>
+            <p className="text-sm font-medium text-foreground/70 mt-2">Requieren revisión</p>
           </div>
 
-          <div className="group rounded-2xl border-2 border-green/20 bg-green/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
+          <div className="group rounded-2xl border-2 border-found/20 bg-found/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
             <div className="flex items-center gap-3 mb-3">
-              <div className="size-12 rounded-xl bg-green/10 flex items-center justify-center">
-                <CheckCircle className="size-6 text-green-600" />
+              <div className="size-12 rounded-xl bg-found/10 flex items-center justify-center">
+                <CheckCircle className="size-6 text-found" />
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Retiradas aprobadas</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-foreground/60">Retiradas aprobadas</p>
             </div>
-            <p className="font-display text-4xl font-extrabold text-navy">{counts.approvedTakedowns}</p>
-            <p className="text-sm font-medium text-navy/70 mt-2">Publicaciones eliminadas</p>
+            <p className="font-display text-4xl font-extrabold text-foreground">{counts.approvedTakedowns}</p>
+            <p className="text-sm font-medium text-foreground/70 mt-2">Publicaciones eliminadas</p>
           </div>
 
-          <div className="group rounded-2xl border-2 border-blue/20 bg-blue/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
+          <div className="group rounded-2xl border-2 border-border bg-secondary/50 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
             <div className="flex items-center gap-3 mb-3">
-              <div className="size-12 rounded-xl bg-blue/10 flex items-center justify-center">
-                <UserPlus className="size-6 text-blue-600" />
+              <div className="size-12 rounded-xl bg-secondary flex items-center justify-center">
+                <UserPlus className="size-6 text-orange" />
               </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-navy/60">Fuentes activas</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-foreground/60">Fuentes activas</p>
             </div>
-            <p className="font-display text-4xl font-extrabold text-navy">{counts.activeSources}</p>
-            <p className="text-sm font-medium text-navy/70 mt-2">Canales monitoreados</p>
+            <p className="font-display text-4xl font-extrabold text-foreground">{counts.activeSources}</p>
+            <p className="text-sm font-medium text-foreground/70 mt-2">Canales monitoreados</p>
           </div>
         </div>
       )}
 
       {activeTab === 'reports' && (
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md space-y-6">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md space-y-6">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="font-display text-2xl font-extrabold text-navy flex items-center gap-2">
+            <h2 className="font-display text-2xl font-extrabold text-foreground flex items-center gap-2">
               <Shield className="size-6 text-lost" />
               Reportes recientes
             </h2>
@@ -418,9 +418,9 @@ export function AdminPage() {
           
           <div className="space-y-4">
             {reports.map((report) => (
-              <div key={report.id} className="rounded-2xl border-2 border-navy/10 bg-white p-5 space-y-3 transition-all hover:shadow-lg hover:-translate-y-1">
+              <div key={report.id} className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 space-y-3 transition-all hover:shadow-lg hover:-translate-y-1">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="font-display font-bold text-navy">{report.reason}</p>
+                  <p className="font-display font-bold text-foreground">{report.reason}</p>
                   <span className={[
                     'rounded-pill px-4 py-2 text-xs font-bold uppercase tracking-wider',
                     report.status === 'PENDING' ? 'bg-lost/10 text-lost' : 'bg-found/10 text-found'
@@ -434,10 +434,10 @@ export function AdminPage() {
                     {report.publication.title} →
                   </Link>
                 ) : (
-                  <p className="text-sm text-navy/60">ID: {report.publication_id}</p>
+                  <p className="text-sm text-foreground/60">ID: {report.publication_id}</p>
                 )}
                 
-                <p className="text-xs text-navy/50">
+                <p className="text-xs text-foreground/50">
                   {new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(report.created_at))}
                 </p>
                 
@@ -456,9 +456,9 @@ export function AdminPage() {
               </div>
             ))}
             {reports.length === 0 ? (
-              <div className="rounded-2xl border-2 border-dashed border-navy/20 bg-navy/5 p-12 text-center">
-                <Shield className="size-12 text-navy/30 mx-auto mb-3" />
-                <p className="text-sm font-medium text-navy/60">
+              <div className="rounded-2xl border-2 border-dashed border-foreground/20 bg-foreground/5 p-12 text-center">
+                <Shield className="size-12 text-foreground/30 mx-auto mb-3" />
+                <p className="text-sm font-medium text-foreground/60">
                   No hay reportes recientes
                 </p>
               </div>
@@ -468,7 +468,7 @@ export function AdminPage() {
       )}
 
       {activeTab === 'duplicates' && (
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md">
           <DuplicateReview />
         </div>
       )}
@@ -476,38 +476,38 @@ export function AdminPage() {
       {activeTab === 'audit' && <AuditLogPanel />}
 
       {activeTab === 'metrics' && (
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md">
           <AdminMetrics />
         </div>
       )}
       
       {activeTab === 'pending-review' && (
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md">
           <PendingReviewQueue />
         </div>
       )}
       
       {activeTab === 'sources' && (
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md">
           <ExternalSourcesManager />
         </div>
       )}
       
       {activeTab === 'moderation' && (
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md">
           <ModerationQueue />
         </div>
       )}
 
       {activeTab === 'takedowns' && (
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md">
           <TakedownQueue />
         </div>
       )}
 
       {activeTab === 'publications' && (
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md space-y-6">
-          <h2 className="font-display text-2xl font-extrabold text-navy flex items-center gap-2">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md space-y-6">
+          <h2 className="font-display text-2xl font-extrabold text-foreground flex items-center gap-2">
             <UserPlus className="size-6 text-orange" />
             Publicaciones recientes
           </h2>
@@ -517,12 +517,12 @@ export function AdminPage() {
               <Link 
                 key={pub.id} 
                 to={`/p/${pub.slug}`} 
-                className="group block rounded-2xl border-2 border-navy/10 bg-white p-5 transition-all hover:shadow-lg hover:-translate-y-1"
+                className="group block rounded-2xl border-2 border-foreground/10 bg-surface p-5 transition-all hover:shadow-lg hover:-translate-y-1"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <p className="font-display text-lg font-bold text-navy group-hover:text-orange transition-colors">{pub.title}</p>
-                    <p className="mt-2 text-xs text-navy/50">
+                    <p className="font-display text-lg font-bold text-foreground group-hover:text-orange transition-colors">{pub.title}</p>
+                    <p className="mt-2 text-xs text-foreground/50">
                       {new Intl.DateTimeFormat('es-ES', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(pub.created_at))}
                     </p>
                   </div>
@@ -532,7 +532,7 @@ export function AdminPage() {
                     </span>
                     <span className={[
                       'rounded-pill px-3 py-1.5 text-xs font-bold',
-                      pub.status === 'ACTIVE' ? 'bg-found/10 text-found' : 'bg-navy/10 text-navy'
+                      pub.status === 'ACTIVE' ? 'bg-found/10 text-found' : 'bg-foreground/10 text-foreground'
                     ].join(' ')}>
                       {pub.status}
                     </span>
@@ -541,9 +541,9 @@ export function AdminPage() {
               </Link>
             ))}
             {publications.length === 0 ? (
-              <div className="rounded-2xl border-2 border-dashed border-navy/20 bg-navy/5 p-12 text-center">
-                <UserPlus className="size-12 text-navy/30 mx-auto mb-3" />
-                <p className="text-sm font-medium text-navy/60">
+              <div className="rounded-2xl border-2 border-dashed border-foreground/20 bg-foreground/5 p-12 text-center">
+                <UserPlus className="size-12 text-foreground/30 mx-auto mb-3" />
+                <p className="text-sm font-medium text-foreground/60">
                   No hay publicaciones
                 </p>
               </div>
@@ -553,8 +553,8 @@ export function AdminPage() {
       )}
 
       {activeTab === 'users' && (
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-8 shadow-md space-y-6">
-          <h2 className="font-display text-2xl font-extrabold text-navy flex items-center gap-2">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md space-y-6">
+          <h2 className="font-display text-2xl font-extrabold text-foreground flex items-center gap-2">
             <UserPlus className="size-6 text-turquoise" />
             Gestión de usuarios
           </h2>
@@ -562,20 +562,20 @@ export function AdminPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b-2 border-navy/10">
-                  <th className="pb-4 font-display font-extrabold text-navy">Usuario</th>
-                  <th className="pb-4 font-display font-extrabold text-navy">Nombre</th>
-                  <th className="pb-4 font-display font-extrabold text-navy">Rol</th>
-                  <th className="pb-4 font-display font-extrabold text-navy">Registrado</th>
-                  <th className="pb-4 font-display font-extrabold text-navy">Estado</th>
-                  <th className="pb-4 font-display font-extrabold text-navy text-right">Acciones</th>
+                <tr className="border-b-2 border-foreground/10">
+                  <th className="pb-4 font-display font-extrabold text-foreground">Usuario</th>
+                  <th className="pb-4 font-display font-extrabold text-foreground">Nombre</th>
+                  <th className="pb-4 font-display font-extrabold text-foreground">Rol</th>
+                  <th className="pb-4 font-display font-extrabold text-foreground">Registrado</th>
+                  <th className="pb-4 font-display font-extrabold text-foreground">Estado</th>
+                  <th className="pb-4 font-display font-extrabold text-foreground text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-navy/5 hover:bg-cream/50 transition-colors">
-                    <td className="py-4 font-semibold text-navy">@{u.username}</td>
-                    <td className="py-4 text-navy/70">{u.full_name ?? '—'}</td>
+                  <tr key={u.id} className="border-b border-foreground/5 hover:bg-app/50 transition-colors">
+                    <td className="py-4 font-semibold text-foreground">@{u.username}</td>
+                    <td className="py-4 text-foreground/70">{u.full_name ?? '—'}</td>
                     <td className="py-4">
                       <span className={[
                         'inline-flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-bold uppercase tracking-wider',
@@ -586,7 +586,7 @@ export function AdminPage() {
                         {u.role}
                       </span>
                     </td>
-                    <td className="py-4 text-navy/60 text-xs">
+                    <td className="py-4 text-foreground/60 text-xs">
                       {new Intl.DateTimeFormat('es-ES', { dateStyle: 'short' }).format(new Date(u.created_at))}
                     </td>
                     <td className="py-4">
@@ -600,7 +600,7 @@ export function AdminPage() {
                           value={u.role}
                           onChange={(e) => setUserRole(u.id, e.target.value as 'USER' | 'MODERATOR' | 'ADMIN')}
                           disabled={actionLoadingId === u.id || !isAdmin}
-                          className="h-10 rounded-xl border-2 border-navy/10 bg-white px-3 text-sm font-medium text-navy shadow-sm outline-none transition focus:border-orange focus:ring-4 focus:ring-orange/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="h-10 rounded-xl border-2 border-foreground/10 bg-surface px-3 text-sm font-medium text-foreground shadow-sm outline-none transition focus:border-orange focus:ring-4 focus:ring-orange/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <option value="USER">Usuario</option>
                           <option value="MODERATOR">Moderador</option>
@@ -617,9 +617,9 @@ export function AdminPage() {
             </table>
             
             {users.length === 0 && (
-              <div className="rounded-2xl border-2 border-dashed border-navy/20 bg-navy/5 p-12 text-center mt-6">
-                <UserPlus className="size-12 text-navy/30 mx-auto mb-3" />
-                <p className="text-sm font-medium text-navy/60">
+              <div className="rounded-2xl border-2 border-dashed border-foreground/20 bg-foreground/5 p-12 text-center mt-6">
+                <UserPlus className="size-12 text-foreground/30 mx-auto mb-3" />
+                <p className="text-sm font-medium text-foreground/60">
                   No hay usuarios registrados
                 </p>
               </div>

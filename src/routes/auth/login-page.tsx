@@ -53,7 +53,7 @@ export function LoginPage() {
         title="🐾 Bienvenido de vuelta"
         description="Hay muchas patitas esperando una historia feliz."
         footer={
-          <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3 text-sm text-navy/70">
+          <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3 text-sm text-foreground/70">
             <span>¿No tienes cuenta?</span>
             <LinkButton href="/auth/register" variant="secondary" className="text-sm font-bold">
               Crear cuenta
@@ -97,9 +97,9 @@ export function LoginPage() {
           
           <div className="relative py-4 text-center">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t-2 border-navy/10"></div>
+              <div className="w-full border-t-2 border-foreground/10"></div>
             </div>
-            <span className="relative bg-white px-4 text-xs font-bold uppercase tracking-wider text-navy/40">
+            <span className="relative bg-surface px-4 text-xs font-bold uppercase tracking-wider text-foreground/40">
               o
             </span>
           </div>

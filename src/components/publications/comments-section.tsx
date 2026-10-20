@@ -130,7 +130,7 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-turquoise/10 border-2 border-turquoise/20">
             <MessageCircle className="h-5 w-5 text-turquoise" />
           </div>
-          <h3 className="font-display text-2xl font-extrabold text-navy">Comentarios</h3>
+          <h3 className="font-display text-2xl font-extrabold text-foreground">Comentarios</h3>
           {comments.length > 0 && (
             <span className="rounded-pill bg-orange/10 border border-orange/20 px-3 py-1.5 text-sm font-bold text-orange shadow-sm">
               {comments.length}
@@ -145,7 +145,7 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
 
       {/* Formulario para comentar */}
       {currentUserId ? (
-        <div className="group relative overflow-hidden rounded-2xl border-2 border-turquoise/30 bg-white p-6 shadow-md transition-all duration-300 hover:shadow-lg hover:border-turquoise/40">
+        <div className="group relative overflow-hidden rounded-2xl border-2 border-turquoise/30 bg-surface p-6 shadow-md transition-all duration-300 hover:shadow-lg hover:border-turquoise/40">
           {/* Blob decorativo */}
           <div className="blob-decoration absolute -top-10 -right-10 w-32 h-32 bg-turquoise/10" />
           
@@ -192,14 +192,14 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
           </div>
         </div>
       ) : (
-        <div className="rounded-2xl border-2 border-navy/10 bg-navy/5 p-6 text-center space-y-2">
-          <div className="w-12 h-12 rounded-xl bg-navy/10 flex items-center justify-center mx-auto mb-3">
-            <MessageCircle className="h-6 w-6 text-navy/40" />
+        <div className="rounded-2xl border-2 border-foreground/10 bg-foreground/5 p-6 text-center space-y-2">
+          <div className="w-12 h-12 rounded-xl bg-foreground/10 flex items-center justify-center mx-auto mb-3">
+            <MessageCircle className="h-6 w-6 text-foreground/40" />
           </div>
-          <p className="text-sm font-semibold text-navy/60">
+          <p className="text-sm font-semibold text-foreground/60">
             🔒 Necesitas iniciar sesión para comentar
           </p>
-          <p className="text-xs text-navy/40">
+          <p className="text-xs text-foreground/40">
             Únete a la comunidad y ayuda a reunir patitas
           </p>
         </div>
@@ -207,13 +207,13 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
 
       {/* Loading state */}
       {loading && (
-        <div className="rounded-2xl border-2 border-navy/10 bg-white p-8 text-center space-y-3">
+        <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-8 text-center space-y-3">
           <div className="flex justify-center gap-2">
             <PawPrint className="h-6 w-6 text-orange animate-paw-pulse" />
             <PawPrint className="h-6 w-6 text-turquoise animate-paw-pulse" style={{ animationDelay: '0.2s' }} />
             <PawPrint className="h-6 w-6 text-purple animate-paw-pulse" style={{ animationDelay: '0.4s' }} />
           </div>
-          <p className="text-sm font-medium text-navy/60">
+          <p className="text-sm font-medium text-foreground/60">
             Cargando comentarios...
           </p>
         </div>
@@ -221,23 +221,23 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
 
       {/* Empty state */}
       {!loading && comments.length === 0 && (
-        <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-navy/20 bg-navy/5 p-10 text-center space-y-3">
+        <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-foreground/20 bg-foreground/5 p-10 text-center space-y-3">
           {/* Decoración */}
-          <div className="absolute top-4 left-4 text-navy/5">
+          <div className="absolute top-4 left-4 text-foreground/5">
             <PawPrint className="h-12 w-12 rotate-12" />
           </div>
-          <div className="absolute bottom-4 right-4 text-navy/5">
+          <div className="absolute bottom-4 right-4 text-foreground/5">
             <PawPrint className="h-12 w-12 -rotate-12" />
           </div>
           
           <div className="relative">
-            <div className="w-16 h-16 rounded-2xl bg-navy/10 flex items-center justify-center mx-auto mb-4">
-              <MessageCircle className="h-8 w-8 text-navy/30" />
+            <div className="w-16 h-16 rounded-2xl bg-foreground/10 flex items-center justify-center mx-auto mb-4">
+              <MessageCircle className="h-8 w-8 text-foreground/30" />
             </div>
-            <p className="font-display text-lg font-bold text-navy/60 mb-1">
+            <p className="font-display text-lg font-bold text-foreground/60 mb-1">
               Aún no hay comentarios
             </p>
-            <p className="text-sm text-navy/40">
+            <p className="text-sm text-foreground/40">
               Sé el primero en compartir información útil 🐾
             </p>
           </div>
@@ -249,7 +249,7 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
         {comments.map((comment, index) => (
           <div
             key={comment.id}
-            className="group relative overflow-hidden rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-md transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-turquoise/30"
+            className="group relative overflow-hidden rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-md transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-turquoise/30"
             style={{ animationDelay: `${index * 50}ms` }}
           >
             {/* Barra lateral de color */}
@@ -265,10 +265,10 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
                 {/* Contenido */}
                 <div className="space-y-2 flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-display font-extrabold text-navy">
+                    <p className="font-display font-extrabold text-foreground">
                       @{comment.author?.username ?? 'Usuario'}
                     </p>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-navy/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-navy/50">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-foreground/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-foreground/50">
                       <PawPrint className="h-2.5 w-2.5" />
                       {formatRelativeTime(comment.created_at)}
                     </span>
@@ -280,7 +280,7 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
                       <textarea
                         value={editingBody}
                         onChange={(e) => setEditingBody(e.target.value)}
-                        className="w-full min-h-20 rounded-xl border-2 border-turquoise/30 bg-white px-4 py-3 text-sm text-navy shadow-sm outline-none transition focus:border-turquoise focus:ring-4 focus:ring-turquoise/20 resize-y"
+                        className="w-full min-h-20 rounded-xl border-2 border-turquoise/30 bg-surface px-4 py-3 text-sm text-foreground shadow-sm outline-none transition focus:border-turquoise focus:ring-4 focus:ring-turquoise/20 resize-y"
                         placeholder="Edita tu comentario..."
                       />
                       {editingError && (
@@ -298,7 +298,7 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
                         <button
                           type="button"
                           onClick={handleCancelEdit}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-navy/10 hover:bg-navy/20 border border-navy/20 px-3 py-1.5 text-xs font-semibold text-navy transition-all duration-200 hover:scale-105"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-foreground/10 hover:bg-ink/20 border border-foreground/20 px-3 py-1.5 text-xs font-semibold text-foreground transition-all duration-200 hover:scale-105"
                         >
                           <X className="h-3.5 w-3.5" />
                           Cancelar
@@ -306,7 +306,7 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm leading-relaxed text-navy/80">
+                    <p className="text-sm leading-relaxed text-foreground/80">
                       {comment.body}
                     </p>
                   )}

@@ -57,7 +57,7 @@ export function AISuggestions({ publicationId, onApplySuggestion, threshold = 0.
     <div className="rounded-xl border-2 border-turquoise/20 bg-turquoise/5 p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="size-4 text-turquoise" />
-        <h3 className="font-display text-sm font-bold text-navy">Sugerencias de IA</h3>
+        <h3 className="font-display text-sm font-bold text-foreground">Sugerencias de IA</h3>
         <span className="ml-auto rounded-full bg-turquoise/20 px-2 py-0.5 text-xs font-bold text-turquoise-dark">
           {suggestions.length}
         </span>
@@ -73,21 +73,21 @@ export function AISuggestions({ publicationId, onApplySuggestion, threshold = 0.
               className={`rounded-lg border p-3 transition ${
                 isApplied
                   ? 'border-found/20 bg-found/5'
-                  : 'border-navy/10 bg-white hover:border-turquoise/30'
+                  : 'border-foreground/10 bg-surface hover:border-turquoise/30'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold text-navy/60 uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-foreground/60 uppercase tracking-wider">
                       {getFieldLabel(suggestion.field)}
                     </span>
-                    <span className="text-xs text-navy/40">
+                    <span className="text-xs text-foreground/40">
                       {Math.round(suggestion.confidence * 100)}% confianza
                     </span>
                   </div>
-                  <p className="font-medium text-navy truncate">{suggestion.value}</p>
-                  <p className="text-xs text-navy/50 mt-1">Fuente: {getSourceLabel(suggestion.source)}</p>
+                  <p className="font-medium text-foreground truncate">{suggestion.value}</p>
+                  <p className="text-xs text-foreground/50 mt-1">Fuente: {getSourceLabel(suggestion.source)}</p>
                 </div>
 
                 {isApplied ? (
@@ -108,7 +108,7 @@ export function AISuggestions({ publicationId, onApplySuggestion, threshold = 0.
                     <Button
                       variant="ghost"
                       onClick={() => handleDismiss(suggestion.field)}
-                      className="h-8 w-8 p-0 text-navy/40 hover:text-lost hover:bg-lost/10"
+                      className="h-8 w-8 p-0 text-foreground/40 hover:text-lost hover:bg-lost/10"
                     >
                       <X className="size-4" />
                     </Button>
@@ -120,7 +120,7 @@ export function AISuggestions({ publicationId, onApplySuggestion, threshold = 0.
         })}
       </div>
 
-      <p className="mt-3 text-xs text-navy/60 leading-relaxed">
+      <p className="mt-3 text-xs text-foreground/60 leading-relaxed">
         💡 Estas sugerencias fueron extraídas automáticamente. Revisa y confirma antes de aplicar.
       </p>
     </div>

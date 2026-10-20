@@ -172,7 +172,7 @@ export function DashboardPage() {
     return (
       <section className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <PawLoader size="lg" />
-        <p className="font-display text-lg font-semibold text-navy">Cargando tu panel...</p>
+        <p className="font-display text-lg font-semibold text-foreground">Cargando tu panel...</p>
       </section>
     );
   }
@@ -191,16 +191,16 @@ export function DashboardPage() {
   return (
     <section className="space-y-8 py-8">
       {/* Header del dashboard */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-orange/10 via-cream to-turquoise/10 border-2 border-navy/10 p-8 shadow-md">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-orange/10 via-app to-turquoise/10 border-2 border-foreground/10 p-8 shadow-md">
         <div className="blob-decoration absolute top-5 right-5 size-24 bg-purple/20" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <PawPrint className="size-5 text-orange animate-paw-bounce" />
-              <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Tu espacio</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Tu espacio</span>
             </div>
-            <h1 className="font-display text-4xl font-extrabold text-navy">Panel de control</h1>
-            <p className="text-navy/60 mt-1">Gestiona tus publicaciones y tu perfil</p>
+            <h1 className="font-display text-4xl font-extrabold text-foreground">Panel de control</h1>
+            <p className="text-foreground/60 mt-1">Gestiona tus publicaciones y tu perfil</p>
           </div>
           <Link to="/publicar">
             <Button variant="primary" className="gap-2 shadow-lg">
@@ -212,7 +212,7 @@ export function DashboardPage() {
       </div>
 
       {/* Tabs de navegación */}
-      <nav className="flex flex-wrap gap-2 border-b-2 border-navy/10 pb-2" aria-label="Pestañas del panel">
+      <nav className="flex flex-wrap gap-2 border-b-2 border-foreground/10 pb-2" aria-label="Pestañas del panel">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -220,8 +220,8 @@ export function DashboardPage() {
             className={[
               'flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-base ease-smooth',
               activeTab === tab.id
-                ? 'bg-navy text-white shadow-md scale-105'
-                : 'text-navy/70 hover:bg-navy/5 hover:text-navy hover:scale-102',
+                ? 'bg-ink text-white shadow-md scale-105'
+                : 'text-foreground/70 hover:bg-foreground/5 hover:text-foreground hover:scale-102',
             ].join(' ')}
           >
             {tab.icon} {tab.label}
@@ -232,25 +232,25 @@ export function DashboardPage() {
       {/* Contenido según tab activo */}
       {activeTab === 'resumen' && (
         <div className="grid gap-6 sm:grid-cols-3">
-          <div className="group rounded-2xl border-2 border-turquoise/20 bg-white p-6 shadow-md hover:shadow-lg transition-all duration-base hover:-translate-y-1">
+          <div className="group rounded-2xl border-2 border-turquoise/20 bg-surface p-6 shadow-md hover:shadow-lg transition-all duration-base hover:-translate-y-1">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-navy/70">Publicaciones activas</p>
+              <p className="text-sm font-medium text-foreground/70">Publicaciones activas</p>
               <Eye className="size-5 text-turquoise/40 group-hover:text-turquoise transition-colors" />
             </div>
             <p className="font-display text-4xl font-extrabold text-turquoise">{stats.active}</p>
           </div>
           
-          <div className="group rounded-2xl border-2 border-found/20 bg-white p-6 shadow-md hover:shadow-lg transition-all duration-base hover:-translate-y-1">
+          <div className="group rounded-2xl border-2 border-found/20 bg-surface p-6 shadow-md hover:shadow-lg transition-all duration-base hover:-translate-y-1">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-navy/70">Casos resueltos</p>
+              <p className="text-sm font-medium text-foreground/70">Casos resueltos</p>
               <CheckCircle className="size-5 text-found/40 group-hover:text-found transition-colors" />
             </div>
             <p className="font-display text-4xl font-extrabold text-found">{stats.resolved}</p>
           </div>
           
-          <div className="group rounded-2xl border-2 border-purple/20 bg-white p-6 shadow-md hover:shadow-lg transition-all duration-base hover:-translate-y-1">
+          <div className="group rounded-2xl border-2 border-purple/20 bg-surface p-6 shadow-md hover:shadow-lg transition-all duration-base hover:-translate-y-1">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-navy/70">Total publicaciones</p>
+              <p className="text-sm font-medium text-foreground/70">Total publicaciones</p>
               <FileText className="size-5 text-purple/40 group-hover:text-purple transition-colors" />
             </div>
             <p className="font-display text-4xl font-extrabold text-purple">{stats.total}</p>
@@ -307,7 +307,7 @@ export function DashboardPage() {
                         onClick={() => handleResolve(pub.id)}
                         disabled={actionLoading === pub.id}
                         aria-label="Marcar como resuelto"
-                        className="p-2 min-h-9 px-3 bg-white/90 hover:bg-found/10 border border-navy/10"
+                        className="p-2 min-h-9 px-3 bg-surface/90 hover:bg-found/10 border border-foreground/10"
                       >
                         <CheckCircle className="size-4 text-found" />
                       </Button>
@@ -316,7 +316,7 @@ export function DashboardPage() {
                       variant="ghost"
                       onClick={() => handleDelete(pub.id)}
                       disabled={actionLoading === pub.id}
-                      className="p-2 min-h-9 px-3 bg-white/90 hover:bg-lost/10 border border-navy/10"
+                      className="p-2 min-h-9 px-3 bg-surface/90 hover:bg-lost/10 border border-foreground/10"
                       aria-label="Eliminar"
                     >
                       <Trash2 className="size-4 text-lost" />
@@ -330,15 +330,15 @@ export function DashboardPage() {
       )}
 
       {activeTab === 'adopciones' && (
-        <div className="rounded-3xl border-2 border-navy/10 bg-white p-6 shadow-md">
+        <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-6 shadow-md">
           <AdoptionRequestsPanel />
         </div>
       )}
 
       {activeTab === 'perfil' && (
         <div className="max-w-2xl">
-          <div className="rounded-2xl border-2 border-navy/10 bg-white p-8 shadow-md">
-            <div className="flex flex-col items-center gap-6 mb-6 pb-6 border-b-2 border-navy/10">
+          <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-8 shadow-md">
+            <div className="flex flex-col items-center gap-6 mb-6 pb-6 border-b-2 border-foreground/10">
               <AvatarUpload
                 currentAvatarUrl={avatarUrl}
                 userName={user.user_metadata?.username || user.email}
@@ -346,36 +346,36 @@ export function DashboardPage() {
                 onDelete={handleAvatarDelete}
               />
               <div className="text-center">
-                <h2 className="font-display text-2xl font-extrabold text-navy">Tu perfil</h2>
-                <p className="text-sm text-navy/60">Información de tu cuenta</p>
+                <h2 className="font-display text-2xl font-extrabold text-foreground">Tu perfil</h2>
+                <p className="text-sm text-foreground/60">Información de tu cuenta</p>
               </div>
             </div>
             
             <div className="space-y-5">
-              <div className="flex items-start justify-between py-3 border-b border-navy/5">
+              <div className="flex items-start justify-between py-3 border-b border-foreground/5">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-navy/60 mb-1">Usuario</p>
-                  <p className="font-semibold text-navy">{user.user_metadata?.username ?? '—'}</p>
+                  <p className="text-sm font-medium text-foreground/60 mb-1">Usuario</p>
+                  <p className="font-semibold text-foreground">{user.user_metadata?.username ?? '—'}</p>
                 </div>
               </div>
               
-              <div className="flex items-start justify-between py-3 border-b border-navy/5">
+              <div className="flex items-start justify-between py-3 border-b border-foreground/5">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-navy/60 mb-1">Nombre completo</p>
-                  <p className="font-semibold text-navy">{user.user_metadata?.full_name ?? '—'}</p>
+                  <p className="text-sm font-medium text-foreground/60 mb-1">Nombre completo</p>
+                  <p className="font-semibold text-foreground">{user.user_metadata?.full_name ?? '—'}</p>
                 </div>
               </div>
               
-              <div className="flex items-start justify-between py-3 border-b border-navy/5">
+              <div className="flex items-start justify-between py-3 border-b border-foreground/5">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-navy/60 mb-1">Correo</p>
-                  <p className="font-semibold text-navy">{user.email}</p>
+                  <p className="text-sm font-medium text-foreground/60 mb-1">Correo</p>
+                  <p className="font-semibold text-foreground">{user.email}</p>
                 </div>
               </div>
               <div className="flex items-start justify-between py-3">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-navy/60 mb-1">Miembro desde</p>
-                  <p className="font-semibold text-navy">
+                  <p className="text-sm font-medium text-foreground/60 mb-1">Miembro desde</p>
+                  <p className="font-semibold text-foreground">
                     {new Date(user.created_at).toLocaleDateString('es-ES', { 
                       year: 'numeric', 
                       month: 'long',
@@ -394,11 +394,11 @@ export function DashboardPage() {
                     Ver mi perfil público
                   </Button>
                 </Link>
-                <p className="mt-2 text-center text-xs text-navy/50">Así te ven otros usuarios de la comunidad.</p>
+                <p className="mt-2 text-center text-xs text-foreground/50">Así te ven otros usuarios de la comunidad.</p>
               </div>
             )}
             {/* Cerrar sesión */}
-            <div className="mt-8 pt-6 border-t-2 border-navy/10">
+            <div className="mt-8 pt-6 border-t-2 border-foreground/10">
               <Button
                 variant="danger"
                 onClick={handleLogout}
@@ -408,7 +408,7 @@ export function DashboardPage() {
                 <LogOut className="size-4" aria-hidden="true" />
                 {loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
               </Button>
-              <p className="mt-2 text-center text-xs text-navy/50">Se cerrará tu sesión en este dispositivo.</p>
+              <p className="mt-2 text-center text-xs text-foreground/50">Se cerrará tu sesión en este dispositivo.</p>
             </div>
           </div>
         </div>

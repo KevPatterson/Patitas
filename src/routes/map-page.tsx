@@ -164,15 +164,15 @@ export function MapPage() {
   return (
     <section className="space-y-6 py-8">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-turquoise/10 via-cream to-purple/10 border-2 border-navy/10 p-8 shadow-md">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-turquoise/10 via-app to-purple/10 border-2 border-foreground/10 p-8 shadow-md">
         <div className="blob-decoration absolute top-5 right-5 size-24 bg-orange/20" />
         <div className="relative">
           <div className="flex items-center gap-2 mb-2">
             <MapPin className="size-5 text-turquoise" />
-            <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Geolocalización</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Geolocalización</span>
           </div>
-          <h1 className="font-display text-4xl font-extrabold text-navy mb-2">Mapa de casos</h1>
-          <p className="text-navy/70 max-w-2xl">
+          <h1 className="font-display text-4xl font-extrabold text-foreground mb-2">Mapa de casos</h1>
+          <p className="text-foreground/70 max-w-2xl">
             Visualiza todas las mascotas cerca de ti. Las coordenadas son aproximadas para proteger la privacidad.
           </p>
         </div>
@@ -180,25 +180,25 @@ export function MapPage() {
 
       {/* Estadísticas rápidas */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <div className="rounded-2xl border-2 border-navy/10 bg-white p-4 text-center">
-          <p className="font-display text-2xl font-extrabold text-navy">{stats.total}</p>
-          <p className="text-xs font-medium text-navy/60">Total</p>
+        <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-4 text-center">
+          <p className="font-display text-2xl font-extrabold text-foreground">{stats.total}</p>
+          <p className="text-xs font-medium text-foreground/60">Total</p>
         </div>
         <div className="rounded-2xl border-2 border-lost/20 bg-lost/5 p-4 text-center">
           <p className="font-display text-2xl font-extrabold text-lost">{stats.lost}</p>
-          <p className="text-xs font-medium text-navy/60">Perdidas</p>
+          <p className="text-xs font-medium text-foreground/60">Perdidas</p>
         </div>
         <div className="rounded-2xl border-2 border-found/20 bg-found/5 p-4 text-center">
           <p className="font-display text-2xl font-extrabold text-found">{stats.found}</p>
-          <p className="text-xs font-medium text-navy/60">Encontradas</p>
+          <p className="text-xs font-medium text-foreground/60">Encontradas</p>
         </div>
         <div className="rounded-2xl border-2 border-purple/20 bg-purple/5 p-4 text-center">
           <p className="font-display text-2xl font-extrabold text-purple">{stats.adoption}</p>
-          <p className="text-xs font-medium text-navy/60">Adopción</p>
+          <p className="text-xs font-medium text-foreground/60">Adopción</p>
         </div>
         <div className="rounded-2xl border-2 border-orange/20 bg-orange/5 p-4 text-center">
           <p className="font-display text-2xl font-extrabold text-orange">{stats.sighting}</p>
-          <p className="text-xs font-medium text-navy/60">Avistamientos</p>
+          <p className="text-xs font-medium text-foreground/60">Avistamientos</p>
         </div>
       </div>
 
@@ -209,8 +209,8 @@ export function MapPage() {
             <span className="text-2xl">⚠️</span>
             <div className="flex-1">
               <h3 className="font-display text-lg font-bold text-lost mb-2">Error al cargar el mapa</h3>
-              <p className="text-sm text-navy/70 mb-3">{error}</p>
-              <p className="text-xs text-navy/60">
+              <p className="text-sm text-foreground/70 mb-3">{error}</p>
+              <p className="text-xs text-foreground/60">
                 Esto puede deberse a un problema de conexión o configuración. Verifica tu archivo .env y asegúrate de que las credenciales de Supabase sean correctas.
               </p>
               <Button 
@@ -226,11 +226,11 @@ export function MapPage() {
       )}
 
       {/* Filtros */}
-      <div className="rounded-2xl border-2 border-navy/10 bg-white p-4 shadow-md">
+      <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-4 shadow-md">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Filter className="size-5 text-navy/60" />
-            <h2 className="font-display text-lg font-bold text-navy">Filtros</h2>
+            <Filter className="size-5 text-foreground/60" />
+            <h2 className="font-display text-lg font-bold text-foreground">Filtros</h2>
             {activeFiltersCount > 0 && (
               <span className="inline-flex items-center justify-center min-w-5 h-5 rounded-full bg-orange text-white text-xs font-bold">
                 {activeFiltersCount}
@@ -258,9 +258,9 @@ export function MapPage() {
         {showFilters && (
           <div className="grid gap-3 sm:grid-cols-2 animate-fade-up">
             <label className="space-y-2">
-              <span className="text-sm font-semibold text-navy">Tipo</span>
+              <span className="text-sm font-semibold text-foreground">Tipo</span>
               <select
-                className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
+                className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
                 value={filters.type}
                 onChange={(e) => updateFilter('type', e.target.value)}
               >
@@ -274,9 +274,9 @@ export function MapPage() {
             </label>
 
             <label className="space-y-2">
-              <span className="text-sm font-semibold text-navy">Especie</span>
+              <span className="text-sm font-semibold text-foreground">Especie</span>
               <select
-                className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
+                className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
                 value={filters.species}
                 onChange={(e) => updateFilter('species', e.target.value)}
               >
@@ -293,12 +293,12 @@ export function MapPage() {
       </div>
 
       {/* Mapa */}
-      <div className="relative overflow-hidden rounded-3xl border-2 border-navy/10 shadow-lg z-20">
+      <div className="relative overflow-hidden rounded-3xl border-2 border-foreground/10 shadow-lg z-20">
         {loading ? (
-          <div className="flex h-[600px] items-center justify-center bg-navy/5">
+          <div className="flex h-[600px] items-center justify-center bg-foreground/5">
             <div className="text-center space-y-3">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-navy/20 border-t-orange"></div>
-              <p className="text-sm font-semibold text-navy/70">Cargando mapa...</p>
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-foreground/20 border-t-orange"></div>
+              <p className="text-sm font-semibold text-foreground/70">Cargando mapa...</p>
             </div>
           </div>
         ) : (
@@ -343,31 +343,31 @@ export function MapPage() {
       </div>
 
       {/* Leyenda */}
-      <div className="rounded-2xl border-2 border-navy/10 bg-white p-6 shadow-md">
-        <h3 className="font-display text-lg font-bold text-navy mb-4">Leyenda del mapa</h3>
+      <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-6 shadow-md">
+        <h3 className="font-display text-lg font-bold text-foreground mb-4">Leyenda del mapa</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="flex items-center gap-3">
             <PawPrint className="size-8 text-lost fill-lost/20" />
-            <span className="text-sm font-medium text-navy">Perdida</span>
+            <span className="text-sm font-medium text-foreground">Perdida</span>
           </div>
           <div className="flex items-center gap-3">
             <PawPrint className="size-8 text-found fill-found/20" />
-            <span className="text-sm font-medium text-navy">Encontrada</span>
+            <span className="text-sm font-medium text-foreground">Encontrada</span>
           </div>
           <div className="flex items-center gap-3">
             <PawPrint className="size-8 text-purple fill-purple/20" />
-            <span className="text-sm font-medium text-navy">Adopción</span>
+            <span className="text-sm font-medium text-foreground">Adopción</span>
           </div>
           <div className="flex items-center gap-3">
             <PawPrint className="size-8 text-orange fill-orange/20" />
-            <span className="text-sm font-medium text-navy">Avistamiento</span>
+            <span className="text-sm font-medium text-foreground">Avistamiento</span>
           </div>
           <div className="flex items-center gap-3">
-            <PawPrint className="size-8 text-navy/60 fill-navy/10" />
-            <span className="text-sm font-medium text-navy">Abandonada</span>
+            <PawPrint className="size-8 text-foreground/60 fill-foreground/10" />
+            <span className="text-sm font-medium text-foreground">Abandonada</span>
           </div>
         </div>
-        <p className="mt-4 text-xs text-navy/60 leading-relaxed">
+        <p className="mt-4 text-xs text-foreground/60 leading-relaxed">
           🐾 Cada huella representa un caso. Las ubicaciones son aproximadas (±50m) para proteger la privacidad. Todas las huellas se muestran en el mapa sin importar el nivel de zoom.
         </p>
       </div>

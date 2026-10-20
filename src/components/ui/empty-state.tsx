@@ -20,7 +20,7 @@ export function EmptyState({
     <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
       <div className="mb-6 relative">
         {illustration === 'paw' && (
-          <div className="size-20 flex items-center justify-center text-navy/20">
+          <div className="size-20 flex items-center justify-center text-foreground/20">
             <PawPrint className="size-16" strokeWidth={1.5} />
           </div>
         )}
@@ -31,18 +31,18 @@ export function EmptyState({
           <div className="text-6xl animate-float">🐶</div>
         )}
         {icon && (
-          <div className="size-20 flex items-center justify-center text-navy/20">
+          <div className="size-20 flex items-center justify-center text-foreground/20">
             {icon}
           </div>
         )}
       </div>
       
-      <h3 className="font-display text-2xl font-extrabold text-navy mb-2">
+      <h3 className="font-display text-2xl font-extrabold text-foreground mb-2">
         {title}
       </h3>
       
       {description && (
-        <p className="text-navy/60 max-w-md mb-6 leading-relaxed">
+        <p className="text-foreground/60 max-w-md mb-6 leading-relaxed">
           {description}
         </p>
       )}
@@ -71,11 +71,11 @@ export function ErrorState({
     <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
       <div className="text-6xl mb-4 animate-shake">🐶</div>
       
-      <h3 className="font-display text-2xl font-extrabold text-navy mb-2">
+      <h3 className="font-display text-2xl font-extrabold text-foreground mb-2">
         {title}
       </h3>
       
-      <p className="text-navy/60 max-w-md mb-6 leading-relaxed">
+      <p className="text-foreground/60 max-w-md mb-6 leading-relaxed">
         {description}
       </p>
       

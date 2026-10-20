@@ -56,10 +56,10 @@ export function ProcessingStatusBadge({ publicationId, onStatusChange }: Process
   }
 
   return (
-    <div className="rounded-xl border-2 border-navy/10 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border-2 border-foreground/10 bg-surface p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
         {getStatusIcon(status.overall)}
-        <h3 className="font-display text-sm font-bold text-navy">
+        <h3 className="font-display text-sm font-bold text-foreground">
           {getStatusLabel(status.overall)}
         </h3>
       </div>
@@ -77,10 +77,10 @@ export function ProcessingStatusBadge({ publicationId, onStatusChange }: Process
 function StatusItem({ label, status }: { label: string; status: string }) {
   return (
     <div className="flex items-center justify-between text-xs">
-      <span className="text-navy/70">{label}</span>
+      <span className="text-foreground/70">{label}</span>
       <div className="flex items-center gap-1">
         {getStatusIcon(status, 'size-3')}
-        <span className="font-medium capitalize text-navy/90">{getStatusText(status)}</span>
+        <span className="font-medium capitalize text-foreground/90">{getStatusText(status)}</span>
       </div>
     </div>
   );
@@ -98,7 +98,7 @@ function getStatusIcon(status: string, sizeClass = 'size-4') {
       return <AlertCircle className={`${sizeClass} text-orange`} />;
     case 'pending':
     default:
-      return <Clock className={`${sizeClass} text-navy/40`} />;
+      return <Clock className={`${sizeClass} text-foreground/40`} />;
   }
 }
 

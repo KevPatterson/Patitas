@@ -172,18 +172,18 @@ export function NearbyPage() {
   return (
     <div className="space-y-8 py-8">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-turquoise/10 via-cream to-orange/10 border-2 border-navy/10 p-8 md:p-12 shadow-md">
+      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-turquoise/10 via-app to-orange/10 border-2 border-foreground/10 p-8 md:p-12 shadow-md">
         <div className="relative max-w-3xl">
           <div className="flex items-center gap-2 mb-3">
             <MapPin className="size-6 text-turquoise animate-paw-bounce" />
-            <span className="text-xs font-bold uppercase tracking-wider text-navy/60">
+            <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">
               {userLocation ? 'Cerca de ti' : 'Casos activos'}
             </span>
           </div>
-          <h1 className="font-display text-4xl md:text-5xl font-extrabold text-navy mb-4">
+          <h1 className="font-display text-4xl md:text-5xl font-extrabold text-foreground mb-4">
             {userLocation ? '📍 Casos cerca de ti' : '🐾 Todos los casos'}
           </h1>
-          <p className="text-lg text-navy/70 leading-relaxed max-w-2xl">
+          <p className="text-lg text-foreground/70 leading-relaxed max-w-2xl">
             {userLocation
               ? 'Casos ordenados por proximidad a tu ubicación actual.'
               : 'Encuentra mascotas perdidas, encontradas y en adopción.'}
@@ -205,7 +205,7 @@ export function NearbyPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center gap-4 py-16">
             <PawTrail />
-            <p className="text-sm text-navy/60">Cargando casos...</p>
+            <p className="text-sm text-foreground/60">Cargando casos...</p>
           </div>
         ) : allCases.length === 0 ? (
           <EmptyState
@@ -216,7 +216,7 @@ export function NearbyPage() {
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-navy/60">
+              <p className="text-sm font-semibold text-foreground/60">
                 {allCases.length} caso{allCases.length !== 1 ? 's' : ''} encontrado{allCases.length !== 1 ? 's' : ''}
               </p>
             </div>

@@ -36,26 +36,17 @@ export function Logo({ variant = 'full', size = 40, className = '', animated = f
           aria-hidden="true"
           style={{ overflow: 'hidden' }}
         >
-          {/* Fondo naranja sólido - usa fill: currentColor desde CSS */}
-          <rect width="120" height="120" className="logo-bg" />
-          
-          {/* 4 dedos - usan currentColor desde CSS */}
-          <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" />
-          <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" />
-          <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" />
-          <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" />
-          
-          {/* Almohadilla con hueco transparente (icono ubicación) */}
-          <defs>
-            <mask id={`paw-mask-logo-${size}-${variant}`}>
-              <rect width="120" height="120" fill="white"/>
-              <circle cx="60" cy="75" r="8" fill="black"/>
-            </mask>
-          </defs>
-          <path 
-            d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" 
-            mask={`url(#paw-mask-logo-${size}-${variant})`} 
-          />
+          {/* 4 dedos + almohadilla - fill via currentColor desde CSS */}
+          <g className="logo-paw">
+            <ellipse cx="24" cy="48" rx="9" ry="12" transform="rotate(-22 24 48)" />
+            <ellipse cx="45" cy="28" rx="9" ry="13" transform="rotate(-8 45 28)" />
+            <ellipse cx="75" cy="28" rx="9" ry="13" transform="rotate(8 75 28)" />
+            <ellipse cx="96" cy="48" rx="9" ry="12" transform="rotate(22 96 48)" />
+            <path d="M60 110 C60 110 33 91 33 74 C33 62 44 54 60 54 C76 54 87 62 87 74 C87 91 60 110 60 110Z" />
+          </g>
+
+          {/* Hueco de la almohadilla: mismo color que el fondo del círculo */}
+          <circle cx="60" cy="75" r="8" className="logo-paw-hole" />
         </svg>
       </div>
 

@@ -46,7 +46,7 @@ export function ResetPasswordPage() {
         title="🔑 Nueva contraseña"
         description="El enlace de recuperación te trajo aquí. Elige una contraseña nueva para seguir usando Patitas."
         footer={
-          <div className="flex items-center justify-center gap-3 text-sm text-navy/70">
+          <div className="flex items-center justify-center gap-3 text-sm text-foreground/70">
             <Link className="font-semibold text-orange hover:text-orange-dark transition-colors" to="/auth/login">
               Volver al inicio de sesión
             </Link>

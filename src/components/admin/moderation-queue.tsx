@@ -72,8 +72,8 @@ export function ModerationQueue() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center space-y-3">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-navy/20 border-t-orange" />
-          <p className="text-sm font-semibold text-navy/70">Cargando cola...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-foreground/20 border-t-orange" />
+          <p className="text-sm font-semibold text-foreground/70">Cargando cola...</p>
         </div>
       </div>
     );
@@ -81,12 +81,12 @@ export function ModerationQueue() {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border-2 border-navy/10 bg-white p-8 text-center">
+      <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-8 text-center">
         <CheckCircle className="size-12 text-found mx-auto mb-3" />
-        <h3 className="font-display text-lg font-bold text-navy mb-2">
+        <h3 className="font-display text-lg font-bold text-foreground mb-2">
           ¡Todo revisado!
         </h3>
-        <p className="text-navy/70">
+        <p className="text-foreground/70">
           No hay contenido pendiente de moderación manual.
         </p>
       </div>
@@ -96,7 +96,7 @@ export function ModerationQueue() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-xl font-bold text-navy">
+        <h2 className="font-display text-xl font-bold text-foreground">
           Cola de moderación
         </h2>
         <span className="rounded-full bg-orange/20 px-3 py-1 text-sm font-bold text-orange-dark">
@@ -107,7 +107,7 @@ export function ModerationQueue() {
       {items.map((item) => (
         <div
           key={item.id}
-          className="rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-sm"
+          className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-sm"
         >
           <div className="flex items-start gap-4">
             <div className="shrink-0">
@@ -124,7 +124,7 @@ export function ModerationQueue() {
                     >
                       {getClassificationLabel(item.classification)}
                     </span>
-                    <span className="text-xs text-navy/60">
+                    <span className="text-xs text-foreground/60">
                       {Math.round(item.confidence * 100)}% confianza
                     </span>
                   </div>
@@ -134,7 +134,7 @@ export function ModerationQueue() {
                       href={`/p/${item.publication.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-display font-bold text-navy hover:text-purple transition-colors inline-flex items-center gap-1"
+                      className="font-display font-bold text-foreground hover:text-purple transition-colors inline-flex items-center gap-1"
                     >
                       {item.publication.title}
                       <Eye className="size-4" />
@@ -142,7 +142,7 @@ export function ModerationQueue() {
                   )}
                 </div>
 
-                <span className="text-xs text-navy/50">
+                <span className="text-xs text-foreground/50">
                   {new Date(item.created_at).toLocaleDateString('es-ES', {
                     day: 'numeric',
                     month: 'short',
@@ -155,7 +155,7 @@ export function ModerationQueue() {
               {/* Reason */}
               {item.reason && (
                 <div className="mb-4 p-3 rounded-xl bg-orange/5 border border-orange/20">
-                  <p className="text-sm text-navy/80">
+                  <p className="text-sm text-foreground/80">
                     <strong className="font-semibold">Razón:</strong> {item.reason}
                   </p>
                 </div>
@@ -207,9 +207,9 @@ function getClassificationStyles(classification: string): string {
     FRAUD: 'bg-lost/20 text-lost',
     OFFENSIVE: 'bg-lost/20 text-lost',
     INAPPROPRIATE: 'bg-orange/20 text-orange-dark',
-    UNRELATED: 'bg-navy/10 text-navy',
+    UNRELATED: 'bg-foreground/10 text-foreground',
     UNCERTAIN: 'bg-purple/20 text-purple-dark',
     SAFE: 'bg-found/20 text-found',
   };
-  return styles[classification] || 'bg-navy/10 text-navy';
+  return styles[classification] || 'bg-foreground/10 text-foreground';
 }

@@ -155,17 +155,17 @@ export function SearchPage() {
   return (
     <section className="space-y-8 py-8">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-turquoise/10 via-cream to-purple/10 border-2 border-navy/10 p-8 shadow-md">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-turquoise/10 via-app to-purple/10 border-2 border-foreground/10 p-8 shadow-md">
         <div className="blob-decoration absolute top-5 right-5 size-24 bg-orange/20" />
         <div className="relative">
           <div className="flex items-center gap-2 mb-2">
             <Search className="size-5 text-turquoise" />
-            <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Buscador</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Buscador</span>
           </div>
-          <h1 className="font-display text-4xl font-extrabold text-navy mb-2">
+          <h1 className="font-display text-4xl font-extrabold text-foreground mb-2">
             Encuentra una patita
           </h1>
-          <p className="text-navy/70 max-w-2xl">
+          <p className="text-foreground/70 max-w-2xl">
             Busca por nombre, zona, especie o características. Combina filtros para resultados más precisos.
           </p>
         </div>
@@ -183,11 +183,11 @@ export function SearchPage() {
       </div>
 
       {/* Filtros */}
-      <div className="rounded-2xl border-2 border-navy/10 bg-white p-6 shadow-md space-y-5">
+      <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-6 shadow-md space-y-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Filter className="size-5 text-navy/60" />
-            <h2 className="font-display text-lg font-bold text-navy">Filtros</h2>
+            <Filter className="size-5 text-foreground/60" />
+            <h2 className="font-display text-lg font-bold text-foreground">Filtros</h2>
             {activeFiltersCount > 0 && (
               <span className="inline-flex items-center justify-center min-w-5 h-5 rounded-full bg-orange text-white text-xs font-bold">
                 {activeFiltersCount}
@@ -204,9 +204,9 @@ export function SearchPage() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="space-y-2">
-            <span className="text-sm font-semibold text-navy">Tipo</span>
+            <span className="text-sm font-semibold text-foreground">Tipo</span>
             <select
-              className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
+              className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
               value={filters.type}
               onChange={(event) => updateParam('type', event.target.value === 'ALL' ? null : event.target.value)}
             >
@@ -218,9 +218,9 @@ export function SearchPage() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-semibold text-navy">Especie</span>
+            <span className="text-sm font-semibold text-foreground">Especie</span>
             <select
-              className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
+              className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
               value={filters.species}
               onChange={(event) => updateParam('species', event.target.value || null)}
             >
@@ -232,9 +232,9 @@ export function SearchPage() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-semibold text-navy">Sexo</span>
+            <span className="text-sm font-semibold text-foreground">Sexo</span>
             <select
-              className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
+              className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
               value={filters.sex}
               onChange={(event) => updateParam('sex', event.target.value || null)}
             >
@@ -246,9 +246,9 @@ export function SearchPage() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-semibold text-navy">Tamaño</span>
+            <span className="text-sm font-semibold text-foreground">Tamaño</span>
             <select
-              className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
+              className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
               value={filters.size}
               onChange={(event) => updateParam('size', event.target.value || null)}
             >
@@ -273,9 +273,9 @@ export function SearchPage() {
         {showAdvanced && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-up">
             <label className="space-y-2">
-              <span className="text-sm font-semibold text-navy">Provincia</span>
+              <span className="text-sm font-semibold text-foreground">Provincia</span>
               <select
-                className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
+                className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
                 value={filters.province}
                 onChange={(event) => {
                   updateParam('province', event.target.value || null);
@@ -290,9 +290,9 @@ export function SearchPage() {
             </label>
 
             <label className="space-y-2">
-              <span className="text-sm font-semibold text-navy">Municipio</span>
+              <span className="text-sm font-semibold text-foreground">Municipio</span>
               <select
-                className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-orange focus:ring-4 focus:ring-orange/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-orange focus:ring-4 focus:ring-orange/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 value={filters.municipality}
                 onChange={(event) => updateParam('municipality', event.target.value || null)}
                 disabled={municipalities.length === 0}
@@ -305,9 +305,9 @@ export function SearchPage() {
             </label>
 
             <label className="space-y-2">
-              <span className="text-sm font-semibold text-navy">Estado</span>
+              <span className="text-sm font-semibold text-foreground">Estado</span>
               <select
-                className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
+                className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
                 value={filters.status}
                 onChange={(event) => updateParam('status', event.target.value === 'ALL' ? null : event.target.value)}
               >
@@ -319,10 +319,10 @@ export function SearchPage() {
             </label>
 
             <label className="space-y-2">
-              <span className="text-sm font-semibold text-navy">Desde</span>
+              <span className="text-sm font-semibold text-foreground">Desde</span>
               <input
                 type="date"
-                className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
+                className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-orange focus:ring-4 focus:ring-orange/20"
                 value={filters.since}
                 onChange={(event) => updateParam('since', event.target.value || null)}
               />
@@ -342,7 +342,7 @@ export function SearchPage() {
       {loading && (
         <div className="flex flex-col items-center justify-center gap-4 py-16">
           <PawTrail />
-          <p className="text-sm text-navy/60">Buscando patitas...</p>
+          <p className="text-sm text-foreground/60">Buscando patitas...</p>
         </div>
       )}
 
@@ -360,11 +360,11 @@ export function SearchPage() {
       {!loading && results.length > 0 && (
         <>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-navy/60">
+            <p className="text-sm font-semibold text-foreground/60">
               {totalCount} resultado{totalCount !== 1 ? 's' : ''} encontrado{totalCount !== 1 ? 's' : ''}
             </p>
             {totalPages > 1 && (
-              <p className="text-sm font-semibold text-navy/60">
+              <p className="text-sm font-semibold text-foreground/60">
                 Página {page} de {totalPages}
               </p>
             )}
@@ -392,11 +392,11 @@ export function SearchPage() {
                 ← Anterior
               </Button>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center min-w-9 h-9 rounded-lg bg-navy text-white text-sm font-bold">
+                <span className="inline-flex items-center justify-center min-w-9 h-9 rounded-lg bg-ink text-white text-sm font-bold">
                   {page}
                 </span>
-                <span className="text-navy/40">/</span>
-                <span className="text-sm font-semibold text-navy/60">{totalPages}</span>
+                <span className="text-foreground/40">/</span>
+                <span className="text-sm font-semibold text-foreground/60">{totalPages}</span>
               </div>
               <Button 
                 variant="ghost" 

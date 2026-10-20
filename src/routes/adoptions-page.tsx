@@ -137,26 +137,26 @@ export function AdoptionsPage() {
   return (
     <section className="space-y-8 py-8">
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-purple/10 via-cream to-orange/10 border-2 border-navy/10 p-8 md:p-12 shadow-md">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-purple/10 via-app to-orange/10 border-2 border-foreground/10 p-8 md:p-12 shadow-md">
         <div className="blob-decoration absolute top-5 right-5 size-32 bg-purple/20" />
         <div className="blob-decoration absolute bottom-5 left-5 size-24 bg-orange/15" style={{ animationDelay: '2s' }} />
         
         <div className="relative max-w-3xl">
           <div className="flex items-center gap-2 mb-3">
             <Heart className="size-6 text-purple animate-paw-bounce" />
-            <span className="text-xs font-bold uppercase tracking-wider text-navy/60">Adopción responsable</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Adopción responsable</span>
           </div>
-          <h1 className="font-display text-4xl md:text-5xl font-extrabold text-navy mb-4">
+          <h1 className="font-display text-4xl md:text-5xl font-extrabold text-foreground mb-4">
             Adopta, no compres 💜
           </h1>
-          <p className="text-lg text-navy/70 leading-relaxed max-w-2xl">
+          <p className="text-lg text-foreground/70 leading-relaxed max-w-2xl">
             Estas mascotas están buscando un hogar. Adoptar es un acto de amor que cambia dos vidas: la tuya y la de ellos.
           </p>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="rounded-2xl border-2 border-navy/10 bg-white p-6 shadow-md space-y-4">
+      <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-6 shadow-md space-y-4">
         <TextField
           label="Buscar"
           placeholder="🔎 Nombre, características..."
@@ -166,9 +166,9 @@ export function AdoptionsPage() {
         
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="space-y-2">
-            <span className="text-sm font-semibold text-navy">Especie</span>
+            <span className="text-sm font-semibold text-foreground">Especie</span>
             <select
-              className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-purple focus:ring-4 focus:ring-purple/20"
+              className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-purple focus:ring-4 focus:ring-purple/20"
               value={species}
               onChange={(event) => setSpecies(event.target.value)}
             >
@@ -181,9 +181,9 @@ export function AdoptionsPage() {
           </label>
           
           <label className="space-y-2">
-            <span className="text-sm font-semibold text-navy">Tamaño</span>
+            <span className="text-sm font-semibold text-foreground">Tamaño</span>
             <select
-              className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition hover:border-navy/20 focus:border-purple focus:ring-4 focus:ring-purple/20"
+              className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition hover:border-foreground/20 focus:border-purple focus:ring-4 focus:ring-purple/20"
               value={size}
               onChange={(event) => setSize(event.target.value)}
             >
@@ -195,9 +195,9 @@ export function AdoptionsPage() {
           </label>
           
           <label className="space-y-2">
-            <span className="text-sm font-semibold text-navy">Provincia</span>
+            <span className="text-sm font-semibold text-foreground">Provincia</span>
             <input
-              className="h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-medium text-navy shadow-sm outline-none transition placeholder:text-navy/40 hover:border-navy/20 focus:border-purple focus:ring-4 focus:ring-purple/20"
+              className="h-11 w-full rounded-xl border-2 border-foreground/10 bg-surface px-4 text-sm font-medium text-foreground shadow-sm outline-none transition placeholder:text-foreground/40 hover:border-foreground/20 focus:border-purple focus:ring-4 focus:ring-purple/20"
               value={province}
               onChange={(event) => setProvince(event.target.value)}
               placeholder="La Habana"
@@ -229,7 +229,7 @@ export function AdoptionsPage() {
       {loading && (
         <div className="flex flex-col items-center justify-center gap-4 py-16">
           <PawTrail />
-          <p className="text-sm text-navy/60">Cargando adopciones...</p>
+          <p className="text-sm text-foreground/60">Cargando adopciones...</p>
         </div>
       )}
 
@@ -256,7 +256,7 @@ export function AdoptionsPage() {
       {!loading && results.length > 0 && (
         <>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-navy/60">
+            <p className="text-sm font-semibold text-foreground/60">
               {results.length} mascota{results.length !== 1 ? 's' : ''} en adopción
             </p>
           </div>
@@ -279,18 +279,18 @@ export function AdoptionsPage() {
                   <Heart className="size-7 text-purple" />
                 </div>
               </div>
-              <h3 className="font-display text-2xl font-extrabold text-navy">
+              <h3 className="font-display text-2xl font-extrabold text-foreground">
                 ¿Quieres adoptar?
               </h3>
-              <p className="text-navy/70 leading-relaxed">
+              <p className="text-foreground/70 leading-relaxed">
                 Contacta al responsable desde la publicación. La adopción responsable requiere compromiso, cariño y paciencia. Adoptar salva vidas.
               </p>
               <div className="flex flex-wrap gap-3 justify-center pt-2">
-                <span className="inline-flex items-center gap-2 rounded-pill bg-white px-4 py-2 text-sm font-semibold text-navy shadow-sm">
+                <span className="inline-flex items-center gap-2 rounded-pill bg-surface px-4 py-2 text-sm font-semibold text-foreground shadow-sm">
                   <PawPrint className="size-4 text-purple" />
                   Compromiso a largo plazo
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-pill bg-white px-4 py-2 text-sm font-semibold text-navy shadow-sm">
+                <span className="inline-flex items-center gap-2 rounded-pill bg-surface px-4 py-2 text-sm font-semibold text-foreground shadow-sm">
                   <Heart className="size-4 text-purple" />
                   Amor incondicional
                 </span>

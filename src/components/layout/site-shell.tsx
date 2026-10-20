@@ -36,8 +36,8 @@ function NavItem({ href, label, Icon, badge }: { href: string; label: string; Ic
       className={({ isActive }) => [
         'relative flex items-center gap-2 rounded-[14px] border-2 px-3.5 py-2 text-sm font-semibold transition-all duration-base',
         isActive
-          ? 'border-navy bg-orange-100 text-navy'
-          : 'border-transparent text-[hsl(var(--muted-foreground))] hover:bg-orange-100 hover:text-navy',
+          ? 'border-foreground bg-highlight text-foreground'
+          : 'border-transparent text-[hsl(var(--muted-foreground))] hover:bg-highlight hover:text-foreground',
       ].join(' ')}
     >
       {({ isActive: _isActive }) => (
@@ -46,7 +46,7 @@ function NavItem({ href, label, Icon, badge }: { href: string; label: string; Ic
           {label}
           {(badge ?? 0) > 0 && (
             <span 
-              className="absolute -right-1 -top-1 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-navy bg-found px-1 text-[11px] font-bold leading-none text-navy"
+              className="absolute -right-1 -top-1 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-foreground bg-found px-1 text-[11px] font-bold leading-none text-primary-foreground"
               aria-label={`${badge} notificaciones no leídas`}
             >
               {(badge ?? 0) > 9 ? '9+' : badge}
@@ -101,18 +101,18 @@ export function SiteShell({ children }: SiteShellProps) {
   }, [user, authLoading]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-cream">
+    <div className="flex min-h-screen flex-col bg-app">
       {/* Header sticky con estilo "sticker" */}
       <header className="sticky top-0 z-40 px-4 py-3.5">
         <div className="relative mx-auto w-full max-w-[1180px]">
           <nav 
-            className="flex items-center gap-2 rounded-[22px] border-2 border-navy bg-white px-4 py-2 shadow-[0_4px_0_var(--color-orange-900)]"
+            className="flex items-center gap-2 rounded-[22px] border-2 border-foreground bg-surface px-4 py-2 shadow-[0_4px_0_var(--color-orange-900)]"
             aria-label="Principal"
           >
             {/* Logo con componente Logo unificado */}
             <Link 
               to="/" 
-              className="mr-auto flex items-center gap-2.5 text-navy no-underline transition-transform duration-[250ms] hover:-rotate-[12deg] hover:scale-[1.08] focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
+              className="mr-auto flex items-center gap-2.5 text-foreground no-underline transition-transform duration-[250ms] hover:-rotate-[12deg] hover:scale-[1.08] focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
               aria-label="Patitas - inicio"
             >
               <Logo variant="mark" size={40} animated />
@@ -138,7 +138,7 @@ export function SiteShell({ children }: SiteShellProps) {
             {/* CTA Publicar - Desktop y tablet */}
             <Link
               to="/publicar"
-              className="group mx-2 hidden gap-2 rounded-2xl border-2 border-navy bg-orange px-5 py-2.5 font-display text-sm font-extrabold text-navy shadow-[0_4px_0_var(--color-orange-900)] transition-all duration-base hover:-translate-y-0.5 hover:shadow-[0_6px_0_var(--color-orange-900)] active:translate-y-[3px] active:shadow-[0_1px_0_var(--color-orange-900)] focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange lg:inline-flex"
+              className="group mx-2 hidden gap-2 rounded-2xl border-2 border-foreground bg-orange px-5 py-2.5 font-display text-sm font-extrabold text-primary-foreground shadow-[0_4px_0_var(--color-orange-900)] transition-all duration-base hover:-translate-y-0.5 hover:shadow-[0_6px_0_var(--color-orange-900)] active:translate-y-[3px] active:shadow-[0_1px_0_var(--color-orange-900)] focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange lg:inline-flex"
             >
               <svg 
                 className="size-5 transition-transform duration-300 group-hover:-rotate-[20deg] group-hover:scale-[1.2]" 
@@ -168,9 +168,9 @@ export function SiteShell({ children }: SiteShellProps) {
                   <div className="hidden items-center gap-1 lg:flex">
                     <Link
                       to={profileHref}
-                      className="inline-flex items-center gap-2 rounded-full border-2 border-navy bg-white px-3.5 py-2 text-sm font-semibold text-navy transition-all duration-base hover:bg-orange-100 active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
+                      className="inline-flex items-center gap-2 rounded-full border-2 border-foreground bg-surface px-3.5 py-2 text-sm font-semibold text-foreground transition-all duration-base hover:bg-highlight active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
                     >
-                      <div className="flex size-[30px] items-center justify-center rounded-full border-2 border-navy bg-cream/50 overflow-hidden">
+                      <div className="flex size-[30px] items-center justify-center rounded-full border-2 border-foreground bg-app/50 overflow-hidden">
                         {avatarUrl ? (
                           <img 
                             src={avatarUrl} 
@@ -178,7 +178,7 @@ export function SiteShell({ children }: SiteShellProps) {
                             className="size-full rounded-full object-cover"
                           />
                         ) : (
-                          <User className="size-4 text-navy" aria-hidden="true" />
+                          <User className="size-4 text-foreground" aria-hidden="true" />
                         )}
                       </div>
                       <span>Perfil</span>
@@ -188,7 +188,7 @@ export function SiteShell({ children }: SiteShellProps) {
                     <button
                       onClick={handleLogout}
                       disabled={loggingOut}
-                      className="flex size-[42px] items-center justify-center rounded-[14px] border-2 border-transparent bg-transparent text-[hsl(var(--muted-foreground))] transition-all duration-base hover:border-navy hover:bg-orange-100 hover:text-navy active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
+                      className="flex size-[42px] items-center justify-center rounded-[14px] border-2 border-transparent bg-transparent text-[hsl(var(--muted-foreground))] transition-all duration-base hover:border-foreground hover:bg-highlight hover:text-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
                       aria-label="Salir"
                     >
                       <LogOut className="size-5" strokeWidth={2} aria-hidden="true" />
@@ -199,10 +199,10 @@ export function SiteShell({ children }: SiteShellProps) {
                   <div className="flex items-center gap-1 lg:hidden">
                     <Link
                       to={profileHref}
-                      className="flex items-center justify-center rounded-full border-2 border-navy bg-white p-2 transition-all duration-base hover:bg-orange-100 active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
+                      className="flex items-center justify-center rounded-full border-2 border-foreground bg-surface p-2 transition-all duration-base hover:bg-highlight active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
                       aria-label="Perfil"
                     >
-                      <div className="flex size-[30px] items-center justify-center rounded-full border-2 border-navy bg-cream/50 overflow-hidden">
+                      <div className="flex size-[30px] items-center justify-center rounded-full border-2 border-foreground bg-app/50 overflow-hidden">
                         {avatarUrl ? (
                           <img 
                             src={avatarUrl} 
@@ -210,7 +210,7 @@ export function SiteShell({ children }: SiteShellProps) {
                             className="size-full rounded-full object-cover"
                           />
                         ) : (
-                          <User className="size-4 text-navy" aria-hidden="true" />
+                          <User className="size-4 text-foreground" aria-hidden="true" />
                         )}
                       </div>
                     </Link>
@@ -218,7 +218,7 @@ export function SiteShell({ children }: SiteShellProps) {
                     <button
                       onClick={handleLogout}
                       disabled={loggingOut}
-                      className="flex size-[42px] items-center justify-center rounded-[14px] border-2 border-transparent bg-transparent text-[hsl(var(--muted-foreground))] transition-all duration-base hover:border-navy hover:bg-orange-100 hover:text-navy active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
+                      className="flex size-[42px] items-center justify-center rounded-[14px] border-2 border-transparent bg-transparent text-[hsl(var(--muted-foreground))] transition-all duration-base hover:border-foreground hover:bg-highlight hover:text-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
                       aria-label="Salir"
                     >
                       <LogOut className="size-5" strokeWidth={2} aria-hidden="true" />
@@ -230,14 +230,14 @@ export function SiteShell({ children }: SiteShellProps) {
                   {/* Móvil - Botón Entrar en esquina derecha */}
                   <Link
                     to="/auth/login"
-                    className="inline-flex gap-2 rounded-full border-2 border-navy bg-navy px-4 py-2 text-sm font-extrabold text-cream shadow-sm transition-all duration-base hover:bg-orange-900 hover:scale-105 active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange lg:hidden"
+                    className="inline-flex gap-2 rounded-full border-2 border-foreground bg-ink px-4 py-2 text-sm font-extrabold text-cream shadow-sm transition-all duration-base hover:bg-orange-900 hover:scale-105 active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange lg:hidden"
                   >
                     Entrar
                   </Link>
                   {/* Desktop */}
                   <Link
                     to="/auth/login"
-                    className="hidden gap-2 rounded-full border-2 border-navy bg-navy px-5 py-2 text-sm font-extrabold text-cream shadow-sm transition-all duration-base hover:bg-orange-900 hover:scale-105 active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange lg:inline-flex"
+                    className="hidden gap-2 rounded-full border-2 border-foreground bg-ink px-5 py-2 text-sm font-extrabold text-cream shadow-sm transition-all duration-base hover:bg-orange-900 hover:scale-105 active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange lg:inline-flex"
                   >
                     Entrar
                   </Link>
@@ -254,7 +254,7 @@ export function SiteShell({ children }: SiteShellProps) {
       </main>
 
       {/* Footer rediseñado con personalidad */}
-      <footer className="relative border-t-2 border-orange-200 bg-navy text-cream overflow-hidden" role="contentinfo">
+      <footer className="relative border-t-2 border-orange-200 bg-ink text-cream overflow-hidden" role="contentinfo">
 
         <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-start gap-8 lg:gap-12">
@@ -308,7 +308,7 @@ export function SiteShell({ children }: SiteShellProps) {
               <h3 className="font-display font-bold text-cream text-sm uppercase tracking-wider mb-3 lg:hidden">Equipo de desarrollo</h3>
               <ul className="space-y-3" role="list">
                 {devTeam.map((member) => (
-                  <li key={member.github} className="flex flex-col items-start gap-2 p-3 rounded-xl bg-navy-light/50 hover:bg-navy-light transition-colors duration-base group">
+                  <li key={member.github} className="flex flex-col items-start gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors duration-base group">
                     <div className="flex items-start gap-3 w-full">
                       <div className="relative flex-shrink-0">
                         {member.avatar ? (

@@ -36,8 +36,8 @@ export function DuplicateReview() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center space-y-3">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-navy/20 border-t-orange" />
-          <p className="text-sm font-semibold text-navy/70">Cargando duplicados...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-foreground/20 border-t-orange" />
+          <p className="text-sm font-semibold text-foreground/70">Cargando duplicados...</p>
         </div>
       </div>
     );
@@ -45,12 +45,12 @@ export function DuplicateReview() {
 
   if (duplicates.length === 0) {
     return (
-      <div className="rounded-2xl border-2 border-navy/10 bg-white p-8 text-center">
+      <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-8 text-center">
         <CheckCircle className="size-12 text-found mx-auto mb-3" />
-        <h3 className="font-display text-lg font-bold text-navy mb-2">
+        <h3 className="font-display text-lg font-bold text-foreground mb-2">
           ¡Todo revisado!
         </h3>
-        <p className="text-navy/70">
+        <p className="text-foreground/70">
           No hay duplicados pendientes de revisión.
         </p>
       </div>
@@ -60,7 +60,7 @@ export function DuplicateReview() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-xl font-bold text-navy">
+        <h2 className="font-display text-xl font-bold text-foreground">
           Duplicados detectados
         </h2>
         <span className="rounded-full bg-orange/20 px-3 py-1 text-sm font-bold text-orange-dark">
@@ -71,7 +71,7 @@ export function DuplicateReview() {
       {duplicates.map((dup) => (
         <div
           key={dup.id}
-          className="rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-sm"
+          className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-sm"
         >
           <div className="flex items-start gap-4">
             <div className="shrink-0">
@@ -85,12 +85,12 @@ export function DuplicateReview() {
                   <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold bg-orange/20 text-orange-dark">
                     {Math.round(dup.duplicate_probability * 100)}% probabilidad
                   </span>
-                  <span className="text-xs text-navy/60">
+                  <span className="text-xs text-foreground/60">
                     Score: {dup.similarity_score}
                   </span>
                 </div>
 
-                <span className="text-xs text-navy/50">
+                <span className="text-xs text-foreground/50">
                   {new Date(dup.created_at).toLocaleDateString('es-ES', {
                     day: 'numeric',
                     month: 'short',
@@ -133,9 +133,9 @@ export function DuplicateReview() {
               </div>
 
               {/* Publication Links */}
-              <div className="mb-4 p-3 rounded-xl bg-navy/5 space-y-2">
+              <div className="mb-4 p-3 rounded-xl bg-foreground/5 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-navy/60">Publicación A:</span>
+                  <span className="text-xs font-semibold text-foreground/60">Publicación A:</span>
                   <a
                     href={`/admin/publicaciones/${dup.publication_a_id}`}
                     target="_blank"
@@ -147,7 +147,7 @@ export function DuplicateReview() {
                   </a>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-navy/60">Publicación B:</span>
+                  <span className="text-xs font-semibold text-foreground/60">Publicación B:</span>
                   <a
                     href={`/admin/publicaciones/${dup.publication_b_id}`}
                     target="_blank"

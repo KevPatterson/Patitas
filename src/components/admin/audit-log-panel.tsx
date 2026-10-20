@@ -99,11 +99,11 @@ export function AuditLogPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 font-display text-xl font-extrabold text-navy">
+          <h2 className="flex items-center gap-2 font-display text-xl font-extrabold text-foreground">
             <History className="size-5" aria-hidden />
             Registro de auditoría
           </h2>
-          <p className="text-sm text-navy/60">
+          <p className="text-sm text-foreground/60">
             Acciones sensibles de moderación y accesos a datos de contacto.
           </p>
         </div>
@@ -125,9 +125,9 @@ export function AuditLogPanel() {
           description="Aquí aparecerán las acciones de moderación, los cambios de rol y las revelaciones de contacto."
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border-2 border-navy/10">
+        <div className="overflow-x-auto rounded-2xl border-2 border-foreground/10">
           <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="bg-navy/5 text-xs uppercase tracking-wide text-navy/60">
+            <thead className="bg-foreground/5 text-xs uppercase tracking-wide text-foreground/60">
               <tr>
                 <th scope="col" className="px-4 py-3">Fecha</th>
                 <th scope="col" className="px-4 py-3">Acción</th>
@@ -145,22 +145,22 @@ export function AuditLogPanel() {
                   log.metadata && Object.keys(log.metadata).length > 0;
 
                 return (
-                  <tr key={log.id} className="border-t border-navy/10 align-top">
-                    <td className="whitespace-nowrap px-4 py-3 text-navy/70">
+                  <tr key={log.id} className="border-t border-foreground/10 align-top">
+                    <td className="whitespace-nowrap px-4 py-3 text-foreground/70">
                       {new Date(log.created_at).toLocaleString('es-CU')}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-navy">
+                    <td className="px-4 py-3 font-semibold text-foreground">
                       {ACTION_LABEL[log.action] ?? log.action}
                     </td>
-                    <td className="px-4 py-3 text-navy/70">
+                    <td className="px-4 py-3 text-foreground/70">
                       {log.entity_type}
                       {log.entity_id ? (
-                        <span className="block font-mono text-[11px] text-navy/40">
+                        <span className="block font-mono text-[11px] text-foreground/40">
                           {log.entity_id.slice(0, 8)}…
                         </span>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3 font-mono text-[11px] text-navy/50">
+                    <td className="px-4 py-3 font-mono text-[11px] text-foreground/50">
                       {log.actor_profile_id ? `${log.actor_profile_id.slice(0, 8)}…` : 'sistema'}
                     </td>
                     <td className="px-4 py-3">
@@ -179,7 +179,7 @@ export function AuditLogPanel() {
                         </button>
                       )}
                       {isOpen && (
-                        <pre className="mt-2 max-w-md overflow-x-auto rounded-lg bg-navy/5 p-2 text-[11px] text-navy/70">
+                        <pre className="mt-2 max-w-md overflow-x-auto rounded-lg bg-foreground/5 p-2 text-[11px] text-foreground/70">
                           {JSON.stringify(log.metadata, null, 2)}
                         </pre>
                       )}

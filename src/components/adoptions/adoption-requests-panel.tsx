@@ -35,10 +35,10 @@ const STATUS_LABEL: Record<AdoptionRequestStatus, string> = {
 };
 
 const STATUS_STYLE: Record<AdoptionRequestStatus, string> = {
-  PENDING: 'bg-amber-100 text-amber-800 border-amber-200',
+  PENDING: 'bg-orange/15 text-foreground border-orange/30',
   ACCEPTED: 'bg-found/10 text-found border-found/30',
   REJECTED: 'bg-lost/10 text-lost border-lost/30',
-  CANCELLED: 'bg-navy/5 text-navy/60 border-navy/20',
+  CANCELLED: 'bg-foreground/5 text-foreground/60 border-foreground/20',
 };
 
 const STATUS_ICON: Record<AdoptionRequestStatus, typeof Clock> = {
@@ -177,7 +177,7 @@ export function AdoptionRequestsPanel() {
       {/* ── Solicitudes recibidas ─────────────────────────────────────────── */}
       <section aria-labelledby="adopciones-recibidas" className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 id="adopciones-recibidas" className="font-display text-xl font-extrabold text-navy">
+          <h2 id="adopciones-recibidas" className="font-display text-xl font-extrabold text-foreground">
             Solicitudes recibidas
             {pendingReceived.length > 0 && (
               <span className="ml-2 rounded-full bg-orange/15 px-2 py-0.5 text-xs font-bold text-orange">
@@ -205,12 +205,12 @@ export function AdoptionRequestsPanel() {
               return (
                 <li
                   key={request.id}
-                  className="rounded-2xl border-2 border-navy/10 bg-white p-4 shadow-sm"
+                  className="rounded-2xl border-2 border-foreground/10 bg-surface p-4 shadow-sm"
                 >
                   <div className="flex flex-wrap items-start gap-4">
                     <Link
                       to={`/p/${request.publication.slug}`}
-                      className="size-16 shrink-0 overflow-hidden rounded-xl border border-navy/10 bg-cream"
+                      className="size-16 shrink-0 overflow-hidden rounded-xl border border-foreground/10 bg-app"
                     >
                       {image ? (
                         <img
@@ -220,7 +220,7 @@ export function AdoptionRequestsPanel() {
                           className="size-full object-cover"
                         />
                       ) : (
-                        <span className="flex size-full items-center justify-center text-xs text-navy/40">
+                        <span className="flex size-full items-center justify-center text-xs text-foreground/40">
                           Sin foto
                         </span>
                       )}
@@ -230,13 +230,13 @@ export function AdoptionRequestsPanel() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
                           to={`/p/${request.publication.slug}`}
-                          className="truncate font-semibold text-navy hover:text-orange"
+                          className="truncate font-semibold text-foreground hover:text-orange"
                         >
                           {request.publication.title}
                         </Link>
                         <StatusBadge status={request.status} />
                       </div>
-                      <p className="text-sm text-navy/70">
+                      <p className="text-sm text-foreground/70">
                         De{' '}
                         <Link
                           to={`/perfil/${request.requester?.username ?? ''}`}
@@ -247,8 +247,8 @@ export function AdoptionRequestsPanel() {
                         · {new Date(request.created_at).toLocaleDateString('es-CU')}
                       </p>
                       {request.message && (
-                        <p className="flex items-start gap-1.5 rounded-xl bg-cream/60 px-3 py-2 text-sm text-navy/80">
-                          <MessageSquare className="mt-0.5 size-4 shrink-0 text-navy/40" aria-hidden />
+                        <p className="flex items-start gap-1.5 rounded-xl bg-app/60 px-3 py-2 text-sm text-foreground/80">
+                          <MessageSquare className="mt-0.5 size-4 shrink-0 text-foreground/40" aria-hidden />
                           {request.message}
                         </p>
                       )}
@@ -256,8 +256,8 @@ export function AdoptionRequestsPanel() {
                   </div>
 
                   {isPending && (
-                    <div className="mt-4 space-y-2 border-t border-navy/10 pt-3">
-                      <label className="block text-xs font-semibold uppercase tracking-wide text-navy/60">
+                    <div className="mt-4 space-y-2 border-t border-foreground/10 pt-3">
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-foreground/60">
                         Nota para el solicitante (opcional)
                         <textarea
                           value={notesById[request.id] ?? ''}
@@ -266,7 +266,7 @@ export function AdoptionRequestsPanel() {
                           }
                           maxLength={1000}
                           rows={2}
-                          className="mt-1 w-full rounded-xl border-2 border-navy/10 bg-white px-3 py-2 text-sm font-normal normal-case tracking-normal text-navy focus:border-orange focus:outline-none"
+                          className="mt-1 w-full rounded-xl border-2 border-foreground/10 bg-surface px-3 py-2 text-sm font-normal normal-case tracking-normal text-foreground focus:border-orange focus:outline-none"
                           placeholder="Por ejemplo: ¿puedes venir a conocerla este fin de semana?"
                         />
                       </label>
@@ -301,7 +301,7 @@ export function AdoptionRequestsPanel() {
 
       {/* ── Solicitudes enviadas ──────────────────────────────────────────── */}
       <section aria-labelledby="adopciones-enviadas" className="space-y-3">
-        <h2 id="adopciones-enviadas" className="font-display text-xl font-extrabold text-navy">
+        <h2 id="adopciones-enviadas" className="font-display text-xl font-extrabold text-foreground">
           Mis solicitudes enviadas
         </h2>
 
@@ -315,16 +315,16 @@ export function AdoptionRequestsPanel() {
             {sent.map((request) => (
               <li
                 key={request.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-navy/10 bg-white px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-foreground/10 bg-surface px-4 py-3"
               >
                 <div className="min-w-0">
                   <Link
                     to={`/p/${request.publication.slug}`}
-                    className="truncate font-semibold text-navy hover:text-orange"
+                    className="truncate font-semibold text-foreground hover:text-orange"
                   >
                     {request.publication.title}
                   </Link>
-                  <p className="text-xs text-navy/60">
+                  <p className="text-xs text-foreground/60">
                     Enviada el {new Date(request.created_at).toLocaleDateString('es-CU')}
                     {request.resolved_at
                       ? ` · respondida el ${new Date(request.resolved_at).toLocaleDateString('es-CU')}`
@@ -351,7 +351,7 @@ export function AdoptionRequestsPanel() {
         )}
 
         {activeSent.length > 0 && (
-          <p className="text-xs text-navy/50">
+          <p className="text-xs text-foreground/50">
             Tienes {activeSent.length} solicitud{activeSent.length === 1 ? '' : 'es'} en curso.
             Recibirás una notificación cuando el dueño responda.
           </p>

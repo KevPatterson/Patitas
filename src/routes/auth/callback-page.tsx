@@ -42,27 +42,27 @@ export function CallbackPage() {
 
   return (
     <section className="grid min-h-[calc(100vh-8rem)] place-items-center py-10">
-      <div className="rounded-3xl border-2 border-navy/10 bg-white p-12 text-center max-w-md w-full shadow-md space-y-6">
+      <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-12 text-center max-w-md w-full shadow-md space-y-6">
         {error ? (
           <>
             <div className="size-16 rounded-2xl bg-lost/10 flex items-center justify-center mx-auto animate-shake">
               <PawPrint className="size-8 text-lost" />
             </div>
             <div className="space-y-2">
-              <h2 className="font-display text-xl font-extrabold text-navy">
+              <h2 className="font-display text-xl font-extrabold text-foreground">
                 Error en la autenticación
               </h2>
-              <p className="text-sm text-navy/70">{error}</p>
+              <p className="text-sm text-foreground/70">{error}</p>
             </div>
           </>
         ) : (
           <>
             <PawLoader size="lg" />
             <div className="space-y-2">
-              <h2 className="font-display text-xl font-extrabold text-navy">
+              <h2 className="font-display text-xl font-extrabold text-foreground">
                 Completando inicio de sesión...
               </h2>
-              <p className="text-sm text-navy/70">
+              <p className="text-sm text-foreground/70">
                 Serás redirigido en un momento
               </p>
             </div>

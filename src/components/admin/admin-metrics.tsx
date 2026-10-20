@@ -17,24 +17,24 @@ function MetricCard({ title, value, change, changeLabel, icon, iconBg }: MetricC
   const isPositive = change !== undefined && change > 0;
 
   return (
-    <div className="rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium text-navy/60">{title}</p>
-          <p className="font-display text-3xl font-bold text-navy mt-1">{value}</p>
+          <p className="text-sm font-medium text-foreground/60">{title}</p>
+          <p className="font-display text-3xl font-bold text-foreground mt-1">{value}</p>
           {hasChange && (
             <div className="flex items-center gap-1 mt-2">
               {isPositive ? (
-                <TrendingUp className="size-4 text-green-600" />
+                <TrendingUp className="size-4 text-found" />
               ) : change !== undefined && change < 0 ? (
-                <TrendingDown className="size-4 text-red-600" />
+                <TrendingDown className="size-4 text-lost" />
               ) : (
-                <Minus className="size-4 text-navy/50" />
+                <Minus className="size-4 text-foreground/50" />
               )}
-              <span className={`text-sm font-medium ${isPositive ? 'text-green-600' : change !== undefined && change < 0 ? 'text-red-600' : 'text-navy/50'}`}>
+              <span className={`text-sm font-medium ${isPositive ? 'text-found' : change !== undefined && change < 0 ? 'text-lost' : 'text-foreground/50'}`}>
                 {change !== undefined ? `${change > 0 ? '+' : ''}${change}%` : '0%'}
               </span>
-              {changeLabel && <span className="text-xs text-navy/50">{changeLabel}</span>}
+              {changeLabel && <span className="text-xs text-foreground/50">{changeLabel}</span>}
             </div>
           )}
         </div>
@@ -149,20 +149,20 @@ export function AdminMetrics() {
     {
       title: 'Importados hoy',
       value: metrics.importedToday,
-      icon: <CheckCircle className="size-6 text-green-600" />,
-      iconBg: 'bg-green/10',
+      icon: <CheckCircle className="size-6 text-found" />,
+      iconBg: 'bg-found/10',
     },
     {
       title: 'Importados esta semana',
       value: metrics.importedWeek,
-      icon: <TrendingUp className="size-6 text-orange-600" />,
+      icon: <TrendingUp className="size-6 text-orange" />,
       iconBg: 'bg-orange/10',
     },
     {
       title: 'Importados este mes',
       value: metrics.importedMonth,
-      icon: <Eye className="size-6 text-blue-600" />,
-      iconBg: 'bg-blue/10',
+      icon: <Eye className="size-6 text-orange" />,
+      iconBg: 'bg-secondary',
     },
     {
       title: 'Tasa de aprobación',
@@ -173,8 +173,8 @@ export function AdminMetrics() {
     {
       title: 'Confidence promedio',
       value: `${metrics.avgConfidence}%`,
-      icon: <Star className="size-6 text-yellow-600" />,
-      iconBg: 'bg-yellow/10',
+      icon: <Star className="size-6 text-orange" />,
+      iconBg: 'bg-orange/10',
     },
     {
       title: 'Duplicados detectados',
@@ -185,32 +185,32 @@ export function AdminMetrics() {
     {
       title: 'Retiradas pendientes',
       value: metrics.takedownsPending,
-      icon: <Clock className="size-6 text-orange-600" />,
+      icon: <Clock className="size-6 text-orange" />,
       iconBg: 'bg-orange/10',
     },
     {
       title: 'Retiradas aprobadas',
       value: metrics.takedownsApproved,
-      icon: <Shield className="size-6 text-red-600" />,
-      iconBg: 'bg-red/10',
+      icon: <Shield className="size-6 text-lost" />,
+      iconBg: 'bg-lost/10',
     },
     {
       title: 'Retiradas rechazadas',
       value: metrics.takedownsRejected,
-      icon: <XCircle className="size-6 text-green-600" />,
-      iconBg: 'bg-green/10',
+      icon: <XCircle className="size-6 text-found" />,
+      iconBg: 'bg-found/10',
     },
     {
       title: 'Fuentes activas',
       value: metrics.activeSources,
-      icon: <Shield className="size-6 text-green-600" />,
-      iconBg: 'bg-green/10',
+      icon: <Shield className="size-6 text-found" />,
+      iconBg: 'bg-found/10',
     },
     {
       title: 'Fuentes inactivas',
       value: metrics.inactiveSources,
-      icon: <AlertTriangle className="size-6 text-yellow-600" />,
-      iconBg: 'bg-yellow/10',
+      icon: <AlertTriangle className="size-6 text-orange" />,
+      iconBg: 'bg-orange/10',
     },
     {
       title: 'Fuentes confiables',
@@ -224,9 +224,9 @@ export function AdminMetrics() {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {[...Array(12)].map((_, i) => (
-          <div key={i} className="rounded-2xl border-2 border-navy/10 bg-white p-5 animate-pulse shadow-sm">
-            <div className="h-4 bg-navy/10 rounded w-3/4 mb-2" />
-            <div className="h-8 bg-navy/10 rounded w-1/2" />
+          <div key={i} className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 animate-pulse shadow-sm">
+            <div className="h-4 bg-foreground/10 rounded w-3/4 mb-2" />
+            <div className="h-8 bg-foreground/10 rounded w-1/2" />
           </div>
         ))}
       </div>
@@ -235,7 +235,7 @@ export function AdminMetrics() {
 
   return (
     <div className="space-y-6">
-      <h2 className="font-display text-xl font-bold text-navy">Métricas del sistema</h2>
+      <h2 className="font-display text-xl font-bold text-foreground">Métricas del sistema</h2>
       
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {metricCards.map((card, idx) => (
@@ -244,82 +244,82 @@ export function AdminMetrics() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-sm border-l-4 border-yellow-500">
+        <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-sm border-l-4 border-yellow-500">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl p-3 bg-yellow/10">
-              <Clock className="size-6 text-yellow-600" />
+            <div className="rounded-xl p-3 bg-orange/10">
+              <Clock className="size-6 text-orange" />
             </div>
             <div>
-              <p className="text-sm font-medium text-navy/60">Retiradas pendientes</p>
-              <p className="font-display text-2xl font-bold text-navy">{metrics.takedownsPending}</p>
-              <p className="text-xs text-navy/50">Requieren revisión de moderador</p>
+              <p className="text-sm font-medium text-foreground/60">Retiradas pendientes</p>
+              <p className="font-display text-2xl font-bold text-foreground">{metrics.takedownsPending}</p>
+              <p className="text-xs text-foreground/50">Requieren revisión de moderador</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-sm border-l-4 border-red-500">
+        <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-sm border-l-4 border-red-500">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl p-3 bg-red/10">
-              <CheckCircle className="size-6 text-red-600" />
+            <div className="rounded-xl p-3 bg-lost/10">
+              <CheckCircle className="size-6 text-lost" />
             </div>
             <div>
-              <p className="text-sm font-medium text-navy/60">Retiradas aprobadas</p>
-              <p className="font-display text-2xl font-bold text-navy">{metrics.takedownsApproved}</p>
-              <p className="text-xs text-navy/50">Publicaciones eliminadas permanentemente</p>
+              <p className="text-sm font-medium text-foreground/60">Retiradas aprobadas</p>
+              <p className="font-display text-2xl font-bold text-foreground">{metrics.takedownsApproved}</p>
+              <p className="text-xs text-foreground/50">Publicaciones eliminadas permanentemente</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-sm border-l-4 border-green-500">
+        <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-sm border-l-4 border-green-500">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl p-3 bg-green/10">
-              <XCircle className="size-6 text-green-600" />
+            <div className="rounded-xl p-3 bg-found/10">
+              <XCircle className="size-6 text-found" />
             </div>
             <div>
-              <p className="text-sm font-medium text-navy/60">Retiradas rechazadas</p>
-              <p className="font-display text-2xl font-bold text-navy">{metrics.takedownsRejected}</p>
-              <p className="text-xs text-navy/50">Publicaciones restauradas</p>
+              <p className="text-sm font-medium text-foreground/60">Retiradas rechazadas</p>
+              <p className="font-display text-2xl font-bold text-foreground">{metrics.takedownsRejected}</p>
+              <p className="text-xs text-foreground/50">Publicaciones restauradas</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-sm border-l-4 border-green-500">
+        <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-sm border-l-4 border-green-500">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl p-3 bg-green/10">
-              <Shield className="size-6 text-green-600" />
+            <div className="rounded-xl p-3 bg-found/10">
+              <Shield className="size-6 text-found" />
             </div>
             <div>
-              <p className="text-sm font-medium text-navy/60">Fuentes activas</p>
-              <p className="font-display text-2xl font-bold text-navy">{metrics.activeSources}</p>
-              <p className="text-xs text-navy/50">Monitoreando contenido nuevo</p>
+              <p className="text-sm font-medium text-foreground/60">Fuentes activas</p>
+              <p className="font-display text-2xl font-bold text-foreground">{metrics.activeSources}</p>
+              <p className="text-xs text-foreground/50">Monitoreando contenido nuevo</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-sm border-l-4 border-yellow-500">
+        <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-sm border-l-4 border-yellow-500">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl p-3 bg-yellow/10">
-              <AlertTriangle className="size-6 text-yellow-600" />
+            <div className="rounded-xl p-3 bg-orange/10">
+              <AlertTriangle className="size-6 text-orange" />
             </div>
             <div>
-              <p className="text-sm font-medium text-navy/60">Fuentes inactivas</p>
-              <p className="font-display text-2xl font-bold text-navy">{metrics.inactiveSources}</p>
-              <p className="text-xs text-navy/50">Pausadas o con errores</p>
+              <p className="text-sm font-medium text-foreground/60">Fuentes inactivas</p>
+              <p className="font-display text-2xl font-bold text-foreground">{metrics.inactiveSources}</p>
+              <p className="text-xs text-foreground/50">Pausadas o con errores</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border-2 border-navy/10 bg-white p-5 shadow-sm border-l-4 border-purple-500">
+        <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-5 shadow-sm border-l-4 border-purple-500">
           <div className="flex items-center gap-3">
             <div className="rounded-xl p-3 bg-purple/10">
               <Star className="size-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-navy/60">Fuentes confiables</p>
-              <p className="font-display text-2xl font-bold text-navy">{metrics.trustedSources}</p>
-              <p className="text-xs text-navy/50">Habilitadas para auto-publicación</p>
+              <p className="text-sm font-medium text-foreground/60">Fuentes confiables</p>
+              <p className="font-display text-2xl font-bold text-foreground">{metrics.trustedSources}</p>
+              <p className="text-xs text-foreground/50">Habilitadas para auto-publicación</p>
             </div>
           </div>
         </div>

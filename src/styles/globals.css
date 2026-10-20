@@ -42,7 +42,6 @@
   --color-found-dark: #059669;
   
   /* Colores legacy (compatibilidad) */
-  --color-ink: #1a0d05;
   --color-mamey: #ff8c42;
   --color-sol: #ffc857;
   --color-espuma: #ffcfa8;
@@ -55,6 +54,22 @@
   --color-surface-card: #fffaf5;
   --color-border-card: #ffd9bb;
   --color-text-secondary: #8a5a3c;
+
+  /*
+   * Tokens semánticos de tema.
+   * Importante: el valor debe ser `var(--x)` a secas. Tailwind v4 no genera
+   * utilidades cuando el token contiene directamente funciones como
+   * `hsl(var(--x))`; el color completo vive en las variables `--theme-*`.
+   */
+  --color-app: var(--theme-app);
+  --color-surface: var(--theme-surface);
+  --color-ink: var(--theme-ink);
+  --color-highlight: var(--theme-highlight);
+  --color-foreground: var(--theme-foreground);
+  --color-primary: var(--theme-primary);
+  --color-primary-foreground: var(--theme-primary-foreground);
+  --color-secondary: var(--theme-secondary);
+  --color-border: var(--theme-border);
   
   /* Tipografía */
   --font-display: 'Baloo 2', cursive;
@@ -89,51 +104,108 @@
 
 @layer base {
   :root {
-    color-scheme: light dark;
-    /* Tokens Patitas Anime Edition - Monocromático Naranja - Modo claro */
-    --background: 38 100% 97%;  /* orange-50 #fff4ea */
-    --foreground: 24 35% 14%;  /* orange-900 #3d1d0b */
-    --card: 40 100% 99%;  /* surface-card #fffaf5 */
-    --card-foreground: 24 35% 14%;
-    --popover: 40 100% 99%;
-    --popover-foreground: 24 35% 14%;
-    --primary: 22 100% 63%;  /* orange-400 #ff8c42 */
-    --primary-foreground: 24 35% 14%;  /* orange-900 for contrast on orange-400 */
-    --secondary: 32 100% 89%;  /* orange-200 #ffcfa8 */
-    --secondary-foreground: 24 35% 14%;
+    color-scheme: light;
+
+    /* Colores completos derivados de los canales HSL (cambian en .dark) */
+    --theme-app: hsl(var(--background));
+    --theme-surface: hsl(var(--card));
+    --theme-ink: hsl(var(--ink));
+    --theme-highlight: hsl(var(--highlight));
+    --theme-foreground: hsl(var(--foreground));
+    --theme-primary: hsl(var(--primary));
+    --theme-primary-foreground: hsl(var(--primary-foreground));
+    --theme-secondary: hsl(var(--secondary));
+    --theme-border: hsl(var(--border));
+
+    /*
+     * Tema claro: la misma paleta cálida de siempre.
+     * Fondo crema, tinta casi negra y naranja como único acento.
+     */
+    --background: 38 100% 97%;        /* #fff4ea - orange-50 */
+    --foreground: 22 77% 6%;          /* #1a0d05 - tinta principal */
+    --card: 0 0% 100%;                /* #ffffff - tarjetas y superficies */
+    --card-foreground: 22 77% 6%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 22 77% 6%;
+    --primary: 22 100% 63%;           /* #ff8c42 - orange-400 */
+    --primary-foreground: 22 77% 6%;
+    --secondary: 32 100% 89%;         /* #ffcfa8 - orange-200 */
+    --secondary-foreground: 22 77% 6%;
     --muted: 38 100% 97%;
-    --muted-foreground: 24 25% 40%;  /* #8a5a3c */
+    --muted-foreground: 24 25% 40%;   /* #8a5a3c */
     --accent: 22 100% 63%;
-    --accent-foreground: 24 35% 14%;
-    --destructive: 0 84% 60%;  /* lost red #ef4444 */
+    --accent-foreground: 22 77% 6%;
+    --destructive: 0 84% 60%;         /* #ef4444 */
     --destructive-foreground: 0 0% 100%;
-    --border: 32 80% 88%;  /* orange-200 #ffd9bb */
+    --border: 32 80% 88%;             /* #ffd9bb - orange-200 */
     --input: 32 80% 88%;
     --ring: 22 100% 63%;
+
+    /* Tokens propios de Patitas */
+    --ink: 22 77% 6%;                 /* #1a0d05 - superficies oscuras fijas */
+    --highlight: 32 100% 91%;         /* #ffe6d1 - hover/activo suave */
+
+    /* Chips de estado (mapa y avistamientos) */
+    --chip-lost-text: #9f1d22;
+    --chip-found-text: #065f46;
+    --chip-abandoned-text: #8a3f08;
+    --chip-adoption-text: #4c2fa3;
+    --chip-sighting-text: #7a3d0a;
+    --chip-active-bg: #dcf5e4;
+    --chip-active-text: #14633a;
+    --chip-resolved-bg: #e6edf5;
+    --chip-resolved-text: #2b4a6b;
+    --chip-expired-bg: #efe9e4;
+    --chip-expired-text: #5b4636;
+
     --radius: 1rem;
   }
 
   .dark {
-    /* Paleta oscura monocromática naranja según especificación */
-    --background: 20 30% 6%;    /* #1c0e05 - Fondo de página */
-    --foreground: 38 100% 97%;  /* #fff4ea - Texto principal */
-    --card: 20 25% 10%;         /* #2a1608 - Superficie cards, header, footer, navbar */
-    --card-foreground: 38 100% 97%;
-    --popover: 20 25% 10%;
-    --popover-foreground: 38 100% 97%;
-    --primary: 22 100% 63%;     /* #ff8c42 - PRINCIPAL (igual que claro) */
-    --primary-foreground: 20 25% 10%; /* #2a1608 - Texto SOBRE botón naranja (oscuro, nunca blanco) */
-    --secondary: 22 50% 15%;    /* #3a1f0d - Superficie suave (chips, hover nav, tab activo) */
-    --secondary-foreground: 38 100% 97%;
-    --muted: 20 25% 12%;        /* #3a1f0d / #4d2a12 - Tono medio */
-    --muted-foreground: 32 40% 70%; /* #c9a07e - Texto secundario */
+    color-scheme: dark;
+
+    /*
+     * Tema oscuro: chocolate profundo derivado de la paleta naranja.
+     * Se mantiene el naranja como acento y el crema como tinta.
+     * Las superficies suben en pasos pequeños para conservar jerarquía.
+     */
+    --background: 24 30% 7%;          /* #170d07 - fondo de página */
+    --foreground: 34 100% 96%;        /* #fff4ea - texto principal */
+    --card: 24 28% 11%;               /* #24160c - tarjetas, header, navbar */
+    --card-foreground: 34 100% 96%;
+    --popover: 24 28% 13%;            /* #2b1a10 */
+    --popover-foreground: 34 100% 96%;
+    --primary: 22 100% 63%;           /* #ff8c42 - se mantiene */
+    --primary-foreground: 24 35% 8%;  /* #1c1106 - texto sobre naranja */
+    --secondary: 24 42% 17%;          /* #3d2415 - chips, hover, tab activo */
+    --secondary-foreground: 34 100% 96%;
+    --muted: 24 24% 14%;              /* #2c1a10 - superficies suaves */
+    --muted-foreground: 30 38% 72%;   /* #d9b295 - texto secundario */
     --accent: 22 100% 63%;
-    --accent-foreground: 38 100% 97%;
-    --destructive: 0 84% 60%;   /* lost #ef4444 - NO cambia */
+    --accent-foreground: 24 35% 8%;
+    --destructive: 0 84% 60%;         /* #ef4444 - se mantiene */
     --destructive-foreground: 0 0% 100%;
-    --border: 20 30% 18%;       /* #4d2a12 - Bordes */
-    --input: 20 30% 18%;
+    --border: 26 28% 22%;             /* #4a2e1d - bordes cálidos */
+    --input: 24 26% 14%;              /* #2d1b10 - fondo de campos */
     --ring: 22 100% 63%;
+
+    /* Tokens propios de Patitas */
+    --ink: 20 40% 4%;                 /* #0e0805 - footer, botones oscuros, overlays */
+    --highlight: 24 50% 16%;          /* #3e2414 - hover/activo suave */
+
+    /* Chips de estado (mapa y avistamientos) */
+    --chip-lost-text: #f87171;
+    --chip-found-text: #34d399;
+    --chip-abandoned-text: #ffb078;
+    --chip-adoption-text: #c4b5fd;
+    --chip-sighting-text: #ffcfa8;
+    --chip-active-bg: rgba(16, 185, 129, 0.18);
+    --chip-active-text: #34d399;
+    --chip-resolved-bg: rgba(167, 139, 250, 0.18);
+    --chip-resolved-text: #c4b5fd;
+    --chip-expired-bg: rgba(148, 163, 184, 0.18);
+    --chip-expired-text: #cbd5e1;
+
     --radius: 1rem;
   }
 }
@@ -144,26 +216,16 @@
   border-color: hsl(var(--foreground));
 }
 
-.dark .logo-mark {
-  border-color: var(--color-orange-300); /* #ffb078 en oscuro */
-}
-
 .logo-mark svg {
   color: hsl(var(--foreground));
 }
 
-.dark .logo-mark svg {
-  color: hsl(var(--foreground)); /* #fff4ea en oscuro */
-}
-
-.logo-mark rect,
-.logo-bg {
-  fill: hsl(var(--primary));
-}
-
-.logo-mark ellipse,
-.logo-mark path[fill] {
+.logo-mark .logo-paw {
   fill: currentColor;
+}
+
+.logo-mark .logo-paw-hole {
+  fill: hsl(var(--primary));
 }
 
 @layer base {
@@ -296,6 +358,13 @@
     radial-gradient(circle at 50% 80%, rgba(167, 139, 250, 0.1), transparent 40%);
 }
 
+.dark .hero-gradient {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 140, 66, 0.22), transparent 42%),
+    radial-gradient(circle at 80% 10%, rgba(255, 176, 120, 0.12), transparent 38%),
+    radial-gradient(circle at 50% 80%, rgba(167, 139, 250, 0.14), transparent 42%);
+}
+
 /* Blob decorativo */
 .blob-decoration {
   position: absolute;
@@ -303,6 +372,10 @@
   opacity: 0.3;
   filter: blur(40px);
   animation: blob-morph 8s ease-in-out infinite;
+}
+
+.dark .blob-decoration {
+  opacity: 0.16;
 }
 
 @keyframes blob-morph {
@@ -675,12 +748,6 @@ video {
   }
 }
 
-/* Tema oscuro (preparación futura) */
-@media (prefers-color-scheme: dark) {
-  /* Los estilos dark ya están definidos en la sección base */
-}
-
-
 /* ==================== ESTILOS DEL MAPA ==================== */
 /* Marcadores personalizados con PawPrint */
 .custom-paw-marker {
@@ -694,8 +761,10 @@ video {
   border-radius: 1rem;
   padding: 0;
   overflow: hidden;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  border: 1px solid rgb(229 231 235);
+  border: 1px solid hsl(var(--border));
 }
 
 .leaflet-popup-content {
@@ -714,7 +783,7 @@ video {
 }
 
 .custom-popup .leaflet-popup-tip {
-  background: white;
+  background: hsl(var(--card));
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
@@ -1228,15 +1297,15 @@ video {
   white-space: nowrap;
   background: hsl(var(--card));
   border: 1.5px solid hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  color: hsl(var(--foreground));
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.1);
   opacity: 0;
 }
 .dark .map-floating-card {
   background: hsl(var(--card));
   border-color: hsl(var(--primary) / 0.8);
-  color: hsl(var(--primary-foreground));
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.2);
+  color: hsl(var(--foreground));
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35), 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .map-card--lost { animation: map-card-lost 12s ease-out infinite both; }
@@ -1274,7 +1343,7 @@ video {
   white-space: nowrap;
   background: hsl(var(--card));
   border: 1.5px solid hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  color: hsl(var(--foreground));
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.1);
   z-index: 20;
   animation: map-chip-slide-in 0.5s ease-out 0.3s both;
@@ -1282,8 +1351,8 @@ video {
 .dark .map-nearby-chip {
   background: hsl(var(--card));
   border-color: hsl(var(--primary) / 0.8);
-  color: hsl(var(--primary-foreground));
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.2);
+  color: hsl(var(--foreground));
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35), 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 .map-chip-dot {
   width: 7px;
@@ -1315,117 +1384,6 @@ video {
   .map-radar-sweep { opacity: 0.15; }
   .map-radar-halo { opacity: 0.15; }
 }
-/* ==================== THEME SWITCH ==================== */
-
-.theme-switch {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 28px;
-  padding: 0;
-  border: 2px solid var(--color-orange-300);
-  border-radius: var(--radius-pill);
-  background: var(--color-orange-100);
-  cursor: pointer;
-  transition: all var(--duration-base) var(--ease-smooth);
-}
-
-.dark .theme-switch {
-  border-color: var(--color-orange-600);
-  background: var(--color-orange-700);
-}
-
-.theme-switch:hover {
-  border-color: var(--color-orange-400);
-  transform: scale(1.05);
-}
-
-.dark .theme-switch:hover {
-  border-color: var(--color-orange-400);
-}
-
-.theme-switch:active {
-  transform: scale(0.98);
-}
-
-.theme-switch:focus-visible {
-  outline: 2px solid var(--color-orange-400);
-  outline-offset: 2px;
-}
-
-.theme-switch__track {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  transition: background var(--duration-base) var(--ease-smooth);
-}
-
-.theme-switch__thumb {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--color-surface-card);
-  box-shadow: var(--shadow-md);
-  transform: translateX(2px);
-  transition: transform 250ms var(--ease-bounce), background var(--duration-base) var(--ease-smooth);
-  z-index: 1;
-}
-
-.dark .theme-switch__thumb {
-  transform: translateX(30px);
-  background: var(--color-navy-light);
-}
-
-.theme-switch__icon {
-  position: absolute;
-  transition: opacity 200ms var(--ease-smooth), transform 250ms var(--ease-bounce);
-}
-
-.theme-switch__icon--sun {
-  color: var(--color-orange-400);
-  opacity: 1;
-  transform: rotate(0deg) scale(1);
-}
-
-.dark .theme-switch__icon--sun {
-  opacity: 0;
-  transform: rotate(-90deg) scale(0.5);
-}
-
-.theme-switch__icon--moon {
-  color: var(--color-purple);
-  opacity: 0;
-  transform: rotate(90deg) scale(0.5);
-}
-
-.dark .theme-switch__icon--moon {
-  opacity: 1;
-  transform: rotate(0deg) scale(1);
-}
-
-.theme-switch__sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* ==================== FIN THEME SWITCH ==================== */
 /* ==================== FIN MAP PREVIEW ==================== */
 
 /* ==================== THEME SWITCH (BINARIO CON PATITA) ==================== */
@@ -1511,19 +1469,28 @@ video {
   .theme-switch:active .theme-switch__thumb { width: 32px; margin-left: 0; }
 }
 
-/* ==================== MAP TILES DARK MODE FILTER ==================== */
+/* ==================== MAPA LEAFLET EN MODO OSCURO ==================== */
 .patitas-map .leaflet-tile-pane {
   transition: filter 0.3s ease;
 }
 
-.dark .patitas-map .leaflet-tile-pane {
-  /* Filtro para teñir los tiles de OpenStreetMap hacia naranja oscuro */
-  filter: brightness(0.45) sepia(0.3) hue-rotate(25deg) saturate(1.2) contrast(1.1);
+.dark .patitas-map {
+  background-color: hsl(var(--card));
 }
 
-/* Controles de zoom y atribución en oscuro */
+.dark .patitas-map .leaflet-container {
+  background-color: hsl(var(--card));
+}
+
+.dark .patitas-map .leaflet-tile-pane {
+  /* Tiles de OpenStreetMap teñidos hacia chocolate cálido */
+  filter: brightness(0.58) sepia(0.32) hue-rotate(348deg) saturate(1.35) contrast(1.05);
+}
+
 .dark .patitas-map .leaflet-control-zoom {
   border-color: hsl(var(--border));
+  overflow: hidden;
+  border-radius: 12px;
 }
 
 .dark .patitas-map .leaflet-control-zoom a {
@@ -1541,15 +1508,18 @@ video {
   color: hsl(var(--muted-foreground));
 }
 
-/* Popups en oscuro (CasePopup ya maneja su propio dark mode) */
+.dark .patitas-map .leaflet-control-attribution a {
+  color: hsl(var(--primary));
+}
+
 .dark .patitas-map .leaflet-popup-content-wrapper {
   background: hsl(var(--card));
   border-color: hsl(var(--border));
   color: hsl(var(--foreground));
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
 .dark .patitas-map .leaflet-popup-tip {
   background: hsl(var(--card));
 }
-/* ==================== FIN MAP TILES DARK MODE FILTER ==================== */
+/* ==================== FIN MAPA LEAFLET EN MODO OSCURO ==================== */

@@ -114,11 +114,11 @@ export function MatchesPanel({ publicationId }: MatchesPanelProps) {
       <div className="rounded-xl border-2 border-purple/20 bg-purple/5 p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="size-4 text-purple animate-pulse" />
-          <h3 className="font-display text-sm font-bold text-navy">Buscando coincidencias...</h3>
+          <h3 className="font-display text-sm font-bold text-foreground">Buscando coincidencias...</h3>
         </div>
         <div className="animate-pulse space-y-3">
-          <div className="h-20 bg-navy/5 rounded-xl" />
-          <div className="h-20 bg-navy/5 rounded-xl" />
+          <div className="h-20 bg-foreground/5 rounded-xl" />
+          <div className="h-20 bg-foreground/5 rounded-xl" />
         </div>
       </div>
     );
@@ -132,7 +132,7 @@ export function MatchesPanel({ publicationId }: MatchesPanelProps) {
     <div className="rounded-xl border-2 border-purple/20 bg-purple/5 p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp className="size-5 text-purple" />
-        <h3 className="font-display text-lg font-bold text-navy">
+        <h3 className="font-display text-lg font-bold text-foreground">
           Coincidencias de IA
         </h3>
         <span className="ml-auto rounded-full bg-purple/20 px-2 py-0.5 text-xs font-bold text-purple-dark">
@@ -152,7 +152,7 @@ export function MatchesPanel({ publicationId }: MatchesPanelProps) {
         ))}
       </div>
 
-      <p className="mt-3 text-xs text-navy/60 leading-relaxed">
+      <p className="mt-3 text-xs text-foreground/60 leading-relaxed">
         💡 Estas coincidencias fueron detectadas automáticamente por IA. Revisa los detalles antes de contactar.
       </p>
     </div>

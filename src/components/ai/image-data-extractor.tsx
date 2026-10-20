@@ -126,10 +126,10 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
           <Sparkles className="size-5 text-purple" aria-hidden="true" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-display text-lg font-bold text-navy">
+          <h3 className="font-display text-lg font-bold text-foreground">
             Asistente IA para Formulario
           </h3>
-          <p className="mt-1 text-sm text-navy/70">
+          <p className="mt-1 text-sm text-foreground/70">
             Sube una imagen del animal y la IA extraerá automáticamente los datos para rellenar el formulario.
           </p>
         </div>
@@ -138,7 +138,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
       {!preview ? (
         <label
           className={[
-            'block rounded-2xl border-2 border-dashed border-purple/30 bg-white p-8 text-center cursor-pointer transition-all hover:border-purple hover:bg-purple/5',
+            'block rounded-2xl border-2 border-dashed border-purple/30 bg-surface p-8 text-center cursor-pointer transition-all hover:border-purple hover:bg-purple/5',
             disabled ? 'opacity-50 cursor-not-allowed' : '',
           ].join(' ')}
         >
@@ -150,8 +150,8 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
             disabled={disabled}
           />
           <Upload className="size-12 mx-auto text-purple/40 mb-3" aria-hidden="true" />
-          <p className="font-semibold text-navy mb-1">Haz clic para seleccionar una imagen</p>
-          <p className="text-xs text-navy/60">JPG, PNG o WebP • Máximo 8 MB</p>
+          <p className="font-semibold text-foreground mb-1">Haz clic para seleccionar una imagen</p>
+          <p className="text-xs text-foreground/60">JPG, PNG o WebP • Máximo 8 MB</p>
         </label>
       ) : (
         <div className="space-y-3">
@@ -160,7 +160,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
             <button
               type="button"
               onClick={handleClear}
-              className="absolute top-2 right-2 rounded-full bg-navy/80 text-white p-2 hover:bg-navy transition backdrop-blur-sm"
+              className="absolute top-2 right-2 rounded-full bg-ink/80 text-white p-2 hover:bg-ink transition backdrop-blur-sm"
               aria-label="Eliminar imagen"
               disabled={processing}
             >
@@ -184,7 +184,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
           {processing && (
             <div className="flex flex-col items-center gap-3 py-4">
               <PawLoader size="md" />
-              <p className="text-sm font-medium text-navy/70">Analizando imagen...</p>
+              <p className="text-sm font-medium text-foreground/70">Analizando imagen...</p>
             </div>
           )}
 
@@ -194,7 +194,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
                 <div className="rounded-full bg-turquoise/20 p-1">
                   <Sparkles className="size-4 text-turquoise" aria-hidden="true" />
                 </div>
-                <h4 className="font-semibold text-navy">Datos extraídos</h4>
+                <h4 className="font-semibold text-foreground">Datos extraídos</h4>
                 <span className="ml-auto text-xs font-semibold text-turquoise">
                   {Math.round(extractedData.confidence * 100)}% confianza
                 </span>
@@ -203,67 +203,67 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
               <dl className="grid gap-2 text-sm">
                 {extractedData.species && (
                   <div className="flex justify-between">
-                    <dt className="text-navy/60">Especie:</dt>
-                    <dd className="font-semibold text-navy">{extractedData.species}</dd>
+                    <dt className="text-foreground/60">Especie:</dt>
+                    <dd className="font-semibold text-foreground">{extractedData.species}</dd>
                   </div>
                 )}
                 {extractedData.breed && (
                   <div className="flex justify-between">
-                    <dt className="text-navy/60">Raza:</dt>
-                    <dd className="font-semibold text-navy">{extractedData.breed}</dd>
+                    <dt className="text-foreground/60">Raza:</dt>
+                    <dd className="font-semibold text-foreground">{extractedData.breed}</dd>
                   </div>
                 )}
                 {extractedData.color && (
                   <div className="flex justify-between">
-                    <dt className="text-navy/60">Color:</dt>
-                    <dd className="font-semibold text-navy">{extractedData.color}</dd>
+                    <dt className="text-foreground/60">Color:</dt>
+                    <dd className="font-semibold text-foreground">{extractedData.color}</dd>
                   </div>
                 )}
                 {extractedData.size && (
                   <div className="flex justify-between">
-                    <dt className="text-navy/60">Tamaño:</dt>
-                    <dd className="font-semibold text-navy">{extractedData.size}</dd>
+                    <dt className="text-foreground/60">Tamaño:</dt>
+                    <dd className="font-semibold text-foreground">{extractedData.size}</dd>
                   </div>
                 )}
                 {extractedData.sex && (
                   <div className="flex justify-between">
-                    <dt className="text-navy/60">Sexo:</dt>
-                    <dd className="font-semibold text-navy">{extractedData.sex}</dd>
+                    <dt className="text-foreground/60">Sexo:</dt>
+                    <dd className="font-semibold text-foreground">{extractedData.sex}</dd>
                   </div>
                 )}
                 {extractedData.ageApprox && (
                   <div className="flex justify-between">
-                    <dt className="text-navy/60">Edad aproximada:</dt>
-                    <dd className="font-semibold text-navy">{extractedData.ageApprox}</dd>
+                    <dt className="text-foreground/60">Edad aproximada:</dt>
+                    <dd className="font-semibold text-foreground">{extractedData.ageApprox}</dd>
                   </div>
                 )}
                 {extractedData.characteristics && (
                   <div className="flex flex-col gap-1">
-                    <dt className="text-navy/60">Características:</dt>
-                    <dd className="text-navy">{extractedData.characteristics}</dd>
+                    <dt className="text-foreground/60">Características:</dt>
+                    <dd className="text-foreground">{extractedData.characteristics}</dd>
                   </div>
                 )}
                 
                 {/* Datos contextuales extraídos de texto */}
                 {(extractedData.province || extractedData.municipality || extractedData.zone) && (
                   <div className="col-span-full pt-2 border-t border-turquoise/20">
-                    <p className="text-xs font-semibold text-navy/60 mb-2">📍 Ubicación extraída:</p>
+                    <p className="text-xs font-semibold text-foreground/60 mb-2">📍 Ubicación extraída:</p>
                     {extractedData.province && (
                       <div className="flex justify-between">
-                        <dt className="text-navy/60">Provincia:</dt>
-                        <dd className="font-semibold text-navy">{extractedData.province}</dd>
+                        <dt className="text-foreground/60">Provincia:</dt>
+                        <dd className="font-semibold text-foreground">{extractedData.province}</dd>
                       </div>
                     )}
                     {extractedData.municipality && (
                       <div className="flex justify-between">
-                        <dt className="text-navy/60">Municipio:</dt>
-                        <dd className="font-semibold text-navy">{extractedData.municipality}</dd>
+                        <dt className="text-foreground/60">Municipio:</dt>
+                        <dd className="font-semibold text-foreground">{extractedData.municipality}</dd>
                       </div>
                     )}
                     {extractedData.zone && (
                       <div className="flex justify-between">
-                        <dt className="text-navy/60">Zona:</dt>
-                        <dd className="font-semibold text-navy">{extractedData.zone}</dd>
+                        <dt className="text-foreground/60">Zona:</dt>
+                        <dd className="font-semibold text-foreground">{extractedData.zone}</dd>
                       </div>
                     )}
                   </div>
@@ -271,17 +271,17 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
                 
                 {(extractedData.eventDate || extractedData.eventTimeApprox) && (
                   <div className="col-span-full pt-2 border-t border-turquoise/20">
-                    <p className="text-xs font-semibold text-navy/60 mb-2">📅 Fecha extraída:</p>
+                    <p className="text-xs font-semibold text-foreground/60 mb-2">📅 Fecha extraída:</p>
                     {extractedData.eventDate && (
                       <div className="flex justify-between">
-                        <dt className="text-navy/60">Fecha:</dt>
-                        <dd className="font-semibold text-navy">{extractedData.eventDate}</dd>
+                        <dt className="text-foreground/60">Fecha:</dt>
+                        <dd className="font-semibold text-foreground">{extractedData.eventDate}</dd>
                       </div>
                     )}
                     {extractedData.eventTimeApprox && (
                       <div className="flex justify-between">
-                        <dt className="text-navy/60">Hora:</dt>
-                        <dd className="font-semibold text-navy">{extractedData.eventTimeApprox}</dd>
+                        <dt className="text-foreground/60">Hora:</dt>
+                        <dd className="font-semibold text-foreground">{extractedData.eventTimeApprox}</dd>
                       </div>
                     )}
                   </div>
@@ -289,23 +289,23 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
                 
                 {(extractedData.contactPhone || extractedData.contactWhatsapp || extractedData.contactEmail) && (
                   <div className="col-span-full pt-2 border-t border-turquoise/20">
-                    <p className="text-xs font-semibold text-navy/60 mb-2">📞 Contacto extraído:</p>
+                    <p className="text-xs font-semibold text-foreground/60 mb-2">📞 Contacto extraído:</p>
                     {extractedData.contactPhone && (
                       <div className="flex justify-between">
-                        <dt className="text-navy/60">Teléfono:</dt>
-                        <dd className="font-semibold text-navy">{extractedData.contactPhone}</dd>
+                        <dt className="text-foreground/60">Teléfono:</dt>
+                        <dd className="font-semibold text-foreground">{extractedData.contactPhone}</dd>
                       </div>
                     )}
                     {extractedData.contactWhatsapp && (
                       <div className="flex justify-between">
-                        <dt className="text-navy/60">WhatsApp:</dt>
-                        <dd className="font-semibold text-navy">{extractedData.contactWhatsapp}</dd>
+                        <dt className="text-foreground/60">WhatsApp:</dt>
+                        <dd className="font-semibold text-foreground">{extractedData.contactWhatsapp}</dd>
                       </div>
                     )}
                     {extractedData.contactEmail && (
                       <div className="flex justify-between">
-                        <dt className="text-navy/60">Email:</dt>
-                        <dd className="font-semibold text-navy">{extractedData.contactEmail}</dd>
+                        <dt className="text-foreground/60">Email:</dt>
+                        <dd className="font-semibold text-foreground">{extractedData.contactEmail}</dd>
                       </div>
                     )}
                   </div>
@@ -313,8 +313,8 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
                 
                 {extractedData.reward && (
                   <div className="flex justify-between pt-2 border-t border-turquoise/20">
-                    <dt className="text-navy/60">💰 Recompensa:</dt>
-                    <dd className="font-semibold text-navy">{extractedData.reward}</dd>
+                    <dt className="text-foreground/60">💰 Recompensa:</dt>
+                    <dd className="font-semibold text-foreground">{extractedData.reward}</dd>
                   </div>
                 )}
                 
@@ -334,7 +334,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
                 )}
               </dl>
 
-              <p className="text-xs text-navy/60 pt-2 border-t border-turquoise/20">
+              <p className="text-xs text-foreground/60 pt-2 border-t border-turquoise/20">
                 Los datos han sido rellenados en el formulario. Revísalos y edítalos si es necesario antes de publicar.
               </p>
             </div>
@@ -349,7 +349,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
         </div>
       )}
 
-      <div className="text-xs text-navy/60 bg-purple/10 border border-purple/20 rounded-2xl px-4 py-3 space-y-1">
+      <div className="text-xs text-foreground/60 bg-purple/10 border border-purple/20 rounded-2xl px-4 py-3 space-y-1">
         <p className="font-semibold">Cómo funciona:</p>
         <ul className="space-y-1 pl-4 list-disc">
           <li>La IA analiza la imagen y detecta características del animal</li>

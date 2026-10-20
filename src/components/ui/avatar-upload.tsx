@@ -79,7 +79,7 @@ export function AvatarUpload({ currentAvatarUrl, userName, onUpload, onDelete }:
     <div className="flex flex-col items-center gap-4">
       <div className="relative group">
         {/* Avatar */}
-        <div className="size-32 rounded-3xl overflow-hidden border-4 border-navy/10 shadow-lg bg-linear-to-br from-orange to-turquoise flex items-center justify-center">
+        <div className="size-32 rounded-3xl overflow-hidden border-4 border-foreground/10 shadow-lg bg-linear-to-br from-orange to-turquoise flex items-center justify-center">
           {displayUrl ? (
             <img
               src={displayUrl}
@@ -95,7 +95,7 @@ export function AvatarUpload({ currentAvatarUrl, userName, onUpload, onDelete }:
 
         {/* Overlay de carga */}
         {(uploading || deleting) && (
-          <div className="absolute inset-0 rounded-3xl bg-navy/80 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-3xl bg-ink/80 flex items-center justify-center">
             <PawLoader size="sm" />
           </div>
         )}
@@ -104,7 +104,7 @@ export function AvatarUpload({ currentAvatarUrl, userName, onUpload, onDelete }:
         {!uploading && !deleting && (
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="absolute inset-0 rounded-3xl bg-navy/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-base"
+            className="absolute inset-0 rounded-3xl bg-ink/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-base"
           >
             <Camera className="size-8 text-white" />
           </button>
@@ -145,7 +145,7 @@ export function AvatarUpload({ currentAvatarUrl, userName, onUpload, onDelete }:
         )}
       </div>
 
-      <p className="text-xs text-navy/60 text-center max-w-xs">
+      <p className="text-xs text-foreground/60 text-center max-w-xs">
         Tamaño máximo: 2MB · Formatos: JPG, PNG, WebP
       </p>
     </div>

@@ -69,7 +69,7 @@ export function ProcessButton({ publicationId, onProcessingStarted }: ProcessBut
         </p>
       )}
 
-      <p className="text-xs text-navy/60 leading-relaxed">
+      <p className="text-xs text-foreground/60 leading-relaxed">
         💡 La IA analizará esta publicación para detectar duplicados, extraer información y buscar coincidencias.
       </p>
     </div>
