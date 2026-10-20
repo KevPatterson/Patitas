@@ -31,10 +31,10 @@
   --color-purple-light: #c4b5fd;
   --color-purple-dark: #8b5cf6;
   
-  /* Lost - Rojo/coral (semántico, NO cambia) */
-  --color-lost: #ef4444;
-  --color-lost-light: #f87171;
-  --color-lost-dark: #dc2626;
+  /* Lost - Naranja intenso (semántico, NO cambia) */
+  --color-lost: #fe6411;
+  --color-lost-light: #ff8a4d;
+  --color-lost-dark: #d94f06;
   
   /* Found - Verde/turquesa (semántico, NO cambia) */
   --color-found: #10b981;
@@ -46,7 +46,7 @@
   --color-sol: #ffc857;
   --color-espuma: #ffcfa8;
   --color-arena: #fff4ea;
-  --color-perdida: #ef4444;
+  --color-perdida: #fe6411;
   --color-encontrada: #10b981;
   --color-adopcion: #a78bfa;
   
@@ -146,7 +146,7 @@
     --highlight: 32 100% 91%;         /* #ffe6d1 - hover/activo suave */
 
     /* Chips de estado (mapa y avistamientos) */
-    --chip-lost-text: #9f1d22;
+    --chip-lost-text: #8f3300;
     --chip-found-text: #065f46;
     --chip-abandoned-text: #8a3f08;
     --chip-adoption-text: #4c2fa3;
@@ -194,7 +194,7 @@
     --highlight: 24 50% 16%;          /* #3e2414 - hover/activo suave */
 
     /* Chips de estado (mapa y avistamientos) */
-    --chip-lost-text: #f87171;
+    --chip-lost-text: #ff9a66;
     --chip-found-text: #34d399;
     --chip-abandoned-text: #ffb078;
     --chip-adoption-text: #c4b5fd;
@@ -1362,6 +1362,21 @@ video {
   box-shadow: 0 0 8px var(--color-orange-400);
 }
 .dark .map-chip-dot { background: var(--color-orange-300); box-shadow: 0 0 8px var(--color-orange-300); }
+
+@media (max-width: 640px) {
+  .map-floating-card,
+  .map-nearby-chip {
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 9px;
+  }
+  .map-card-dot,
+  .map-chip-dot {
+    width: 5px;
+    height: 5px;
+  }
+}
+
 @keyframes map-chip-slide-in {
   0% { transform: translateX(-12px); opacity: 0; }
   100% { transform: translateX(0); opacity: 1; }

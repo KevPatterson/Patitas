@@ -64,7 +64,7 @@ export const STATUS_LABELS: Record<string, string> = {
 };
 
 export const TYPE_COLORS: Record<string, string> = {
-  LOST: "#E4572E",
+  LOST: "#FE6411",
   FOUND: "#2F9E63",
   ABANDONED: "#D9A521",
   ADOPTION: "#3B7DD8",

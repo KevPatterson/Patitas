@@ -4,7 +4,7 @@ import { AlertTriangle, Calendar, CheckCircle, MapPin, PawPrint, X, Heart, Flag,
 import { Button } from '../components/ui/button';
 import { TextareaField } from '../components/ui/textarea-field';
 import { StatusBadge } from '../components/ui/status-badge';
-import { PawLoader } from '../components/ui/paw-loader';
+import { CatLoader } from '../components/ui/cat-loader';
 import { ProcessingStatusBadge } from '../components/ai/processing-status';
 import { DuplicateWarning } from '../components/ai/duplicate-warning';
 import { MatchesPanel } from '../components/publications/matches-panel';
@@ -313,7 +313,7 @@ export function PublicationPage() {
     <section className="space-y-6 py-8">
       {loading ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <PawLoader size="lg" />
+          <CatLoader size="lg" />
           <p className="font-display text-lg font-semibold text-foreground">Cargando publicación...</p>
         </div>
       ) : publication ? (

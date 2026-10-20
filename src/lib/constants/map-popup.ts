@@ -13,8 +13,8 @@ export const POST_TYPE_META: Record<
 > = {
   LOST: {
     label: 'Perdida',
-    stroke: '#ef4444',
-    chipBg: 'rgba(239,68,68,0.15)',
+    stroke: '#fe6411',
+    chipBg: 'rgba(254,100,17,0.15)',
     chipText: 'var(--chip-lost-text)',
   },
   FOUND: {

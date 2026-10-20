@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Bell, Check, CheckCheck, Trash2, AlertCircle, Heart, MessageCircle, Flag } from 'lucide-react';
 import { useAuth } from '../app/auth-context';
 import { Button } from '../components/ui/button';
-import { PawLoader } from '../components/ui/paw-loader';
+import { CatLoader } from '../components/ui/cat-loader';
 import { EmptyState } from '../components/ui/empty-state';
 import { 
   getNotifications, 
@@ -151,7 +151,7 @@ export function NotificationsPage() {
   if (loading) {
     return (
       <section className="flex flex-col items-center justify-center min-h-[60vh] gap-4 py-10">
-        <PawLoader size="lg" />
+        <CatLoader size="lg" />
         <p className="font-display text-lg font-semibold text-foreground">Cargando notificaciones...</p>
       </section>
     );

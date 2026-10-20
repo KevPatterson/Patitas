@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { History, RefreshCw, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase/client';
 import { Button } from '../ui/button';
-import { PawLoader } from '../ui/paw-loader';
+import { CatLoader } from '../ui/cat-loader';
 import { EmptyState } from '../ui/empty-state';
 
 /**
@@ -90,7 +90,7 @@ export function AuditLogPanel() {
   if (loading && logs.length === 0) {
     return (
       <div className="flex justify-center py-10">
-        <PawLoader size="md" />
+        <CatLoader size="md" />
       </div>
     );
   }

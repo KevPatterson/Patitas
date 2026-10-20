@@ -4,7 +4,7 @@ type CaseType = 'LOST' | 'FOUND' | 'ABANDONED' | 'ADOPTION' | 'SIGHTING';
 
 /** Colores idénticos a los marcadores del mapa real */
 const CASE_COLORS: Record<CaseType, { color: string; fillColor: string }> = {
-  LOST: { color: '#ef4444', fillColor: 'rgba(239, 68, 68, 0.2)' },
+  LOST: { color: '#fe6411', fillColor: 'rgba(254, 100, 17, 0.2)' },
   FOUND: { color: '#10b981', fillColor: 'rgba(16, 185, 129, 0.2)' },
   ABANDONED: { color: '#ff8c42', fillColor: 'rgba(255, 140, 66, 0.2)' },
   ADOPTION: { color: '#a78bfa', fillColor: 'rgba(167, 139, 250, 0.2)' },
@@ -234,7 +234,7 @@ export function MapPreview({ nearbyCount = 5 }: { nearbyCount?: number }) {
       <div
         className="map-card-anchor"
         style={{
-          left: `${((PROTAGONIST.x - 40) / 400) * 100}%`,
+          left: `clamp(120px, ${((PROTAGONIST.x - 40) / 400) * 100}%, calc(100% - 120px))`,
           top: `${((PROTAGONIST.y - 45) / 250) * 100}%`,
         }}
       >

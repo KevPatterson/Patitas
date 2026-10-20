@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent } from 'react';
 import { Sparkles, Upload, X, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/button';
-import { PawLoader } from '../ui/paw-loader';
+import { CatLoader } from '../ui/cat-loader';
 
 type ExtractedData = {
   // Datos del animal
@@ -183,7 +183,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
 
           {processing && (
             <div className="flex flex-col items-center gap-3 py-4">
-              <PawLoader size="md" />
+              <CatLoader size="md" />
               <p className="text-sm font-medium text-foreground/70">Analizando imagen...</p>
             </div>
           )}

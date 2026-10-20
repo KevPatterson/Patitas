@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { getPublicationById } from '../lib/supabase/publication-search';
-import { PawLoader } from '../components/ui/paw-loader';
+import { CatLoader } from '../components/ui/cat-loader';
 import { LinkButton } from '../components/ui/button';
 import { setPageMeta } from '../lib/seo/page-meta';
 
@@ -65,7 +65,7 @@ export function AdminPublicationPage() {
     return (
       <section className="grid min-h-[60vh] place-items-center py-10">
         <div className="flex flex-col items-center gap-4">
-          <PawLoader size="lg" />
+          <CatLoader size="lg" />
           <p className="font-display text-lg font-semibold text-foreground">Abriendo la publicación…</p>
         </div>
       </section>

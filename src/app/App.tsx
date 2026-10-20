@@ -5,7 +5,7 @@ import { LinkButton } from '../components/ui/button';
 import { SiteShell } from '../components/layout/site-shell';
 import { BottomNav } from '../components/layout/bottom-nav';
 import { ScrollToTop } from '../components/layout/scroll-to-top';
-import { PawLoader } from '../components/ui/paw-loader';
+import { CatLoader } from '../components/ui/cat-loader';
 import { ThemeProvider } from './theme-provider';
 
 /**
@@ -97,7 +97,7 @@ function RouteFallback() {
   return (
     <div className="grid min-h-[60vh] place-items-center py-10">
       <div className="flex flex-col items-center gap-3">
-        <PawLoader size="lg" />
+        <CatLoader size="lg" />
         <p className="font-display text-sm font-semibold text-foreground/70">Cargando…</p>
       </div>
     </div>

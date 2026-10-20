@@ -12,7 +12,7 @@ import 'leaflet/dist/leaflet.css';
 // Iconos personalizados usando SVG de PawPrint de Lucide (igual que la leyenda)
 const MARKER_ICONS: Record<PublicationSummary['type'], ReturnType<typeof divIcon>> = (() => {
   const configs: Record<PublicationSummary['type'], { color: string; fillColor: string }> = {
-    LOST: { color: '#ef4444', fillColor: 'rgba(239, 68, 68, 0.2)' },
+    LOST: { color: '#fe6411', fillColor: 'rgba(254, 100, 17, 0.2)' },
     FOUND: { color: '#10b981', fillColor: 'rgba(16, 185, 129, 0.2)' },
     ABANDONED: { color: '#ff8c42', fillColor: 'rgba(255, 140, 66, 0.2)' },
     ADOPTION: { color: '#a78bfa', fillColor: 'rgba(167, 139, 250, 0.2)' },

@@ -8,7 +8,7 @@ import { useAuth } from '../app/auth-context';
 import { Button, LinkButton } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
 import { TextareaField } from '../components/ui/textarea-field';
-import { PawLoader } from '../components/ui/paw-loader';
+import { CatLoader } from '../components/ui/cat-loader';
 import { ImageDataExtractor } from '../components/ai/image-data-extractor';
 import { FacebookImportWizard } from '../components/import/FacebookImportWizard';
 import { createLocation, createPublication, uploadPublicationImages, createPet, deletePublicationImages } from '../lib/supabase/publications';
@@ -625,7 +625,7 @@ export function PublishPage() {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <PawLoader size="lg" />
+          <CatLoader size="lg" />
           <p className="font-display text-lg font-semibold text-foreground">Cargando sesión...</p>
         </div>
       ) : user ? (

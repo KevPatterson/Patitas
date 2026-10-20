@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Camera, Trash2 } from 'lucide-react';
 import { Button } from './button';
-import { PawLoader } from './paw-loader';
+import { CatLoader } from './cat-loader';
 
 type AvatarUploadProps = {
   currentAvatarUrl?: string | null;
@@ -96,7 +96,7 @@ export function AvatarUpload({ currentAvatarUrl, userName, onUpload, onDelete }:
         {/* Overlay de carga */}
         {(uploading || deleting) && (
           <div className="absolute inset-0 rounded-3xl bg-ink/80 flex items-center justify-center">
-            <PawLoader size="sm" />
+            <CatLoader size="sm" />
           </div>
         )}
 

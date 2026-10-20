@@ -7,7 +7,7 @@ import { signOut } from '../lib/supabase/auth';
 import { getProfile, uploadAvatar, deleteAvatar, getOAuthAvatarUrl, notifyAvatarUpdated } from '../lib/supabase/profiles';
 import { PublicationCard } from '../components/publications/publication-card';
 import { Button } from '../components/ui/button';
-import { PawLoader } from '../components/ui/paw-loader';
+import { CatLoader } from '../components/ui/cat-loader';
 import { EmptyState } from '../components/ui/empty-state';
 import { AvatarUpload } from '../components/ui/avatar-upload';
 import { Trash2, CheckCircle, Eye, PlusCircle, FileText, User as UserIcon, PawPrint, TrendingUp, LogOut, HeartHandshake } from 'lucide-react';
@@ -171,7 +171,7 @@ export function DashboardPage() {
   if (authLoading || initialLoading) {
     return (
       <section className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <PawLoader size="lg" />
+        <CatLoader size="lg" />
         <p className="font-display text-lg font-semibold text-foreground">Cargando tu panel...</p>
       </section>
     );

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, X, MessageSquare, Clock, CheckCircle2, XCircle, Ban } from 'lucide-react';
 import { Button } from '../ui/button';
-import { PawLoader } from '../ui/paw-loader';
+import { CatLoader } from '../ui/cat-loader';
 import { EmptyState } from '../ui/empty-state';
 import {
   getMyAdoptionRequests,
@@ -156,7 +156,7 @@ export function AdoptionRequestsPanel() {
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <PawLoader size="md" />
+        <CatLoader size="md" />
       </div>
     );
   }

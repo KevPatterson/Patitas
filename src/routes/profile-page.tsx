@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { User, PawPrint, MapPin, CheckCircle, Eye, Calendar, Camera, Trash2, Pencil } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { PublicationCard } from '../components/publications/publication-card';
-import { PawLoader } from '../components/ui/paw-loader';
+import { CatLoader } from '../components/ui/cat-loader';
 import { EmptyState } from '../components/ui/empty-state';
 import { supabase } from '../lib/supabase/client';
 import type { PublicationSummary } from '../lib/supabase/publication-search';
@@ -146,7 +146,7 @@ export function ProfilePage() {
   if (loading) {
     return (
       <section className="flex flex-col items-center justify-center min-h-[60vh] gap-4 py-10">
-        <PawLoader size="lg" />
+        <CatLoader size="lg" />
         <p className="font-display text-lg font-semibold text-foreground">Cargando perfil...</p>
       </section>
     );
@@ -266,7 +266,7 @@ export function ProfilePage() {
                 {/* Estado de guardado */}
                 {avatarSaving && (
                   <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-ink/80">
-                    <PawLoader size="sm" />
+                    <CatLoader size="sm" />
                   </span>
                 )}
 
