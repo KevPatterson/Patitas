@@ -132,6 +132,13 @@ export function SiteShell({ children }: SiteShellProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-app">
+      {/* Primer punto de tabulación: salta la navegación y lleva al contenido. */}
+      <a
+        href="#contenido"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:border-2 focus:border-foreground focus:bg-surface focus:px-4 focus:py-3 focus:text-sm focus:font-bold focus:text-foreground focus:shadow-lg"
+      >
+        Saltar al contenido
+      </a>
       {/* Header sticky con estilo "sticker" */}
       <header className="sticky top-0 z-40 px-4 py-3.5">
         <div className="relative mx-auto w-full max-w-[1180px]">
@@ -279,7 +286,11 @@ export function SiteShell({ children }: SiteShellProps) {
       </header>
 
       {/* Main content */}
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-40 lg:pb-16 sm:px-6 lg:px-8">
+      <main
+        id="contenido"
+        tabIndex={-1}
+        className="mx-auto w-full max-w-7xl flex-1 px-4 pb-40 lg:pb-16 sm:px-6 lg:px-8"
+      >
         {children}
       </main>
 
