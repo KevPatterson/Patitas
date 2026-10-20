@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from './types/vercel';
+import { IS_PRODUCTION } from './_lib/env.js';
 
 /**
  * GET /api/health — diagnóstico temporal del runtime.
@@ -12,6 +13,7 @@ export default function handler(_req: VercelRequest, res?: VercelResponse) {
     ok: true,
     hasProcess: typeof globalThis.process,
     hasRes: Boolean(res),
+    isProduction: IS_PRODUCTION,
   };
 
   if (res && typeof res.status === 'function') {
