@@ -104,6 +104,21 @@ export async function ensureProfile(username: string, fullName?: string | null) 
   }
 }
 
+export async function getProfileAvatarUrl(userId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('avatar_url')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('getProfileAvatarUrl: no se pudo obtener el avatar.', error);
+    return null;
+  }
+
+  return data?.avatar_url ?? null;
+}
+
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from('profiles')

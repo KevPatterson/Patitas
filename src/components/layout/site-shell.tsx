@@ -4,7 +4,7 @@ import { Bell, Search, MapPin, LogOut, User, type LucideIcon } from 'lucide-reac
 import { signOut } from '../../lib/supabase/auth';
 import { useAuth } from '../../app/auth-context';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
-import { getOAuthAvatarUrl, AVATAR_UPDATED_EVENT } from '../../lib/supabase/profiles';
+import { getOAuthAvatarUrl, getProfileAvatarUrl, AVATAR_UPDATED_EVENT } from '../../lib/supabase/profiles';
 import { Logo } from '../Logo';
 import { ThemeSwitch } from '../ui/theme-switch';
 
@@ -81,23 +81,29 @@ export function SiteShell({ children }: SiteShellProps) {
   const profileHref = username ? `/perfil/${username}` : '/dashboard';
 
   useEffect(() => {
-    if (user?.id) {
-      const avatar = getOAuthAvatarUrl(user);
-      if (avatar) setAvatarUrl(avatar);
-    } else {
+    if (!user?.id) {
       setAvatarUrl(null);
+      return;
     }
-  }, [user, authLoading]);
 
-  useEffect(() => {
+    let active = true;
+
+    const loadAvatar = async () => {
+      const oauthAvatar = getOAuthAvatarUrl(user);
+      const profileAvatar = await getProfileAvatarUrl(user.id);
+      if (active) setAvatarUrl(profileAvatar ?? oauthAvatar);
+    };
+
+    void loadAvatar();
+
     const handler = () => {
-      if (user?.id) {
-        const avatar = getOAuthAvatarUrl(user);
-        if (avatar) setAvatarUrl(avatar);
-      }
+      void loadAvatar();
     };
     window.addEventListener(AVATAR_UPDATED_EVENT, handler);
-    return () => window.removeEventListener(AVATAR_UPDATED_EVENT, handler);
+    return () => {
+      active = false;
+      window.removeEventListener(AVATAR_UPDATED_EVENT, handler);
+    };
   }, [user, authLoading]);
 
   return (
@@ -256,7 +262,7 @@ export function SiteShell({ children }: SiteShellProps) {
       {/* Footer rediseñado con personalidad */}
       <footer className="relative border-t-2 border-orange-200 bg-ink text-cream overflow-hidden" role="contentinfo">
 
-        <div className="relative mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="relative mx-auto w-full max-w-7xl px-4 pt-8 pb-28 sm:px-6 lg:px-8 lg:pb-8">
           <div className="flex flex-col lg:flex-row items-start gap-8 lg:gap-12">
             {/* ===== BRAND / IDENTITY ===== */}
             <section className="w-full lg:w-64 lg:flex-shrink-0" aria-label="Identidad de Patitas">
