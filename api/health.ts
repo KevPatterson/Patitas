@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from './types/vercel';
-import { supabaseAdmin } from './_lib/supabase-admin';
 import { IS_PRODUCTION } from './_lib/env';
 
 /**
@@ -30,6 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Base de datos: solo se informa del estado, nunca del error.
   try {
+    const { supabaseAdmin } = await import('./_lib/supabase-admin');
     const { error } = await supabaseAdmin.from('profiles').select('id').limit(1).maybeSingle();
 
     if (error) {
@@ -45,6 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Storage
   try {
+    const { supabaseAdmin } = await import('./_lib/supabase-admin');
     const { data, error } = await supabaseAdmin.storage.listBuckets();
 
     if (error || !data) {
