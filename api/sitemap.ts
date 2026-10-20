@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from './types/vercel';
-import { supabaseAdmin } from './_lib/supabase-admin';
+import { getSupabasePublic } from './_lib/supabase-public';
 
 /**
  * GET /sitemap.xml — sitemap dinámico (tarea 6.2).
@@ -56,7 +56,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let publications: SitemapRow[] = [];
 
   try {
-    const { data, error } = await supabaseAdmin
+    const supabase = getSupabasePublic();
+
+    if (!supabase) {
+      throw new Error(
+        'Falta VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY/VITE_SUPABASE_PUBLISHABLE_KEY.'
+      );
+    }
+
+    const { data, error } = await supabase
       .from('publications')
       .select('slug, updated_at, published_at')
       .eq('status', 'ACTIVE')

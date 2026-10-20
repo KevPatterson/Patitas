@@ -11,8 +11,10 @@ export const SUPABASE_URL = process.env.SUPABASE_URL;
 /**
  * Clave de servicio. Bypasea RLS: solo puede usarse desde `api/_lib`.
  * Hay un test que falla si aparece en `src/` (ver API-10).
+ * `SUPABASE_SECRET_KEY` es el nombre de la nueva clave secreta de Supabase.
  */
-export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const SUPABASE_SERVICE_ROLE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
 
 /** Secreto compartido con el worker de Telegram para firmar la ingesta. */
 export const INGEST_HMAC_SECRET = process.env.INGEST_HMAC_SECRET;

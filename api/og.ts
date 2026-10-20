@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from './types/vercel';
-import { supabaseAdmin } from './_lib/supabase-admin';
+import { getSupabasePublic } from './_lib/supabase-public';
 
 /**
  * GET /api/og?slug=<slug> — HTML con Open Graph para crawlers (tarea 6.1).
@@ -136,7 +136,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { data, error } = await supabaseAdmin
+    const supabase = getSupabasePublic();
+
+    if (!supabase) {
+      throw new Error(
+        'Falta VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY/VITE_SUPABASE_PUBLISHABLE_KEY.'
+      );
+    }
+
+    const { data, error } = await supabase
       .from('publications')
       .select(
         'slug, title, description, type, status, species, province:locations(province), publication_images(storage_path, is_cover)'
@@ -150,7 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!data) {
-      return res.status(404).send(
+      return res.status(200).send(
         renderHtml({
           title: `Publicación no encontrada · ${SITE_NAME}`,
           description: 'La publicación que buscas no existe o se ha retirado.',
@@ -212,7 +220,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error('[og] excepción', error);
 
-    return res.status(500).send(
+    // Se responde 200 incluso si falla Supabase: las redes sociales no muestran
+    // la tarjeta cuando el HTML llega con un 5xx, y una imagen genérica es mejor
+    // que ningún enlace preview.
+    return res.status(200).send(
       renderHtml({
         title: `Patitas · Que ninguna patita se quede sin casa`,
         description:
