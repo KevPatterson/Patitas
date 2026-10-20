@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
-import { limitByIp, limitByUser } from '../_lib/rate-limit-utils';
-import { canManagePublication, getActor, loadPublication, writeAuditLog } from '../_lib/authz';
+import type { VercelRequest, VercelResponse } from '../types/vercel.js';
+import { supabaseAdmin } from '../_lib/supabase-admin.js';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http.js';
+import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';
+import { canManagePublication, getActor, loadPublication, writeAuditLog } from '../_lib/authz.js';
 
 /**
  * POST /api/takedown — solicitud de retirada de contenido.

@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../../../types/vercel';
-import { supabaseAdmin } from '../../supabase-admin';
-import { getAIProvider } from '../../ai-provider';
-import { loadOwnStorageImage } from '../../image-guard';
-import { fail, parseBody, rejectMethod } from '../../http';
-import { limitByIp } from '../../rate-limit-utils';
-import { AI_ENABLED, INTERNAL_API_KEY } from '../../env';
-import { safeEqual } from '../../authz';
+import type { VercelRequest, VercelResponse } from '../../../types/vercel.js';
+import { supabaseAdmin } from '../../supabase-admin.js';
+import { getAIProvider } from '../../ai-provider.js';
+import { loadOwnStorageImage } from '../../image-guard.js';
+import { fail, parseBody, rejectMethod } from '../../http.js';
+import { limitByIp } from '../../rate-limit-utils.js';
+import { AI_ENABLED, INTERNAL_API_KEY } from '../../env.js';
+import { safeEqual } from '../../authz.js';
 
 /**
  * POST /api/ai?action=process-job — procesa un job de IA concreto. Lo invoca el

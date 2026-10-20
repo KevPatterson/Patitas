@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import type { supabaseAdmin } from './supabase-admin';
+import type { supabaseAdmin } from './supabase-admin.js';
 
 /**
  * Comparación de cadenas en tiempo constante.

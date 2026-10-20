@@ -4,7 +4,7 @@ import {
   detectImage,
   MAX_AVATAR_BYTES,
   MAX_IMAGE_BYTES,
-} from './image-guard';
+} from './image-guard.js';
 
 /**
  * Saneado de imágenes en el servidor.

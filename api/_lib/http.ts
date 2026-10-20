@@ -1,6 +1,6 @@
 import type { ZodType } from 'zod';
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { IS_PRODUCTION } from './env';
+import type { VercelRequest, VercelResponse } from '../types/vercel.js';
+import { IS_PRODUCTION } from './env.js';
 
 /**
  * Utilidades HTTP compartidas por todos los endpoints.

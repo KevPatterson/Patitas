@@ -1,12 +1,12 @@
-import type { VercelRequest, VercelResponse } from './types/vercel';
-import { rejectMethod } from './_lib/http';
-import { AI_ENABLED, providerAvailable } from './_lib/env';
-import { handleCalculateMatches } from './_lib/ai/handlers/calculate-matches';
-import { handleCreateMatch } from './_lib/ai/handlers/create-match';
-import { handleDetectDuplicates } from './_lib/ai/handlers/detect-duplicates';
-import { handleExtractFromImage } from './_lib/ai/handlers/extract-from-image';
-import { handleProcessPublication } from './_lib/ai/handlers/process-publication';
-import { handleProcessJob } from './_lib/ai/handlers/process-job';
+import type { VercelRequest, VercelResponse } from './types/vercel.js';
+import { rejectMethod } from './_lib/http.js';
+import { AI_ENABLED, providerAvailable } from './_lib/env.js';
+import { handleCalculateMatches } from './_lib/ai/handlers/calculate-matches.js';
+import { handleCreateMatch } from './_lib/ai/handlers/create-match.js';
+import { handleDetectDuplicates } from './_lib/ai/handlers/detect-duplicates.js';
+import { handleExtractFromImage } from './_lib/ai/handlers/extract-from-image.js';
+import { handleProcessPublication } from './_lib/ai/handlers/process-publication.js';
+import { handleProcessJob } from './_lib/ai/handlers/process-job.js';
 
 export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 

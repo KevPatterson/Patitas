@@ -1,7 +1,7 @@
-import type { VercelResponse } from '../types/vercel';
-import type { VercelRequest } from '../types/vercel';
-import { consumeRateLimit, rateLimitHeaders, type RateLimitResult } from './rate-limit';
-import { fail, getClientIp } from './http';
+import type { VercelResponse } from '../types/vercel.js';
+import type { VercelRequest } from '../types/vercel.js';
+import { consumeRateLimit, rateLimitHeaders, type RateLimitResult } from './rate-limit.js';
+import { fail, getClientIp } from './http.js';
 
 /**
  * Aplicación del rate limit a una petición concreta.

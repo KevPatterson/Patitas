@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../../../types/vercel';
-import { supabaseAdmin } from '../../supabase-admin';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../../http';
-import { limitAiByUser, limitByIp } from '../../rate-limit-utils';
-import { fetchRemoteImage } from '../../url-guard';
-import { toImagePayload } from '../../image-guard';
-import { aiProviderIsReal, AI_ENABLED, providerAvailable } from '../../env';
-import { getAIProvider } from '../../ai-provider';
+import type { VercelRequest, VercelResponse } from '../../../types/vercel.js';
+import { supabaseAdmin } from '../../supabase-admin.js';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../../http.js';
+import { limitAiByUser, limitByIp } from '../../rate-limit-utils.js';
+import { fetchRemoteImage } from '../../url-guard.js';
+import { toImagePayload } from '../../image-guard.js';
+import { aiProviderIsReal, AI_ENABLED, providerAvailable } from '../../env.js';
+import { getAIProvider } from '../../ai-provider.js';
 
 /**
  * POST /api/ai?action=extract-from-image — OCR + Computer Vision para autocompletar el

@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from './types/vercel';
-import { supabaseAdmin } from './_lib/supabase-admin';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from './_lib/http';
-import { limitByIp, limitByUser } from './_lib/rate-limit-utils';
-import { canManagePublication, getActor, loadPublication } from './_lib/authz';
-import { sanitizeImage } from './_lib/image-process';
-import { MAX_IMAGES } from '../src/lib/constants/labels';
+import type { VercelRequest, VercelResponse } from './types/vercel.js';
+import { supabaseAdmin } from './_lib/supabase-admin.js';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from './_lib/http.js';
+import { limitByIp, limitByUser } from './_lib/rate-limit-utils.js';
+import { canManagePublication, getActor, loadPublication } from './_lib/authz.js';
+import { sanitizeImage } from './_lib/image-process.js';
+import { MAX_IMAGES } from '../src/lib/constants/labels.js';
 
 /**
  * POST /api/uploads?action=<publication-image|avatar|delete-image>

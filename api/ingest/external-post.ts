@@ -1,15 +1,15 @@
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { fail, internalError, json, rejectMethod } from '../_lib/http';
-import { limitByIp } from '../_lib/rate-limit-utils';
+import type { VercelRequest, VercelResponse } from '../types/vercel.js';
+import { supabaseAdmin } from '../_lib/supabase-admin.js';
+import { fail, internalError, json, rejectMethod } from '../_lib/http.js';
+import { limitByIp } from '../_lib/rate-limit-utils.js';
 import {
   ingestExternalPostSchema,
   sanitizeExternalText,
   validateHmacTimestamp,
   type IngestExternalPostInput,
-} from '../../src/lib/validations/ingest';
-import { getAIProvider } from '../_lib/ai-provider';
-import { canonicalIngestPayload } from '../_lib/ingest-hmac';
+} from '../../src/lib/validations/ingest.js';
+import { getAIProvider } from '../_lib/ai-provider.js';
+import { canonicalIngestPayload } from '../_lib/ingest-hmac.js';
 
 const INGEST_HMAC_SECRET = process.env.INGEST_HMAC_SECRET;
 const INGEST_AUTOPUBLISH = process.env.INGEST_AUTOPUBLISH === 'true';

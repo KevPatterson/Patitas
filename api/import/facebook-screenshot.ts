@@ -1,9 +1,9 @@
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { fail, internalError, json, requireAuth, rejectMethod } from '../_lib/http';
-import { limitByIp, limitByUser } from '../_lib/rate-limit-utils';
-import { detectImage, containsGpsMetadata, MAX_IMAGE_BYTES } from '../_lib/image-guard';
-import { getAIProvider, type VisionResult } from '../_lib/ai-provider';
+import type { VercelRequest, VercelResponse } from '../types/vercel.js';
+import { supabaseAdmin } from '../_lib/supabase-admin.js';
+import { fail, internalError, json, requireAuth, rejectMethod } from '../_lib/http.js';
+import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';
+import { detectImage, containsGpsMetadata, MAX_IMAGE_BYTES } from '../_lib/image-guard.js';
+import { getAIProvider, type VisionResult } from '../_lib/ai-provider.js';
 
 interface ScreenshotImportResponse {
   success: boolean;

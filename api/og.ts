@@ -1,5 +1,5 @@
-import type { VercelRequest, VercelResponse } from './types/vercel';
-import { getSupabasePublic } from './_lib/supabase-public';
+import type { VercelRequest, VercelResponse } from './types/vercel.js';
+import { getSupabasePublic } from './_lib/supabase-public.js';
 
 /**
  * GET /api/og?slug=<slug> — HTML con Open Graph para crawlers (tarea 6.1).

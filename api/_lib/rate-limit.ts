@@ -1,4 +1,4 @@
-import { REDIS_CONFIG } from './env';
+import { REDIS_CONFIG } from './env.js';
 
 /**
  * Rate limiting para las Vercel Functions.

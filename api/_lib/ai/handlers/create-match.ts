@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../../../types/vercel';
-import { supabaseAdmin } from '../../supabase-admin';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../../http';
-import { limitAiByUser, limitByIp } from '../../rate-limit-utils';
-import { actorOwnsAnyPublication, getActor, isModerator } from '../../authz';
+import type { VercelRequest, VercelResponse } from '../../../types/vercel.js';
+import { supabaseAdmin } from '../../supabase-admin.js';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../../http.js';
+import { limitAiByUser, limitByIp } from '../../rate-limit-utils.js';
+import { actorOwnsAnyPublication, getActor, isModerator } from '../../authz.js';
 
 /**
  * POST /api/ai?action=create-match — crea una coincidencia entre dos publicaciones.

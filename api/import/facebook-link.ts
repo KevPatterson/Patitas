@@ -1,16 +1,16 @@
-import type { VercelRequest, VercelResponse } from '../types/vercel';
-import { supabaseAdmin } from '../_lib/supabase-admin';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http';
-import { limitByIp, limitByUser } from '../_lib/rate-limit-utils';
-import { assertSafeRemoteUrl, fetchRemoteImage } from '../_lib/url-guard';
-import { toImagePayload } from '../_lib/image-guard';
-import { aiProviderIsReal, AI_ENABLED } from '../_lib/env';
+import type { VercelRequest, VercelResponse } from '../types/vercel.js';
+import { supabaseAdmin } from '../_lib/supabase-admin.js';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http.js';
+import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';
+import { assertSafeRemoteUrl, fetchRemoteImage } from '../_lib/url-guard.js';
+import { toImagePayload } from '../_lib/image-guard.js';
+import { aiProviderIsReal, AI_ENABLED } from '../_lib/env.js';
 import {
   facebookLinkImportSchema,
   extractOpenGraphMetadata,
   FACEBOOK_IMPORT_CONSTANTS,
-} from '../../src/lib/validations/facebook-import';
-import { getAIProvider } from '../_lib/ai-provider';
+} from '../../src/lib/validations/facebook-import.js';
+import { getAIProvider } from '../_lib/ai-provider.js';
 
 /**
  * POST /api/import/facebook-link — importa metadatos Open Graph de un enlace.

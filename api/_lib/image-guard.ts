@@ -1,5 +1,5 @@
-import type { ImagePayload } from './ai-provider';
-import { fetchRemoteImage } from './url-guard';
+import type { ImagePayload } from './ai-provider.js';
+import { fetchRemoteImage } from './url-guard.js';
 
 /**
  * Validación de imágenes por contenido real (magic bytes), no por el MIME
