@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { PawPrint } from 'lucide-react';
 import { AuthCard } from '../../components/ui/auth-card';
 import { Button, LinkButton } from '../../components/ui/button';
@@ -10,11 +10,15 @@ import { loginSchema, type LoginInput } from '../../lib/validations/auth';
 import { signInWithPassword, signInWithGoogle } from '../../lib/supabase/auth';
 import { loginErrorMessage } from '../../lib/auth/error-messages';
 import { setPageMeta } from '../../lib/seo/page-meta';
+import { safeInternalPath } from '../../lib/utils/safe-url';
 import { useEffect } from 'react';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
+  // Destino posterior al login: solo rutas internas (evita open redirect).
+  const next = safeInternalPath(searchParams.get('next'));
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
   useEffect(() => {
@@ -29,7 +33,7 @@ export function LoginPage() {
     setServerError(null);
     try {
       await signInWithPassword(values.email, values.password);
-      navigate('/publicar', { replace: true });
+      navigate(next, { replace: true });
     } catch (error) {
       // Mensaje genérico: no se distingue "no existe" de "contraseña incorrecta"
       // ni de "correo sin confirmar" (evita enumeración de cuentas).
@@ -40,6 +44,9 @@ export function LoginPage() {
   const handleGoogle = async () => {
     setServerError(null);
     try {
+      // El redirect de OAuth no admite query en la allowlist de Supabase: el
+      // destino se guarda y /auth/callback lo recupera.
+      window.sessionStorage.setItem('patitas:auth-next', next);
       await signInWithGoogle();
     } catch (error) {
       setServerError(loginErrorMessage(error));

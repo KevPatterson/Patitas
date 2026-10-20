@@ -1248,7 +1248,7 @@ export function PublishPage() {
             <h2 className="font-display text-2xl font-extrabold text-foreground">Necesitas iniciar sesión</h2>
             <p className="text-sm text-foreground/70">La publicación requiere una sesión autenticada para guardar tu autoría y aplicar RLS.</p>
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <LinkButton href="/auth/login">Iniciar sesión</LinkButton>
+              <LinkButton href={`/auth/login?next=${encodeURIComponent('/publicar')}`}>Iniciar sesión</LinkButton>
               <LinkButton href="/auth/register" variant="secondary">Crear cuenta</LinkButton>
             </div>
           </div>

@@ -30,7 +30,9 @@ export function CallbackPage() {
         // Destino posterior al login. Se acepta SOLO una ruta interna: `next=//evil.com`
         // o `next=https://evil.com` serían open redirect, así que cualquier cosa que
         // no sea una ruta relativa simple cae al inicio.
-        const next = safeInternalPath(params.get('next'));
+        const storedNext = window.sessionStorage.getItem('patitas:auth-next');
+        window.sessionStorage.removeItem('patitas:auth-next');
+        const next = safeInternalPath(params.get('next') ?? storedNext);
 
         navigate(next, { replace: true });
       } catch (e) {

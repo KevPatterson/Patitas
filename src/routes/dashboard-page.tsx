@@ -63,7 +63,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth/login', { replace: true });
+      navigate(`/auth/login?next=${encodeURIComponent('/dashboard')}`, { replace: true });
     }
   }, [authLoading, user, navigate]);
 

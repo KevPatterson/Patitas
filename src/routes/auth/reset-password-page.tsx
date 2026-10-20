@@ -32,7 +32,7 @@ export function ResetPasswordPage() {
       await updatePassword(values.password);
       setSuccessMessage('✨ Contraseña actualizada correctamente.');
       setTimeout(() => {
-        navigate('/publicar', { replace: true });
+        navigate('/', { replace: true });
       }, 1500);
     } catch (error) {
       setServerError(error instanceof Error ? error.message : 'No pudimos actualizar tu contraseña.');

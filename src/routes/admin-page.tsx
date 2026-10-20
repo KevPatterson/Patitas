@@ -224,7 +224,7 @@ export function AdminPage() {
           <p className="text-foreground/70 mb-6">
             Debes iniciar sesión con una cuenta autorizada para acceder al panel administrativo.
           </p>
-          <Link to="/auth/login">
+          <Link to={`/auth/login?next=${encodeURIComponent('/admin')}`}>
             <Button variant="primary">Iniciar sesión</Button>
           </Link>
         </div>
