@@ -69,6 +69,13 @@ const AdoptionsPage = lazy(() =>
 const HowItWorksPage = lazy(() =>
   import('../routes/how-it-works-page').then((m) => ({ default: m.HowItWorksPage }))
 );
+const FaqPage = lazy(() => import('../routes/faq-page').then((m) => ({ default: m.FaqPage })));
+const SecurityPage = lazy(() =>
+  import('../routes/security-page').then((m) => ({ default: m.SecurityPage }))
+);
+const ContactPage = lazy(() =>
+  import('../routes/contact-page').then((m) => ({ default: m.ContactPage }))
+);
 const DashboardPage = lazy(() =>
   import('../routes/dashboard-page').then((m) => ({ default: m.DashboardPage }))
 );
@@ -152,6 +159,9 @@ export default function App() {
             <Route path="/admin/publicaciones/:id" element={<AdminPublicationPage />} />
             <Route path="/notificaciones" element={<NotificationsPage />} />
             <Route path="/como-funciona" element={<HowItWorksPage />} />
+            <Route path="/preguntas-frecuentes" element={<FaqPage />} />
+            <Route path="/seguridad" element={<SecurityPage />} />
+            <Route path="/contacto" element={<ContactPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

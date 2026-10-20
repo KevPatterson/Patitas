@@ -44,6 +44,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     { loc: '/adopciones', priority: '0.8' },
     { loc: '/mapa', priority: '0.6' },
     { loc: '/como-funciona', priority: '0.4' },
+    { loc: '/preguntas-frecuentes', priority: '0.4' },
+    { loc: '/seguridad', priority: '0.4' },
+    { loc: '/contacto', priority: '0.4' },
   ];
 
   let publications: SitemapRow[] = [];
