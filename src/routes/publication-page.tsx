@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { TextareaField } from '../components/ui/textarea-field';
 import { StatusBadge } from '../components/ui/status-badge';
 import { CatLoader } from '../components/ui/cat-loader';
+import { Logo } from '../components/Logo';
 import { ProcessingStatusBadge } from '../components/ai/processing-status';
 import { DuplicateWarning } from '../components/ai/duplicate-warning';
 import { MatchesPanel } from '../components/publications/matches-panel';
@@ -335,8 +336,8 @@ export function PublicationPage() {
                     className="h-96 w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-96 items-center justify-center bg-foreground/5 text-foreground/20">
-                    <PawPrint size={64} strokeWidth={1.5} />
+                  <div className="flex h-96 items-center justify-center bg-foreground/5" aria-hidden="true">
+                    <Logo variant="mark" size={80} className="opacity-50" />
                   </div>
                 )}
               </div>
@@ -418,8 +419,8 @@ export function PublicationPage() {
                             {match.publication.coverImageUrl ? (
                               <img src={match.publication.coverImageUrl} alt={match.publication.title} className="h-full w-full object-cover" />
                             ) : (
-                              <div className="flex h-full items-center justify-center text-foreground/30">
-                                <PawPrint size={28} strokeWidth={1.5} />
+                              <div className="flex h-full items-center justify-center" aria-hidden="true">
+                                <Logo variant="mark" size={44} className="opacity-50" />
                               </div>
                             )}
                           </div>

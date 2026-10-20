@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { PawPrint, MapPin, Calendar } from 'lucide-react';
 import type { PublicationSummary } from '../../lib/supabase/publication-search';
 import { StatusBadge } from '../ui/status-badge';
+import { Logo } from '../Logo';
 import { SPECIES_LABELS } from '../../lib/constants/labels';
 
 type PublicationCardProps = {
@@ -38,8 +39,8 @@ export function PublicationCard({ publication, distance }: PublicationCardProps)
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-foreground/20">
-            <PawPrint className="size-16 animate-paw-bounce" aria-hidden="true" strokeWidth={1.5} />
+          <div className="flex h-full w-full items-center justify-center" aria-hidden="true">
+            <Logo variant="mark" size={64} className="opacity-50" />
           </div>
         )}
         
