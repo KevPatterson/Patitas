@@ -34,7 +34,12 @@ export async function signInWithPassword(email: string, password: string) {
 export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${window.location.origin}/auth/callback` },
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+      // Fuerza el selector de cuenta: sin esto Google reutiliza en silencio la
+      // última sesión del navegador y el usuario no puede elegir otra cuenta.
+      queryParams: { prompt: 'select_account' },
+    },
   });
   if (error) throw error;
   return data;
