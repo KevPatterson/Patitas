@@ -102,9 +102,9 @@ export function AdminMetrics() {
         { count: inactiveSources },
         { count: trustedSources },
       ] = await Promise.all([
-        supabase.from('external_posts').select('*', { count: 'exact', head: true }).eq('status', 'PUBLISHED').gte('created_at', todayStart),
-        supabase.from('external_posts').select('*', { count: 'exact', head: true }).eq('status', 'PUBLISHED').gte('created_at', weekStart),
-        supabase.from('external_posts').select('*', { count: 'exact', head: true }).eq('status', 'PUBLISHED').gte('created_at', monthStart),
+        supabase.from('external_posts').select('*', { count: 'exact', head: true }).eq('status', 'PUBLISHED').gte('fetched_at', todayStart),
+        supabase.from('external_posts').select('*', { count: 'exact', head: true }).eq('status', 'PUBLISHED').gte('fetched_at', weekStart),
+        supabase.from('external_posts').select('*', { count: 'exact', head: true }).eq('status', 'PUBLISHED').gte('fetched_at', monthStart),
         supabase.from('external_posts').select('status').in('status', ['PUBLISHED', 'REJECTED']),
         supabase.from('external_posts').select('confidence').eq('status', 'PUBLISHED'),
         supabase.from('duplicate_detections').select('*', { count: 'exact', head: true }),

@@ -166,10 +166,20 @@ export function AdminPage() {
         body: JSON.stringify({ action, id, ...extra }),
       });
 
-      const result = await response.json();
+      const raw = await response.text();
+      let result: { error?: string } = {};
+      try {
+        result = raw ? JSON.parse(raw) : {};
+      } catch {
+        result = {};
+      }
 
       if (!response.ok) {
-        throw new Error(result.error || 'Error en la acción');
+        const fallback =
+          response.status === 404
+            ? 'No se encontró la API local. Ejecuta `vercel dev` para servir /api.'
+            : `Error en la acción (${response.status})`;
+        throw new Error(result.error || fallback);
       }
 
       refreshDashboard();
