@@ -47,6 +47,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     { loc: '/preguntas-frecuentes', priority: '0.4' },
     { loc: '/seguridad', priority: '0.4' },
     { loc: '/contacto', priority: '0.4' },
+    { loc: '/privacidad', priority: '0.3' },
+    { loc: '/terminos', priority: '0.3' },
+    { loc: '/cookies', priority: '0.3' },
+    { loc: '/accesibilidad', priority: '0.3' },
   ];
 
   let publications: SitemapRow[] = [];

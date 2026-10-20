@@ -76,6 +76,16 @@ const SecurityPage = lazy(() =>
 const ContactPage = lazy(() =>
   import('../routes/contact-page').then((m) => ({ default: m.ContactPage }))
 );
+const PrivacyPage = lazy(() =>
+  import('../routes/privacy-page').then((m) => ({ default: m.PrivacyPage }))
+);
+const TermsPage = lazy(() => import('../routes/terms-page').then((m) => ({ default: m.TermsPage })));
+const CookiesPage = lazy(() =>
+  import('../routes/cookies-page').then((m) => ({ default: m.CookiesPage }))
+);
+const AccessibilityPage = lazy(() =>
+  import('../routes/accessibility-page').then((m) => ({ default: m.AccessibilityPage }))
+);
 const DashboardPage = lazy(() =>
   import('../routes/dashboard-page').then((m) => ({ default: m.DashboardPage }))
 );
@@ -162,6 +172,10 @@ export default function App() {
             <Route path="/preguntas-frecuentes" element={<FaqPage />} />
             <Route path="/seguridad" element={<SecurityPage />} />
             <Route path="/contacto" element={<ContactPage />} />
+            <Route path="/privacidad" element={<PrivacyPage />} />
+            <Route path="/terminos" element={<TermsPage />} />
+            <Route path="/cookies" element={<CookiesPage />} />
+            <Route path="/accesibilidad" element={<AccessibilityPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
