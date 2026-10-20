@@ -30,9 +30,14 @@ function upsertMeta(name: string, content: string, property = false) {
   element.setAttribute('content', content);
 }
 
-function removeMeta(name: string) {
-  document.head.querySelector(`meta[name="${name}"]`)?.remove();
+function removeMeta(name: string, property = false) {
+  const selector = property ? `meta[property="${name}"]` : `meta[name="${name}"]`;
+  document.head.querySelector(selector)?.remove();
 }
+
+const SITE_NAME = 'Patitas';
+const OG_LOCALE = 'es_ES';
+const DEFAULT_OG_IMAGE = '/og-image.png';
 
 /** Convierte una ruta relativa en URL absoluta: los crawlers no aceptan relativas. */
 function absoluteUrl(value: string): string {
@@ -46,13 +51,32 @@ export function setPageMeta({ title, description, canonicalPath, image, noindex 
   upsertMeta('description', description);
   upsertMeta('og:title', title, true);
   upsertMeta('og:description', description, true);
+  upsertMeta('og:site_name', SITE_NAME, true);
+  upsertMeta('og:locale', OG_LOCALE, true);
+  upsertMeta('twitter:card', 'summary_large_image');
   upsertMeta('twitter:title', title);
   upsertMeta('twitter:description', description);
 
+  // Siempre hay imagen: si la página no aporta una, se vuelve a la genérica.
+  // Así no se queda pegada la foto de la publicación anterior al navegar.
+  const imageAbsolute = absoluteUrl(image ?? DEFAULT_OG_IMAGE);
+  upsertMeta('og:image', imageAbsolute, true);
+  upsertMeta('og:image:alt', title, true);
+  upsertMeta('twitter:image', imageAbsolute);
+  upsertMeta('twitter:image:alt', title);
+
   if (image) {
-    const absolute = absoluteUrl(image);
-    upsertMeta('og:image', absolute, true);
-    upsertMeta('twitter:image', absolute);
+    // Las fotos de publicaciones no son 1200x630: declarar esas medidas sería
+    // mentir al crawler.
+    removeMeta('og:image:secure_url', true);
+    removeMeta('og:image:type', true);
+    removeMeta('og:image:width', true);
+    removeMeta('og:image:height', true);
+  } else {
+    upsertMeta('og:image:secure_url', imageAbsolute, true);
+    upsertMeta('og:image:type', 'image/png', true);
+    upsertMeta('og:image:width', '1200', true);
+    upsertMeta('og:image:height', '630', true);
   }
 
   // `noindex` se pone y se quita explícitamente: al navegar de una publicación
@@ -64,6 +88,7 @@ export function setPageMeta({ title, description, canonicalPath, image, noindex 
   }
 
   if (canonicalPath) {
+    const canonicalUrl = absoluteUrl(canonicalPath);
     let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
 
     if (!canonical) {
@@ -72,6 +97,9 @@ export function setPageMeta({ title, description, canonicalPath, image, noindex 
       document.head.appendChild(canonical);
     }
 
-    canonical.href = absoluteUrl(canonicalPath);
+    canonical.href = canonicalUrl;
+    // `og:url` debe coincidir con el canonical; si no, algunos crawlers
+    // agrupan la tarjeta bajo la URL equivocada.
+    upsertMeta('og:url', canonicalUrl, true);
   }
 }

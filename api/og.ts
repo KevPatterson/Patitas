@@ -20,7 +20,12 @@ import { supabaseAdmin } from './_lib/supabase-admin';
  */
 
 const SITE_URL = (process.env.VITE_SITE_URL ?? 'https://patitass.vercel.app').replace(/\/$/, '');
+const SUPABASE_URL = (process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? '').replace(
+  /\/$/,
+  ''
+);
 const SITE_NAME = 'Patitas';
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
 
 const TYPE_LABEL: Record<string, string> = {
   LOST: 'Mascota perdida',
@@ -54,11 +59,22 @@ function summarize(text: string | null | undefined, maxLength = 180): string {
 function renderHtml(input: {
   title: string;
   description: string;
-  imageUrl: string | null;
+  imageUrl: string;
+  imageIsDefault: boolean;
   canonicalUrl: string;
   noindex: boolean;
 }): string {
-  const { title, description, imageUrl, canonicalUrl, noindex } = input;
+  const { title, description, imageUrl, imageIsDefault, canonicalUrl, noindex } = input;
+  // Solo la imagen genérica mide exactamente 1200x630. Las fotos subidas por
+  // los usuarios tienen otras proporciones y declarar medidas falsas descuadra
+  // la tarjeta en algunas redes.
+  const dimensionTags = imageIsDefault
+    ? `
+<meta property="og:image:secure_url" content="${escapeHtml(imageUrl)}" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />`
+    : '';
 
   return `<!doctype html>
 <html lang="es">
@@ -70,16 +86,18 @@ function renderHtml(input: {
 ${noindex ? '<meta name="robots" content="noindex, nofollow" />' : ''}
 <meta name="description" content="${escapeHtml(description)}" />
 <meta property="og:type" content="article" />
-<meta property="og:locale" content="es_CU" />
+<meta property="og:locale" content="es_ES" />
 <meta property="og:site_name" content="${escapeHtml(SITE_NAME)}" />
 <meta property="og:title" content="${escapeHtml(title)}" />
 <meta property="og:description" content="${escapeHtml(description)}" />
 <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
-${imageUrl ? `<meta property="og:image" content="${escapeHtml(imageUrl)}" />\n<meta property="og:image:alt" content="${escapeHtml(title)}" />\n<meta property="og:image:width" content="1200" />\n<meta property="og:image:height" content="630" />` : ''}
-<meta name="twitter:card" content="${imageUrl ? 'summary_large_image' : 'summary'}" />
+<meta property="og:image" content="${escapeHtml(imageUrl)}" />
+<meta property="og:image:alt" content="${escapeHtml(title)}" />${dimensionTags}
+<meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${escapeHtml(title)}" />
 <meta name="twitter:description" content="${escapeHtml(description)}" />
-${imageUrl ? `<meta name="twitter:image" content="${escapeHtml(imageUrl)}" />` : ''}
+<meta name="twitter:image" content="${escapeHtml(imageUrl)}" />
+<meta name="twitter:image:alt" content="${escapeHtml(title)}" />
 </head>
 <body>
 <p><a href="${escapeHtml(canonicalUrl)}">${escapeHtml(title)}</a></p>
@@ -109,7 +127,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       renderHtml({
         title: `Publicación no encontrada · ${SITE_NAME}`,
         description: 'Este enlace no corresponde a ninguna publicación de Patitas.',
-        imageUrl: null,
+        imageUrl: DEFAULT_OG_IMAGE,
+        imageIsDefault: true,
         canonicalUrl: `${SITE_URL}/`,
         noindex: true,
       })
@@ -135,7 +154,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         renderHtml({
           title: `Publicación no encontrada · ${SITE_NAME}`,
           description: 'La publicación que buscas no existe o se ha retirado.',
-          imageUrl: null,
+          imageUrl: DEFAULT_OG_IMAGE,
+          imageIsDefault: true,
           canonicalUrl,
           noindex: true,
         })
@@ -161,9 +181,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       publication.publication_images?.find((image) => image.is_cover) ??
       publication.publication_images?.[0];
 
-    const imageUrl = cover
-      ? `${process.env.SUPABASE_URL ?? ''}/storage/v1/object/public/pet-images/${cover.storage_path}`
-      : null;
+    const coverUrl =
+      cover && SUPABASE_URL
+        ? `${SUPABASE_URL}/storage/v1/object/public/pet-images/${cover.storage_path}`
+        : null;
+
+    if (cover && !SUPABASE_URL) {
+      console.warn('[og] falta SUPABASE_URL/VITE_SUPABASE_URL: se usa la imagen genérica.');
+    }
+
+    const imageUrl = coverUrl ?? DEFAULT_OG_IMAGE;
 
     const typeLabel = TYPE_LABEL[publication.type] ?? 'Publicación';
     const where = province ? ` en ${province}` : '';
@@ -172,11 +199,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // sirve para la tarjeta (el enlace puede estar circulando) pero con noindex.
     const isPublic = publication.status === 'ACTIVE';
 
-    return res.status(isPublic ? 200 : 200).send(
+    return res.status(200).send(
       renderHtml({
         title: `${publication.title} · ${typeLabel}${where} · ${SITE_NAME}`,
         description: summarize(publication.description) || `${typeLabel}${where} en ${SITE_NAME}.`,
-        imageUrl: imageUrl || null,
+        imageUrl,
+        imageIsDefault: !coverUrl,
         canonicalUrl,
         noindex: !isPublic,
       })
@@ -189,7 +217,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         title: `Patitas · Que ninguna patita se quede sin casa`,
         description:
           'Plataforma comunitaria para reencontrar mascotas perdidas, reportar encontradas y promover adopciones responsables.',
-        imageUrl: null,
+        imageUrl: DEFAULT_OG_IMAGE,
+        imageIsDefault: true,
         canonicalUrl,
         noindex: true,
       })

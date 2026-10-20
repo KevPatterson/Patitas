@@ -17,7 +17,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|Discordbot|LinkedInBot|Pinterest|redditbot|SkypeUriPreview|vkShare|Iframely|Embedly).*"
+          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|Discordbot|LinkedInBot|Pinterest|redditbot|SkypeUriPreview|vkShare|Iframely|Embedly|Mastodon|Bluesky|Signal|LineBot|Threads).*"
         }
       ],
       "destination": "/api/og?slug=:slug"
