@@ -100,6 +100,8 @@ Configura los secrets en GitHub:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
+Se acepta también el nombre legacy `TELEGRAM_SESSION_STRING` para la cadena de sesión. El workflow revisa antes de ejecutar que todos existan: si falta alguno, el step `Check required secrets` falla y los lista.
+
 ## Comportamiento
 
 - **Lectura incremental**: Usa `last_cursor` (message_id) para leer solo mensajes nuevos
@@ -117,6 +119,14 @@ Configura los secrets en GitHub:
 - **Service role solo en server**: Nunca expuesto al cliente
 
 ## Solución de problemas
+
+### "El secreto TELEGRAM_STRING_SESSION está vacío o no existe"
+GitHub no da error si un secret no existe: lo expande a cadena vacía. Si el step
+`Verify Telethon session` muestra `Data center: 0`, la cadena llegó vacía.
+
+1. Genera la cadena: `python generate_session.py` (usa `TELEGRAM_API_ID` y `TELEGRAM_API_HASH` del `.env`)
+2. Copia el valor que imprime, sin el prefijo `TELEGRAM_STRING_SESSION=`
+3. Guárdalo en GitHub → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** con el nombre `TELEGRAM_STRING_SESSION`
 
 ### "Session expired" / "Authorization lost"
 Regenera la StringSession ejecutando de nuevo `generate_session.py`

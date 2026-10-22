@@ -46,21 +46,63 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Check required secrets
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELEGRAM_STRING_SESSION: ${{ secrets.TELEGRAM_STRING_SESSION }}
+          # Nombre legacy aceptado por compatibilidad con la documentación antigua
+          TELEGRAM_SESSION_STRING: ${{ secrets.TELEGRAM_SESSION_STRING }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INGEST_API_URL: ${{ secrets.INGEST_API_URL }}
+          INGEST_HMAC_SECRET: ${{ secrets.INGEST_HMAC_SECRET }}
+        run: |
+          python -c "
+          import os
+          legacy_session = os.environ.get('TELEGRAM_SESSION_STRING', '').strip()
+          if not os.environ.get('TELEGRAM_STRING_SESSION', '').strip() and legacy_session:
+              print('Aviso: TELEGRAM_STRING_SESSION no está definido; se usará el nombre legacy TELEGRAM_SESSION_STRING')
+          required = ['TELEGRAM_API_ID', 'TELEGRAM_API_HASH', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'INGEST_API_URL', 'INGEST_HMAC_SECRET']
+          missing = [name for name in required if not os.environ.get(name, '').strip()]
+          if not os.environ.get('TELEGRAM_STRING_SESSION', '').strip() and not legacy_session:
+              missing.append('TELEGRAM_STRING_SESSION')
+          if missing:
+              print('::error::Faltan secrets en el repositorio: ' + ', '.join(missing))
+              print('Configúralos en Settings > Secrets and variables > Actions (Repository secrets).')
+              raise SystemExit(1)
+          print('Todos los secrets requeridos están presentes.')
+          "
+
       - name: Verify Telethon session
         working-directory: workers/telegram-collector
         env:
           # El secreto se pasa por entorno, nunca se interpola dentro del script
-          TELEGRAM_STRING_SESSION: ${{ secrets.TELEGRAM_STRING_SESSION }}
+          TELEGRAM_STRING_SESSION: ${{ secrets.TELEGRAM_STRING_SESSION || secrets.TELEGRAM_SESSION_STRING }}
         run: |
           python -c "
           import os
           import sys
           from telethon.sessions import StringSession
-          session = StringSession(os.environ['TELEGRAM_STRING_SESSION'])
+
+          raw = os.environ.get('TELEGRAM_STRING_SESSION', '').strip()
+          print(f'Longitud de la cadena de sesión recibida: {len(raw)} caracteres')
+
+          if not raw:
+              print('::error::El secreto TELEGRAM_STRING_SESSION está vacío o no existe')
+              print('Genera la cadena con workers/telegram-collector/generate_session.py y guárdala como Repository secret.')
+              sys.exit(1)
+
+          try:
+              session = StringSession(raw)
+          except ValueError as exc:
+              print(f'::error::La cadena no es una StringSession válida de Telethon: {exc}')
+              sys.exit(1)
+
           print('Session valid:', session.auth_key is not None)
           print('Data center:', session.dc_id)
           if session.auth_key is None:
-              print('ERROR: TELEGRAM_STRING_SESSION está vacía o es inválida')
+              print('::error::La cadena de sesión no contiene una auth_key utilizable')
               sys.exit(1)
           "
 
@@ -70,7 +112,7 @@ jobs:
           # Telegram API (obtener en https://my.telegram.org)
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-          TELEGRAM_STRING_SESSION: ${{ secrets.TELEGRAM_STRING_SESSION }}
+          TELEGRAM_STRING_SESSION: ${{ secrets.TELEGRAM_STRING_SESSION || secrets.TELEGRAM_SESSION_STRING }}
 
           # Supabase
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

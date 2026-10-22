@@ -414,7 +414,7 @@ Toda publicación importada muestra:
 | `FACEBOOK_ADAPTER_ENABLED` | No (false) | Feature flag adaptador C |
 | `TELEGRAM_API_ID` | Para worker | API ID de my.telegram.org |
 | `TELEGRAM_API_HASH` | Para worker | API Hash |
-| `TELEGRAM_STRING_SESSION` | Para worker | StringSession generada |
+| `TELEGRAM_STRING_SESSION` | Para worker | StringSession generada (alias legacy: `TELEGRAM_SESSION_STRING`) |
 
 ---
 
