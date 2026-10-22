@@ -3,8 +3,14 @@ import {
   GENERIC_LOGIN_ERROR,
   GENERIC_RESET_SENT,
   NETWORK_ERROR,
+  PHONE_CODE_ERROR,
+  PHONE_DISABLED_ERROR,
+  PHONE_GENERIC_ERROR,
+  PHONE_INVALID_NUMBER_ERROR,
+  PHONE_WHATSAPP_ERROR,
   RATE_LIMIT_ERROR,
   loginErrorMessage,
+  phoneAuthErrorMessage,
   registerErrorMessage,
   resetPasswordErrorMessage,
 } from '../error-messages';
@@ -93,5 +99,41 @@ describe('registerErrorMessage', () => {
   it('distingue red y rate limit', () => {
     expect(registerErrorMessage({ message: 'Failed to fetch' })).toBe(NETWORK_ERROR);
     expect(registerErrorMessage({ status: 429 })).toBe(RATE_LIMIT_ERROR);
+  });
+});
+
+describe('phoneAuthErrorMessage', () => {
+  it('explica un número inválido', () => {
+    expect(phoneAuthErrorMessage({ message: 'Invalid phone number' })).toBe(
+      PHONE_INVALID_NUMBER_ERROR
+    );
+  });
+
+  it('sugiere SMS cuando WhatsApp no está disponible', () => {
+    expect(phoneAuthErrorMessage({ message: 'Unsupported channel: whatsapp' })).toBe(
+      PHONE_WHATSAPP_ERROR
+    );
+  });
+
+  it('avisa cuando el acceso por teléfono está deshabilitado', () => {
+    expect(phoneAuthErrorMessage({ message: 'Phone signups not allowed' })).toBe(
+      PHONE_DISABLED_ERROR
+    );
+  });
+
+  it('explica un código inválido o expirado', () => {
+    expect(phoneAuthErrorMessage({ message: 'Token has expired or is invalid' })).toBe(
+      PHONE_CODE_ERROR
+    );
+  });
+
+  it('distingue red y rate limit', () => {
+    expect(phoneAuthErrorMessage({ message: 'Failed to fetch' })).toBe(NETWORK_ERROR);
+    expect(phoneAuthErrorMessage({ status: 429 })).toBe(RATE_LIMIT_ERROR);
+  });
+
+  it('usa un mensaje genérico para errores desconocidos', () => {
+    expect(phoneAuthErrorMessage({ message: 'Something unexpected' })).toBe(PHONE_GENERIC_ERROR);
+    expect(phoneAuthErrorMessage(null)).toBe(PHONE_GENERIC_ERROR);
   });
 });

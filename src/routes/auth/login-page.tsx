@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { PawPrint } from 'lucide-react';
 import { AuthCard } from '../../components/ui/auth-card';
+import { AuthMethodToggle, type AuthMethod } from '../../components/auth/auth-method-toggle';
+import { PhoneAuthForm } from '../../components/auth/phone-auth-form';
 import { Button, LinkButton } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { loginSchema, type LoginInput } from '../../lib/validations/auth';
@@ -17,6 +19,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [method, setMethod] = useState<AuthMethod>('email');
   // Destino posterior al login: solo rutas internas (evita open redirect).
   const next = safeInternalPath(searchParams.get('next'));
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
@@ -68,8 +71,19 @@ export function LoginPage() {
           </div>
         }
       >
-        <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
-          <TextField 
+        <div className="mb-5">
+          <AuthMethodToggle
+            value={method}
+            onChange={(nextMethod) => {
+              setMethod(nextMethod);
+              setServerError(null);
+            }}
+          />
+        </div>
+
+        {method === 'email' ? (
+          <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+            <TextField 
             label="Correo" 
             type="email" 
             autoComplete="email" 
@@ -137,7 +151,10 @@ export function LoginPage() {
             </svg>
             Continuar con Google
           </Button>
-        </form>
+          </form>
+        ) : (
+          <PhoneAuthForm mode="login" next={next} />
+        )}
       </AuthCard>
     </section>
   );

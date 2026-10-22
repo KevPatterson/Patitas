@@ -341,7 +341,7 @@ export function DashboardPage() {
             <div className="flex flex-col items-center gap-6 mb-6 pb-6 border-b-2 border-foreground/10">
               <AvatarUpload
                 currentAvatarUrl={avatarUrl}
-                userName={user.user_metadata?.username || user.email}
+                userName={user.user_metadata?.username || user.phone || user.email}
                 onUpload={handleAvatarUpload}
                 onDelete={handleAvatarDelete}
               />
@@ -355,7 +355,7 @@ export function DashboardPage() {
               <div className="flex items-start justify-between py-3 border-b border-foreground/5">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground/60 mb-1">Usuario</p>
-                  <p className="font-semibold text-foreground">{user.user_metadata?.username ?? '—'}</p>
+                  <p className="font-semibold text-foreground">{user.user_metadata?.username ?? user.phone ?? '—'}</p>
                 </div>
               </div>
               
@@ -368,8 +368,8 @@ export function DashboardPage() {
               
               <div className="flex items-start justify-between py-3 border-b border-foreground/5">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground/60 mb-1">Correo</p>
-                  <p className="font-semibold text-foreground">{user.email}</p>
+                  <p className="text-sm font-medium text-foreground/60 mb-1">Correo o teléfono</p>
+                  <p className="font-semibold text-foreground">{user.email ?? user.phone ?? '—'}</p>
                 </div>
               </div>
               <div className="flex items-start justify-between py-3">

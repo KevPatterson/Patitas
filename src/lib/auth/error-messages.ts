@@ -32,6 +32,21 @@ export const RATE_LIMIT_ERROR =
 export const NETWORK_ERROR =
   'No pudimos conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.';
 
+export const PHONE_GENERIC_ERROR =
+  'No pudimos completar la verificación. Revisa el número e inténtalo de nuevo.';
+
+export const PHONE_INVALID_NUMBER_ERROR =
+  'Ingresa un teléfono válido con código de país (por ejemplo, +53 5 123 4567).';
+
+export const PHONE_WHATSAPP_ERROR =
+  'El envío por WhatsApp no está disponible en este momento. Prueba con SMS.';
+
+export const PHONE_DISABLED_ERROR =
+  'El acceso por teléfono no está habilitado. Usa correo o Google para entrar.';
+
+export const PHONE_CODE_ERROR =
+  'El código no es válido o expiró. Pide uno nuevo e inténtalo otra vez.';
+
 /** Normaliza el error que devuelve Supabase (o un Error cualquiera). */
 function normalize(error: unknown): AuthErrorLike {
   if (!error) return null;
@@ -120,4 +135,57 @@ export function registerErrorMessage(error: unknown): string {
 
   // "already registered" / "already exists" → mismo mensaje que el éxito.
   return 'Revisa tu correo para confirmar la cuenta. Si ya tenías una, inicia sesión.';
+}
+
+/**
+ * Mensaje para el acceso por teléfono (SMS o WhatsApp).
+ *
+ * Los fallos de red, rate limit y configuración del proveedor se distinguen
+ * porque no revelan si el número tiene cuenta. El resto cae en un mensaje
+ * genérico para no filtrar información.
+ */
+export function phoneAuthErrorMessage(error: unknown): string {
+  const normalized = normalize(error);
+  const message = (normalized?.message ?? '').toLowerCase();
+
+  if (looksLikeNetworkError(normalized)) return NETWORK_ERROR;
+  if (looksLikeRateLimit(normalized)) return RATE_LIMIT_ERROR;
+
+  if (
+    message.includes('invalid phone') ||
+    message.includes('phone number') ||
+    normalized?.code === 'phone_invalid'
+  ) {
+    return PHONE_INVALID_NUMBER_ERROR;
+  }
+
+  if (
+    message.includes('whatsapp') ||
+    message.includes('unsupported channel') ||
+    message.includes('unsupported phone provider') ||
+    message.includes('channel')
+  ) {
+    return PHONE_WHATSAPP_ERROR;
+  }
+
+  if (
+    message.includes('signups not allowed') ||
+    message.includes('phone signups') ||
+    message.includes('phone provider') ||
+    message.includes('phone auth')
+  ) {
+    return PHONE_DISABLED_ERROR;
+  }
+
+  if (
+    message.includes('token has expired') ||
+    message.includes('invalid token') ||
+    message.includes('invalid otp') ||
+    message.includes('otp') ||
+    normalized?.code === 'otp_expired'
+  ) {
+    return PHONE_CODE_ERROR;
+  }
+
+  return PHONE_GENERIC_ERROR;
 }

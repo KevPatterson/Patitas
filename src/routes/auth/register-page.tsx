@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PawPrint } from 'lucide-react';
 import { AuthCard } from '../../components/ui/auth-card';
+import { AuthMethodToggle, type AuthMethod } from '../../components/auth/auth-method-toggle';
+import { PhoneAuthForm } from '../../components/auth/phone-auth-form';
 import { Button, LinkButton } from '../../components/ui/button';
 import { TextField } from '../../components/ui/text-field';
 import { registerSchema, type RegisterInput } from '../../lib/validations/auth';
@@ -13,6 +15,7 @@ import { setPageMeta } from '../../lib/seo/page-meta';
 export function RegisterPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [method, setMethod] = useState<AuthMethod>('email');
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) });
 
   useEffect(() => {
@@ -62,8 +65,20 @@ export function RegisterPage() {
           </div>
         }
       >
-        <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-          <TextField 
+        <div className="mb-5">
+          <AuthMethodToggle
+            value={method}
+            onChange={(nextMethod) => {
+              setMethod(nextMethod);
+              setServerError(null);
+              setSuccessMessage(null);
+            }}
+          />
+        </div>
+
+        {method === 'email' ? (
+          <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+            <TextField 
             label="Nombre" 
             autoComplete="name" 
             placeholder="Tu nombre" 
@@ -155,7 +170,10 @@ export function RegisterPage() {
           <p className="text-center text-xs leading-relaxed text-foreground/60 pt-2">
             Al registrarte aceptas que Patitas use tu perfil para publicaciones y seguimiento de casos.
           </p>
-        </form>
+          </form>
+        ) : (
+          <PhoneAuthForm mode="register" next="/" />
+        )}
       </AuthCard>
     </section>
   );

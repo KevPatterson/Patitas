@@ -15,6 +15,16 @@ export function notifyAvatarUpdated() {
 }
 
 /**
+ * Nombre de usuario de respaldo para cuentas sin correo (por ejemplo, acceso
+ * por teléfono). Se basa en el UUID para no chocar con el índice único.
+ */
+function fallbackUsername(user: User): string {
+  const emailPrefix = user.email?.split('@')[0]?.trim();
+  if (emailPrefix) return emailPrefix;
+  return `user_${user.id.replace(/-/g, '').slice(0, 12)}`;
+}
+
+/**
  * Devuelve la URL del avatar proveniente de un proveedor OAuth (Google, etc.).
  * Google expone la foto tanto como `avatar_url` como `picture`.
  */
@@ -45,7 +55,7 @@ export async function syncProfileFromAuth(user?: User | null): Promise<void> {
   const oauthAvatar = getOAuthAvatarUrl(effectiveUser);
   const meta = (effectiveUser.user_metadata ?? {}) as Record<string, unknown>;
   const fullName = typeof meta.full_name === 'string' ? meta.full_name : null;
-  const fallbackUsername = effectiveUser.email ? effectiveUser.email.split('@')[0] : 'usuario';
+  const usernameFallback = fallbackUsername(effectiveUser);
 
   const { data: existing } = await supabase
     .from('profiles')
@@ -55,7 +65,7 @@ export async function syncProfileFromAuth(user?: User | null): Promise<void> {
 
   if (!existing) {
     // El trigger debería haber creado el perfil; lo creamos como respaldo.
-    const username = (typeof meta.username === 'string' && meta.username) || fallbackUsername;
+    const username = (typeof meta.username === 'string' && meta.username) || usernameFallback;
     const { error: insertError } = await supabase
       .from('profiles')
       .upsert(
