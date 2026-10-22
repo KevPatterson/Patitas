@@ -46,17 +46,7 @@
     />
     <meta name="twitter:image" content="https://patitass.vercel.app/og-image.png" />
     <meta name="twitter:image:alt" content="Patitas · Que ninguna patita se quede sin casa" />
-    <script>
-      (function () {
-        var storageKey = 'patitas-theme';
-        var theme = localStorage.getItem(storageKey);
-        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var isDark = theme === 'dark' || (!theme && prefersDark);
-        document.documentElement.classList.toggle('dark', isDark);
-        var meta = document.getElementById('theme-color-meta');
-        if (meta) meta.setAttribute('content', isDark ? '#170d07' : '#ff8c42');
-      })();
-    </script>
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
