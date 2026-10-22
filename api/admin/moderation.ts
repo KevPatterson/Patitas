@@ -29,6 +29,8 @@ const moderationSchema = z
       'set-role',
       'approve-takedown',
       'reject-takedown',
+      'approve-import',
+      'reject-import',
     ]),
     id: z.string().uuid('El identificador no es válido'),
     reason: z
@@ -139,6 +141,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const audited = await audit('profile', { new_role: targetRole });
 
     return json(res, 200, { ok: true, role: targetRole, audited });
+  }
+
+  if (action === 'approve-import' || action === 'reject-import') {
+    // `id` es el id de un external_post (la cola de revisión de importaciones).
+    // Complementa el cierre de Fase 1: las importaciones sin auto-publicar nacen
+    // HIDDEN y solo un moderador las hace públicos (o las elimina) desde aquí.
+    const { data: post, error: postError } = await supabaseAdmin
+      .from('external_posts')
+      .select('id, publication_id, source_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (postError) {
+      return internalError(res, 'moderation/import-read', postError);
+    }
+
+    if (!post) {
+      return fail(res, 404, 'NOT_FOUND', 'Post externo no encontrado');
+    }
+
+    const approving = action === 'approve-import';
+
+    const { error: updatePostError } = await supabaseAdmin
+      .from('external_posts')
+      .update({ status: approving ? 'PUBLISHED' : 'REJECTED' })
+      .eq('id', id);
+
+    if (updatePostError) {
+      return internalError(res, 'moderation/import-update', updatePostError);
+    }
+
+    if (post.publication_id) {
+      const publicationUpdate = approving
+        ? { status: 'ACTIVE', import_review_status: 'MANUAL_APPROVED' }
+        : { status: 'DELETED', deleted_at: new Date().toISOString(), import_review_status: 'REJECTED' };
+
+      const { error: pubError } = await supabaseAdmin
+        .from('publications')
+        .update(publicationUpdate)
+        .eq('id', post.publication_id);
+
+      if (pubError) {
+        return internalError(res, 'moderation/import-publication', pubError);
+      }
+    }
+
+    const audited = await audit('external_post', {
+      source_id: post.source_id,
+      publication_id: post.publication_id,
+      decision: approving ? 'APPROVED' : 'REJECTED',
+    });
+
+    return json(res, 200, {
+      ok: true,
+      audited,
+      message: approving
+        ? 'Importación aprobada. La publicación ya es visible.'
+        : 'Importación rechazada. La publicación se ha eliminado.',
+    });
   }
 
   if (action === 'approve-takedown' || action === 'reject-takedown') {

@@ -2,8 +2,10 @@ import type { VercelRequest, VercelResponse } from '../types/vercel.js';
 import { supabaseAdmin } from '../_lib/supabase-admin.js';
 import { fail, internalError, json, requireAuth, rejectMethod } from '../_lib/http.js';
 import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';
-import { detectImage, containsGpsMetadata, MAX_IMAGE_BYTES } from '../_lib/image-guard.js';
+import { sanitizeImage } from '../_lib/image-process.js';
 import { getAIProvider, type VisionResult } from '../_lib/ai-provider.js';
+
+export const config = { api: { bodyParser: { sizeLimit: '8mb' } } };
 
 interface ScreenshotImportResponse {
   success: boolean;
@@ -52,35 +54,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
 
-  // Validación por CONTENIDO (magic bytes), no por `file.type`: el MIME lo envía
-  // el cliente y se puede falsificar (un .php renombrado a .jpg, o un SVG con
-  // script). Se rechazan SVG y GIF explícitamente.
-  const detected = detectImage(bytes, MAX_IMAGE_BYTES);
+  // Saneado completo: tipo real por magic bytes, rechazo de EXIF con GPS y
+  // reencodeo a WebP SIN metadatos. Antes esta vía subía el archivo ORIGINAL al
+  // bucket público: el EXIF/IPTC/XMP (modelo de cámara, fecha, miniatura) viajaba
+  // intacto y filtraba información del remitente. Es la misma regla que aplica
+  // /api/uploads desde la Fase 3; ante una captura había quedado sin cubrir.
+  const sanitized = await sanitizeImage(bytes, 'publication');
 
-  if (!detected.ok) {
-    return fail(res, 400, 'INVALID_INPUT', detected.reason);
-  }
-
-  // Comprobación redundante con la del endpoint de uploads: aquí entra un archivo
-  // que puede venir de una captura con GPS.
-  if (containsGpsMetadata(bytes)) {
-    return fail(
-      res,
-      400,
-      'INVALID_INPUT',
-      'La captura contiene datos de geolocalización (EXIF GPS). Vuelve a guardarla sin ubicación.'
-    );
+  if (!sanitized.ok) {
+    // GPS y formato inválido son errores del usuario (400); el resto, 422/500.
+    const status = sanitized.code === 'PROCESSING_FAILED' ? 422 : 400;
+    return fail(res, status, 'INVALID_INPUT', sanitized.reason, { code_detail: sanitized.code });
   }
 
   // Nombre generado en servidor (uuid). Nunca se usa el nombre original del
   // cliente: evita path traversal y filtración de datos en el nombre.
-  const extension = detected.mimeType === 'image/jpeg' ? 'jpg' : detected.mimeType.split('/')[1];
-  const filename = `facebook-imports/${auth.user.id}/${crypto.randomUUID()}.${extension}`;
+  const filename = `facebook-imports/${auth.user.id}/${crypto.randomUUID()}.webp`;
 
   const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
     .from('pet-images')
-    .upload(filename, Buffer.from(bytes), {
-      contentType: detected.mimeType,
+    .upload(filename, sanitized.bytes, {
+      contentType: sanitized.mimeType,
       upsert: false,
     });
 
@@ -93,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .getPublicUrl(uploadData.path);
 
   const imageUrl = publicUrlData.publicUrl;
-  const image = { bytes, mimeType: detected.mimeType, sourceUrl: imageUrl };
+  const image = { bytes: sanitized.bytes, mimeType: sanitized.mimeType, sourceUrl: imageUrl };
 
   // Procesar con OCR + Vision
   try {

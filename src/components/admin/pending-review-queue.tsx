@@ -78,15 +78,30 @@ export function PendingReviewQueue() {
   async function handleDecision(postId: string, decision: 'APPROVE' | 'REJECT', reason?: string) {
     setActionLoadingId(postId);
     try {
-      const { error } = await supabase.functions.invoke('admin-moderation', {
-        body: {
-          action: decision === 'APPROVE' ? 'approve-import' : 'reject-import',
-          id: postId,
-          reason,
+      // Endpoint correcto: /api/admin/moderation en Vercel (con JWT de sesión).
+      // Antes se llamaba a supabase.functions.invoke('admin-moderation'), que
+      // apunta a una Edge Function de Supabase inexistente: la cola nunca pudo
+      // aprobar ni rechazar importaciones.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      if (!token) throw new Error('No hay sesión activa');
+
+      const action = decision === 'APPROVE' ? 'approve-import' : 'reject-import';
+      const response = await fetch('/api/admin/moderation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({ action, id: postId, reason }),
       });
 
-      if (error) throw error;
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error en la acción');
+      }
 
       await loadQueue();
     } catch (error) {

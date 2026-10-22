@@ -298,8 +298,8 @@ function calculateConfidence(
 async function checkDuplicates(
   extracted: ExtractedData,
   _images: string[],
-  platform: 'TELEGRAM' | 'FACEBOOK_PUBLIC',
-  externalId: string
+  _platform: 'TELEGRAM' | 'FACEBOOK_PUBLIC',
+  _externalId: string
 ): Promise<{ isDuplicate: boolean; duplicateOf?: string; similarity: number }> {
   try {
     // Buscar por similitud de texto y ubicación
@@ -363,17 +363,10 @@ async function checkDuplicates(
     
     // Umbral de duplicado: 0.75 (75% similitud en campos clave)
     if (bestMatch && bestMatch.similarity >= 0.75) {
-      // Registrar en duplicate_detections
-      await supabaseAdmin.from('duplicate_detections').insert({
-        publication_a_id: bestMatch.id,
-        publication_b_id: '00000000-0000-0000-0000-000000000000', // placeholder, se actualiza al crear
-        similarity_score: Math.round(bestMatch.similarity * 100),
-        similar_text: true,
-        same_location: extracted.province ? true : false,
-        duplicate_probability: bestMatch.similarity,
-        metadata: { source_platform: platform, external_id: externalId },
-      });
-      
+      // No se inserta en duplicate_detections aquí: la publicación B aún no
+      // existe y antes se escribía un placeholder de UUID cero que contaminaba
+      // la tabla. El estado DUPLICATE de external_posts (con duplicate_of en
+      // `extracted`) ya deja constancia de la coincidencia.
       return { isDuplicate: true, duplicateOf: bestMatch.id, similarity: bestMatch.similarity };
     }
     
@@ -412,7 +405,6 @@ async function createPublication(
     (!AUTOPUBLISH_REQUIRE_IMAGE || hasImages) &&
     (!AUTOPUBLISH_REQUIRE_LOCATION || extracted.province);
   
-  const finalStatus = shouldAutoPublish ? 'PUBLISHED' : 'PENDING_REVIEW';
   const reviewStatus = shouldAutoPublish ? 'AUTO_APPROVED' : null;
   
   // Generar slug único
@@ -458,7 +450,12 @@ async function createPublication(
       approximate_lng: null,
       event_date: extracted.event_date ?? null,
       event_time_approx: extracted.event_time_approx ?? null,
-      status: finalStatus === 'PUBLISHED' ? 'ACTIVE' : 'ACTIVE', // PENDING_REVIEW se maneja via import_review_status
+      // Solo el auto-publicado nace visible. Sin revisión, la publicación es
+      // HIDDEN: la RLS solo expone ACTIVE/RESOLVED a anónimos, así que el
+      // contenido externo (texto de terceros, teléfonos extraídos por IA) no se
+      // publica hasta que un moderador lo apruebe (acción approve-import).
+      // Antes ambas ramas eran 'ACTIVE': la "cola de revisión" no retenía nada.
+      status: shouldAutoPublish ? 'ACTIVE' : 'HIDDEN',
       is_imported: true,
       source_platform: platform,
       source_url: sourceUrl,
