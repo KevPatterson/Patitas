@@ -312,7 +312,7 @@ function getTesseractProvider(): IAIProvider {
         };
       } catch (error) {
         console.error('Tesseract OCR error:', error);
-        throw new Error('OCR failed');
+        throw new Error('OCR failed', { cause: error });
       }
     },
 
@@ -416,7 +416,7 @@ function getGoogleVisionProvider(): IAIProvider {
         };
       } catch (error) {
         console.error('Google Vision OCR error:', error);
-        throw new Error('OCR failed');
+        throw new Error('OCR failed', { cause: error });
       }
     },
 
@@ -470,7 +470,7 @@ function getGoogleVisionProvider(): IAIProvider {
         };
       } catch (error) {
         console.error('Google Vision analysis error:', error);
-        throw new Error('Vision analysis failed');
+        throw new Error('Vision analysis failed', { cause: error });
       }
     },
 

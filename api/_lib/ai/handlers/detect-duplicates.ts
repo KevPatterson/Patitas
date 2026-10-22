@@ -269,7 +269,7 @@ function calculateSimilarity(
   const similarityScore = Math.min(score, 100);
 
   // Calcular probabilidad de duplicado
-  let probability = 0;
+  let probability: number;
 
   if (similarityScore >= 90) probability = 0.95;
   else if (similarityScore >= 80) probability = 0.85;
