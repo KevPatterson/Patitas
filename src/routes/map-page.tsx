@@ -83,7 +83,6 @@ export function MapPage() {
     async function load() {
       setLoading(true);
       setError(null);
-      console.log('🗺️ Iniciando carga de datos del mapa...');
       try {
         const searchFilters: {
           type?: PublicationSummary['type'] | 'ALL';
@@ -103,15 +102,12 @@ export function MapPage() {
           searchFilters.species = filters.species;
         }
 
-        console.log('🔍 Filtros de búsqueda:', searchFilters);
         const data = await searchPublications(searchFilters);
-        console.log('📊 Publicaciones recibidas:', data.length);
 
         // Filtrar solo publicaciones con coordenadas
         const withCoords = data.filter(
           (pub: PublicationSummary) => pub.approximateLat !== null && pub.approximateLng !== null
         );
-        console.log('📍 Publicaciones con coordenadas:', withCoords.length);
 
         if (active) {
           setPublications(withCoords);

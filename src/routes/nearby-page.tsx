@@ -18,9 +18,7 @@ export function NearbyPage() {
     try {
       const saved = localStorage.getItem('userLocation');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        console.log('📦 Ubicación cargada de localStorage:', parsed);
-        return parsed;
+        return JSON.parse(saved);
       }
     } catch (error) {
       console.warn('Error cargando ubicación guardada:', error);

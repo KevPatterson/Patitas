@@ -24,9 +24,7 @@ export function HomePage() {
     try {
       const saved = localStorage.getItem('userLocation');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        console.log('📦 Ubicación cargada de localStorage:', parsed);
-        return parsed;
+        return JSON.parse(saved);
       }
     } catch (error) {
       console.warn('Error cargando ubicación guardada:', error);
@@ -67,12 +65,10 @@ export function HomePage() {
     // Función para obtener la ubicación aproximada por IP (fallback)
     const getFallbackLocation = async () => {
       try {
-        console.log('🌐 Intentando ubicación por IP...');
         const response = await fetch('https://ipapi.co/json/');
         const data = await response.json();
-        
+
         if (data.latitude && data.longitude) {
-          console.log('✅ IP obtenida:', data.latitude, data.longitude);
           const location = { lat: data.latitude, lng: data.longitude };
           setUserLocation(location);
           // Guardar en localStorage
@@ -90,27 +86,19 @@ export function HomePage() {
 
     // Función para obtener la ubicación
     const getLocation = async () => {
-      console.log('🎯 getLocation() llamada. Verificando...');
-      console.log('- isRequestingLocation:', isRequestingLocation);
-      console.log('- geolocation disponible:', 'geolocation' in navigator);
-      
       if (isRequestingLocation || !('geolocation' in navigator)) {
-        console.log('⚠️ Condición de salida temprana');
         // Si no hay geolocalización, intentar fallback por IP
         if (!('geolocation' in navigator)) {
-          console.log('📱 Geolocalización no disponible, fallback a IP');
           await getFallbackLocation();
         }
         return;
       }
-      
-      console.log('📍 Solicitando ubicación GPS...');
+
       isRequestingLocation = true;
       setLoadingLocation(true);
       
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('✅ GPS obtenido:', position.coords.latitude, position.coords.longitude);
           const location = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
@@ -129,13 +117,11 @@ export function HomePage() {
           // Si es timeout y no hemos excedido reintentos, intentar de nuevo
           if (error.code === 3 && retryCount < MAX_RETRIES) { // 3 = TIMEOUT
             retryCount++;
-            console.log(`⏱️ Reintentando (${retryCount}/${MAX_RETRIES})...`);
             setTimeout(() => getLocation(), 1000);
             return;
           }
-          
+
           // Si agotamos reintentos o es otro error, intentar fallback por IP
-          console.log('🔄 Intentando fallback por IP...');
           const fallbackSuccess = await getFallbackLocation();
           
           if (!fallbackSuccess) {
@@ -232,25 +218,11 @@ export function HomePage() {
   }, []);
   // Efecto separado para reordenar casos cuando cambia la ubicación
   useEffect(() => {
-    console.log('🔄 Reordenamiento:', { 
-      allCasesLength: allCases.length, 
-      userLocation, 
-      hasLocation: !!userLocation 
-    });
-    
     if (allCases.length === 0) return;
 
     let sortedRecent = allCases;
     
     if (userLocation) {
-      console.log('📍 Ordenando por distancia...');
-      console.log('📍 Primer caso:', {
-        title: allCases[0]?.title,
-        approximateLat: allCases[0]?.approximateLat,
-        approximateLng: allCases[0]?.approximateLng,
-        hasCoords: !!(allCases[0]?.approximateLat && allCases[0]?.approximateLng)
-      });
-      
       const withDistance = allCases
         .map((pub: PublicationSummary & { distance?: number }) => {
           // Calcular distancia si la publicación tiene coordenadas
@@ -261,13 +233,8 @@ export function HomePage() {
               pub.approximateLat,
               pub.approximateLng
             );
-            console.log('📏 Distancia calculada:', {
-              title: pub.title.substring(0, 20),
-              distance: distance.toFixed(2)
-            });
             return { ...pub, distance };
           }
-          console.log('⚠️ Sin coordenadas:', pub.title.substring(0, 20));
           return { ...pub, distance: Infinity };
         })
         .sort((a: PublicationSummary & { distance?: number }, b: PublicationSummary & { distance?: number }) => 
@@ -279,13 +246,7 @@ export function HomePage() {
       setNearbyCount(nearby);
       
       sortedRecent = withDistance;
-      console.log('✅ Ordenado. Primeros 3:', sortedRecent.slice(0, 3).map(c => ({ 
-        title: c.title.substring(0, 20), 
-        distance: c.distance?.toFixed(2),
-        hasDistance: c.distance !== undefined
-      })));
     } else {
-      console.log('❌ Sin ubicación');
       setNearbyCount(0);
     }
     

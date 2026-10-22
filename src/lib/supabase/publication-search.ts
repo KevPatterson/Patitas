@@ -292,10 +292,6 @@ export async function searchPublications(filters: SearchFilters) {
   }
 
   const mapped = data.map(mapPublication);
-  
-  // Debug: verificar cuántas tienen coordenadas
-  const withCoords = mapped.filter(p => p.approximateLat !== null && p.approximateLng !== null);
-  console.log(`📊 searchPublications: ${mapped.length} total, ${withCoords.length} con coordenadas`);
 
   return mapped;
 }

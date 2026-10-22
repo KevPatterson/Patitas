@@ -35,7 +35,6 @@ function LocationPicker({ onChange }: { onChange: (lat: string, lng: string) => 
       // Difuminación de ±0.0005° (aproximadamente ±50 metros)
       const fuzzLat = lat + (Math.random() - 0.5) * 0.001;
       const fuzzLng = lng + (Math.random() - 0.5) * 0.001;
-      console.log('📍 Ubicación seleccionada:', { original: { lat, lng }, difuminada: { fuzzLat, fuzzLng } });
       onChange(fuzzLat.toFixed(6), fuzzLng.toFixed(6));
     },
   });
@@ -314,7 +313,6 @@ export function PublishPage() {
       searchParts.push('Cuba');
       
       const query = searchParts.join(', ');
-      console.log('🔍 Geocodificando:', query);
 
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=cu`,
@@ -343,12 +341,6 @@ export function PublishPage() {
       // Aplicar difuminación de ±50m (±0.0005°)
       const fuzzLat = lat + (Math.random() - 0.5) * 0.001;
       const fuzzLng = lng + (Math.random() - 0.5) * 0.001;
-
-      console.log('✅ Ubicación encontrada:', { 
-        address: location.display_name,
-        original: { lat, lng },
-        difuminada: { fuzzLat, fuzzLng }
-      });
 
       updateValue('approximateLat', fuzzLat.toFixed(6));
       updateValue('approximateLng', fuzzLng.toFixed(6));
@@ -437,7 +429,6 @@ export function PublishPage() {
 
       if (isEditing && editingPublicationId) {
         // MODO EDICIÓN: Actualizar publicación existente
-        console.log('📝 Actualizando publicación:', editingPublicationId);
 
         // Actualizar ubicación si cambió
         const _locationId = await createLocation({
@@ -511,14 +502,6 @@ export function PublishPage() {
         // MODO CREACIÓN: Crear nueva publicación
         const slug = buildPublicationSlug(parsed.title);
 
-        console.log('📝 Datos del formulario parseados:', {
-          province: parsed.province,
-          municipality: parsed.municipality,
-          zone: parsed.zone,
-          approximateLat: parsed.approximateLat,
-          approximateLng: parsed.approximateLng,
-        });
-
         const locationId = await createLocation({
           province: parsed.province,
           municipality: parsed.municipality,
@@ -526,8 +509,6 @@ export function PublishPage() {
           approximateLat: parsed.approximateLat,
           approximateLng: parsed.approximateLng,
         });
-
-        console.log('✅ Location creada con ID:', locationId);
 
         const petId = await createPet({
           ownerProfileId: user?.id ?? '',
@@ -632,7 +613,7 @@ export function PublishPage() {
         <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-6 lg:p-8 space-y-6 shadow-md">
           <div className="flex items-center justify-between gap-4 text-sm font-semibold text-foreground/70">
             <span>Paso {step} de {totalSteps}</span>
-            <span className="text-turquoise">{user.email}</span>
+            <span className="text-turquoise">{user.email ?? user.phone ?? '—'}</span>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-2 px-2 -mx-2" aria-label="Pasos del wizard">
