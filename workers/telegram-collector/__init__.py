@@ -1,10 +1,14 @@
 """
 Worker de Telegram para Patitas - Colector de canales/grupos públicos.
 
-Uso:
-    python -m workers.telegram_collector.main
+El directorio contiene un guion (`telegram-collector`), por lo que NO es un
+paquete Python importable: los módulos usan imports absolutos y se ejecutan
+desde este mismo directorio.
 
-O desde el directorio workers/telegram-collector:
+Uso:
+    cd workers/telegram-collector
+    python main.py
+    # equivalente:
     python -m main
 """
 

@@ -8,9 +8,7 @@ y reintentos con backoff exponencial.
 import hashlib
 import mimetypes
 import os
-from datetime import datetime
 from pathlib import Path
-from typing import BinaryIO
 from urllib.parse import urljoin
 
 import httpx
@@ -22,7 +20,7 @@ from tenacity import (
     wait_exponential_jitter,
 )
 
-from .config import settings
+from config import settings
 
 logger = structlog.get_logger(__name__)
 

@@ -48,12 +48,20 @@ jobs:
 
       - name: Verify Telethon session
         working-directory: workers/telegram-collector
+        env:
+          # El secreto se pasa por entorno, nunca se interpola dentro del script
+          TELEGRAM_STRING_SESSION: ${{ secrets.TELEGRAM_STRING_SESSION }}
         run: |
           python -c "
+          import os
+          import sys
           from telethon.sessions import StringSession
-          session = StringSession('${{ secrets.TELEGRAM_STRING_SESSION }}')
-          print(f'Session valid: {session.auth_key is not None}')
-          print(f'Data center: {session.dc_id}')
+          session = StringSession(os.environ['TELEGRAM_STRING_SESSION'])
+          print('Session valid:', session.auth_key is not None)
+          print('Data center:', session.dc_id)
+          if session.auth_key is None:
+              print('ERROR: TELEGRAM_STRING_SESSION está vacía o es inválida')
+              sys.exit(1)
           "
 
       - name: Run Telegram Collector
@@ -78,14 +86,18 @@ jobs:
           MAX_CONSECUTIVE_ERRORS: ${{ secrets.MAX_CONSECUTIVE_ERRORS }}
           LOG_LEVEL: INFO
         run: |
-          python -m main
+          # tee: deja la salida en worker.log para subirla como artefacto
+          # pipefail: el step falla si falla el worker, no solo el tee
+          set -o pipefail
+          python -m main 2>&1 | tee worker.log
 
       - name: Upload logs on failure
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v4
         with:
           name: telegram-collector-logs
-          path: workers/telegram-collector/*.log
+          path: workers/telegram-collector/worker.log
+          if-no-files-found: ignore
           retention-days: 7
 
       - name: Notify on repeated failures

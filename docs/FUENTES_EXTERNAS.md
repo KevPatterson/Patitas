@@ -36,7 +36,7 @@ Patitas implementa tres módulos para traer casos de mascotas desde fuentes exte
 # Variables de entorno (solo servidor)
 TELEGRAM_API_ID=12345678
 TELEGRAM_API_HASH=abcdef...
-TELEGRAM_SESSION_STRING=1BVtsOKoBu...  # Generar con generate_session.py
+TELEGRAM_STRING_SESSION=1BVtsOKoBu...  # Generar con generate_session.py
 INGEST_API_URL=https://patitas.vercel.app/api/ingest/external-post
 INGEST_HMAC_SECRET=secret-generado-con-openssl-rand-hex-32
 SUPABASE_URL=https://xxx.supabase.co
@@ -49,13 +49,13 @@ cd workers/telegram-collector
 pip install -r requirements.txt
 python generate_session.py
 # Ingresar teléfono, código, 2FA
-# Copiar string generado a TELEGRAM_SESSION_STRING
+# Copiar string generado a TELEGRAM_STRING_SESSION
 ```
 
 ### Ejecución Programada
 GitHub Actions (`.github/workflows/telegram-collector.yml`):
-- Cron: `*/15 * * * *` (cada 15 min)
-- Timeout: 10 min
+- Cron: `*/20 * * * *` (cada 20 min)
+- Timeout: 15 min
 - Secrets requeridos: todas las variables arriba
 
 ---
@@ -414,7 +414,7 @@ Toda publicación importada muestra:
 | `FACEBOOK_ADAPTER_ENABLED` | No (false) | Feature flag adaptador C |
 | `TELEGRAM_API_ID` | Para worker | API ID de my.telegram.org |
 | `TELEGRAM_API_HASH` | Para worker | API Hash |
-| `TELEGRAM_SESSION_STRING` | Para worker | StringSession generada |
+| `TELEGRAM_STRING_SESSION` | Para worker | StringSession generada |
 
 ---
 

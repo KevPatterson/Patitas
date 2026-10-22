@@ -13,7 +13,7 @@ from typing import Any
 import json
 from pydantic import BaseModel, Field
 
-from .config import settings
+from config import settings
 
 # Tolerancia de reloj para prevenir replay (segundos)
 TIMESTAMP_TOLERANCE = 300  # 5 minutos

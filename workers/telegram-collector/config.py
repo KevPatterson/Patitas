@@ -5,9 +5,7 @@ Lee variables de entorno y valida la configuración.
 NUNCA hardcodees secrets; usa variables de entorno / GitHub Actions secrets.
 """
 
-import os
 from pathlib import Path
-from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -109,26 +107,4 @@ class Settings(BaseSettings):
 # Instancia global de configuración
 settings = Settings()
 
-
-def get_source_configs() -> list[dict]:
-    """
-    Obtiene la lista de fuentes a monitorear desde la base de datos.
-    Se llama en cada ejecución para leer external_sources activas.
-    """
-    # Esta función se implementa en main.py usando supabaseAdmin
-    # Aquí solo definimos la estructura esperada
-    return [
-        {
-            "id": "uuid",
-            "platform": "TELEGRAM",
-            "handle_or_url": "@canal_ejemplo",
-            "name": "Canal Ejemplo",
-            "province": "La Habana",
-            "is_active": True,
-            "is_trusted": False,
-            "last_cursor": "12345",  # message_id del último procesado
-        }
-    ]
-
-
-__all__ = ["settings", "get_source_configs"]
+__all__ = ["settings"]

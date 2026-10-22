@@ -50,7 +50,7 @@ Crea un archivo `.env` basado en `.env.example`:
 # Telegram API
 TELEGRAM_API_ID=12345678
 TELEGRAM_API_HASH=abcdef1234567890abcdef1234567890
-TELEGRAM_SESSION_STRING=1BVtsOKoBu... (string largo de la sesión)
+TELEGRAM_STRING_SESSION=1BVtsOKoBu... (string largo de la sesión)
 
 # Patitas API
 INGEST_API_URL=https://patitas.vercel.app/api/ingest/external-post
@@ -89,12 +89,12 @@ python main.py
 
 ### Producción (GitHub Actions)
 
-El workflow en `.github/workflows/telegram-collector.yml` se ejecuta cada 15 minutos.
+El workflow en `.github/workflows/telegram-collector.yml` se ejecuta cada 20 minutos.
 
 Configura los secrets en GitHub:
 - `TELEGRAM_API_ID`
 - `TELEGRAM_API_HASH`
-- `TELEGRAM_SESSION_STRING`
+- `TELEGRAM_STRING_SESSION`
 - `INGEST_API_URL`
 - `INGEST_HMAC_SECRET`
 - `SUPABASE_URL`

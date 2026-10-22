@@ -2,7 +2,7 @@
 """
 Generador de StringSession para Telethon
 Ejecuta este script UNA VEZ para generar la sesión.
-La sesión generada debe guardarse en TELEGRAM_SESSION_STRING.
+La sesión generada debe guardarse en TELEGRAM_STRING_SESSION.
 """
 
 import os
@@ -48,7 +48,7 @@ def main():
     print('=' * 60)
     print()
     print('Agrega esta línea a tu .env:')
-    print(f'TELEGRAM_SESSION_STRING={session_string}')
+    print(f'TELEGRAM_STRING_SESSION={session_string}')
     print()
     print('⚠️  NUNCA compartas esta sesión ni la subas a GitHub')
     print('⚠️  Permite acceso total a tu cuenta de Telegram')

@@ -6,17 +6,16 @@ Lee mensajes nuevos de fuentes configuradas en external_sources,
 descarga imágenes a Supabase Storage, y envía a /api/ingest/external-post
 autenticado con HMAC.
 
-Ejecución: python -m main
-Programado: GitHub Actions cron cada 15-30 minutos.
+Ejecución: python -m main (desde este directorio)
+Programado: GitHub Actions cron cada 20 minutos.
 """
 
 import asyncio
 import json
+import logging
 import sys
-import traceback
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import urljoin
 
 import httpx
 import structlog
@@ -24,9 +23,9 @@ from telethon import TelegramClient, errors
 from telethon.sessions import StringSession
 from telethon.tl.types import Message, MessageMediaPhoto, MessageMediaDocument, Channel, Chat
 
-from .config import settings
-from .storage import storage_client, download_telegram_media, StorageValidationError
-from .auth import create_ingest_payload, payload_to_dict
+from config import settings
+from storage import storage_client, StorageValidationError
+from auth import create_ingest_payload, payload_to_dict
 
 # Configurar logging estructurado
 structlog.configure(
@@ -35,7 +34,10 @@ structlog.configure(
         structlog.processors.add_log_level,
         structlog.processors.JSONRenderer(),
     ],
-    wrapper_class=structlog.BoundLogger,
+    # Respeta LOG_LEVEL (DEBUG|INFO|WARNING|ERROR|CRITICAL)
+    wrapper_class=structlog.make_filtering_bound_logger(
+        getattr(logging, settings.log_level.upper(), logging.INFO)
+    ),
     logger_factory=structlog.PrintLoggerFactory(),
 )
 
