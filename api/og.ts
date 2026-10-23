@@ -214,6 +214,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
 
   if (!slug) {
+    // Un 400 no debe quedar cacheado: si el enlace se corrige, la respuesta
+    // correcta no puede quedar tapada por esta durante una hora.
+    res.setHeader('Cache-Control', 'no-store');
     return res.status(400).send(
       renderHtml({
         title: `Publicación no encontrada · ${SITE_NAME}`,
@@ -249,6 +252,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!data) {
+      // No se cachea el "no encontrada": una publicación recién creada o
+      // restaurada debe poder aparecer de inmediato con su tarjeta real.
+      res.setHeader('Cache-Control', 'no-store');
       return res.status(200).send(
         renderHtml({
           title: `Publicación no encontrada · ${SITE_NAME}`,
@@ -353,6 +359,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
   } catch (error) {
     console.error('[og] excepción', error);
+
+    // Un fallo transitorio de Supabase no puede envenenar la caché del CDN:
+    // sin `no-store`, la tarjeta genérica se serviría durante una hora aunque
+    // el servicio ya estuviera recuperado.
+    res.setHeader('Cache-Control', 'no-store');
 
     // Se responde 200 incluso si falla Supabase: las redes sociales no muestran
     // la tarjeta cuando el HTML llega con un 5xx, y una imagen genérica es mejor
