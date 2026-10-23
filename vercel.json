@@ -17,7 +17,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|Discordbot|LinkedInBot|Pinterest|redditbot|SkypeUriPreview|vkShare|Iframely|Embedly|Mastodon|Bluesky|Signal|LineBot|Threads).*"
+          "value": ".*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|Applebot-Extended|CCBot|meta-externalagent|DeepSeekBot|MistralAI-User|Amazonbot|YouBot|DuckAssistBot|cohere-ai|AI2Bot|Bytespider|WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|Discordbot|LinkedInBot|Pinterest|redditbot|SkypeUriPreview|vkShare|Iframely|Embedly|Mastodon|Bluesky|Signal|LineBot|Threads).*"
         }
       ],
       "destination": "/api/og?slug=:slug"
@@ -65,11 +65,29 @@
       ]
     },
     {
+      "source": "/llms.txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" }
+      ]
+    },
+    {
+      "source": "/llms-full.txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        {
+          "key": "Link",
+          "value": "</llms.txt>; rel=\"alternate\"; type=\"text/markdown\""
+        },
         {
           "key": "Permissions-Policy",
           "value": "camera=(), microphone=(), geolocation=(self), payment=()"

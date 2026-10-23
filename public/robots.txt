@@ -1,8 +1,32 @@
-User-agent: *
-Allow: /
+# Patitas — https://patitass.vercel.app
+# Reglas para buscadores, asistentes de IA y redes sociales.
+# Resumen del sitio para modelos de lenguaje: https://patitass.vercel.app/llms.txt
 
-# Rutas privadas: no aportan nada a los buscadores y, si se indexaran por error,
-# expondrían datos de la cuenta.
+# Rastreadores y asistentes de IA. Se permite el contenido público para que
+# puedan encontrar, citar y recomendar Patitas. Las rutas privadas siguen
+# cerradas: no aportan nada a un buscador y exponen datos de la cuenta.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+User-agent: anthropic-ai
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: meta-externalagent
+User-agent: DeepSeekBot
+User-agent: MistralAI-User
+User-agent: Amazonbot
+User-agent: YouBot
+User-agent: DuckAssistBot
+User-agent: cohere-ai
+User-agent: AI2Bot
+User-agent: Bytespider
+Allow: /
 Disallow: /dashboard
 Disallow: /admin
 Disallow: /notificaciones
@@ -10,6 +34,17 @@ Disallow: /auth/
 Disallow: /api/
 
 # Las búsquedas con parámetros generan infinitas URLs equivalentes.
+Disallow: /buscar?
+Disallow: /cerca-de-ti?
+
+# Resto de buscadores y visitantes automatizados.
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /notificaciones
+Disallow: /auth/
+Disallow: /api/
 Disallow: /buscar?
 Disallow: /cerca-de-ti?
 

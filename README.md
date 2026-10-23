@@ -17,6 +17,7 @@ Patitas centraliza en un único lugar lo que hoy se dispersa en estados de Whats
     - [📍 Geolocalización](#-geolocalización)
     - [🤖 Sistema de IA (infraestructura completa)](#-sistema-de-ia-infraestructura-completa)
     - [📱 PWA y Compartir](#-pwa-y-compartir)
+    - [🤖 Visibilidad para asistentes de IA (GEO)](#-visibilidad-para-asistentes-de-ia-geo)
     - [🔔 Notificaciones en tiempo real](#-notificaciones-en-tiempo-real)
     - [👥 Sistema social](#-sistema-social)
     - [🛡️ Seguridad y moderación](#️-seguridad-y-moderación)
@@ -110,7 +111,25 @@ Patitas centraliza en un único lugar lo que hoy se dispersa en estados de Whats
 - **Compartir** con un clic: WhatsApp, Facebook, Telegram, copiar enlace
 - **Web Share API** para compartir nativo en móviles
 - Open Graph tags para previews atractivos
-- JSON-LD para SEO
+- JSON-LD para SEO y motores generativos
+
+### 🤖 Visibilidad para asistentes de IA (GEO)
+- **`llms.txt`** con el resumen del sitio, datos clave, páginas principales y reglas de citación para ChatGPT, Claude, DeepSeek, Perplexity y otros asistentes.
+- **`llms-full.txt`** con la descripción ampliada y todas las respuestas de las preguntas frecuentes.
+- **`robots.txt`** con permisos explícitos para los rastreadores de IA (`GPTBot`, `OAI-SearchBot`, `ClaudeBot`, `PerplexityBot`, `DeepSeekBot`, `CCBot`...), manteniendo cerradas las rutas privadas.
+- **HTML server-rendered para bots** en `/p/:slug`: los crawlers que no ejecutan JavaScript reciben título, descripción, navegación y JSON-LD del caso a través de `api/og.ts`.
+- **JSON-LD estático** de `Organization` y `WebSite` en `index.html`, más `FAQPage` en las preguntas frecuentes y `Article` en cada publicación.
+- Metadatos `robots` con `max-snippet:-1` y `max-image-preview:large`, cabecera `Link` hacia `llms.txt` y `noscript` con contenido real para rastreadores sin JavaScript.
+
+Comprobación en producción:
+
+```bash
+curl -A "GPTBot/1.0" https://patitass.vercel.app/p/<slug>
+curl https://patitass.vercel.app/llms.txt
+curl https://patitass.vercel.app/robots.txt
+```
+
+El primero debe devolver el `<h1>` y el JSON-LD del caso, no el HTML vacío de la SPA.
 
 ### 🔔 Notificaciones en tiempo real
 - Alertas de **coincidencias** con publicaciones propias
@@ -313,7 +332,15 @@ patitas/
 │   ├── ingest/               # Ingesta desde worker de Telegram (HMAC)
 │   ├── takedown/             # Solicitudes de retirada
 │   ├── publications.ts       # create / validate-upload
+│   ├── og.ts                 # HTML + JSON-LD para bots sociales y de IA
+│   ├── sitemap.ts            # Sitemap dinámico de casos activos
 │   └── health.ts
+│
+├── public/
+│   ├── llms.txt              # Resumen del sitio para asistentes de IA
+│   ├── llms-full.txt         # FAQ completa para asistentes de IA
+│   ├── robots.txt            # Permisos de buscadores y rastreadores de IA
+│   └── manifest.webmanifest  # Metadatos PWA
 │
 ├── src/
 │   ├── app/                  # Configuración App
@@ -480,16 +507,22 @@ que el frontend lo distinga de un fallo genérico.
 
 ### Headers de seguridad (Vercel)
 
+`vercel.json` aplica en todas las rutas:
+
 ```json
 {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=(self)"
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(self)",
+  "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Content-Security-Policy": "default-src 'self'; ...",
+  "Link": "</llms.txt>; rel=\"alternate\"; type=\"text/markdown\""
 }
 ```
 
-Pendiente (Fase 4): migrar `routes` → `rewrites`, añadir CSP, HSTS y COOP.
+La cabecera `Link` anuncia el resumen para asistentes de IA sin ejecutar JavaScript.
 
 ### Privacidad de ubicación
 
@@ -675,6 +708,7 @@ chore(deps): actualizado React a v19
 | **Adopciones** | 🟨 50% | Solicitudes OK, falta panel completo |
 | **Testing** | 🟥 10% | Configuración lista, faltan tests |
 | **Seguridad** | ✅ 100% | RLS, rate limiting, headers |
+| **SEO / GEO** | ✅ 100% | Meta tags, JSON-LD, `llms.txt` y HTML para bots |
 | **Design System** | ✅ 100% | Anime Edition completo |
 
 ### Implementado ✅
@@ -692,6 +726,7 @@ chore(deps): actualizado React a v19
 - ✅ PWA con service worker
 - ✅ Compartir en redes sociales
 - ✅ SEO con meta tags y JSON-LD
+- ✅ Visibilidad para asistentes de IA (`llms.txt`, `robots.txt`, JSON-LD y HTML server-rendered)
 - ✅ Design System Anime Edition completo
 - ✅ Responsive design (320px - 4K+)
 - ✅ Animaciones avanzadas de scroll
@@ -726,13 +761,17 @@ Ver estado detallado en [docs/ESTADO_IMPLEMENTACION.md](./docs/ESTADO_IMPLEMENTA
 
 #### Endpoints disponibles
 
-Los listados aquí son los que existen hoy en `api/`. Todos reciben **POST** salvo
-el health check, y todos exigen `Authorization: Bearer <jwt>` salvo donde se
+Los listados aquí son los que existen hoy en `api/`. Salvo los `GET` indicados,
+todos reciben **POST** y exigen `Authorization: Bearer <jwt>` salvo donde se
 indica.
 
 | Endpoint | Auth | Descripción |
 |----------|------|-------------|
 | `GET /api/health` | pública | Health check (BD, storage y proveedor IA) |
+| `GET /api/og?slug=<slug>` | bots | HTML server-rendered con Open Graph y JSON-LD para bots sociales y de IA |
+| `GET /sitemap.xml` | pública | Sitemap dinámico de casos activos (rewrite a `/api/sitemap`) |
+| `GET /llms.txt` | pública | Resumen del sitio para asistentes de IA (archivo estático) |
+| `GET /llms-full.txt` | pública | FAQ completa para asistentes de IA (archivo estático) |
 | `POST /api/publications?action=create` | JWT | Alta de publicación con rate limit |
 | `POST /api/publications?action=validate-upload` | JWT | Valida tipo/tamaño/cantidad antes de subir a Storage |
 | `POST /api/admin/moderation` | JWT + rol MODERATOR/ADMIN | Acciones de moderación; escribe en `audit_logs` |

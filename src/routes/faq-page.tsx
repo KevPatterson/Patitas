@@ -3,6 +3,12 @@ import { ChevronDown, PawPrint, Search } from 'lucide-react';
 import { LinkButton } from '../components/ui/button';
 import { ScrollReveal } from '../components/ui/scroll-reveal';
 import { setPageMeta } from '../lib/seo/page-meta';
+import {
+  generateFaqStructuredData,
+  injectStructuredData,
+  removeStructuredData,
+} from '../lib/seo/structured-data';
+import { SITE_URL } from '../lib/config/site';
 
 type FaqItem = {
   question: string;
@@ -97,6 +103,8 @@ const CATEGORIES: FaqCategory[] = [
   },
 ];
 
+const ALL_FAQ_ITEMS = CATEGORIES.flatMap((category) => category.items);
+
 export function FaqPage() {
   useEffect(() => {
     setPageMeta({
@@ -105,6 +113,15 @@ export function FaqPage() {
         'Respuestas sobre cómo publicar y buscar mascotas en Patitas, qué datos son privados, cómo funcionan las notificaciones y las adopciones responsables.',
       canonicalPath: '/preguntas-frecuentes',
     });
+
+    // FAQPage permite que los asistentes citen respuestas literales de la página
+    // en lugar de reconstruirlas desde fragmentos de la interfaz.
+    injectStructuredData(
+      generateFaqStructuredData(ALL_FAQ_ITEMS, `${SITE_URL}/preguntas-frecuentes`),
+      'faq-structured-data'
+    );
+
+    return () => removeStructuredData('faq-structured-data');
   }, []);
 
   return (

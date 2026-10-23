@@ -7,8 +7,7 @@ import { PawTrail } from '../components/ui/paw-loader';
 import { EmptyState } from '../components/ui/empty-state';
 import { ScrollReveal } from '../components/ui/scroll-reveal';
 import { setPageMeta } from '../lib/seo/page-meta';
-import { generateWebsiteStructuredData, injectStructuredData, removeStructuredData } from '../lib/seo/structured-data';
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '../lib/config/site';
+import { SITE_NAME, SITE_DESCRIPTION } from '../lib/config/site';
 import { searchPublications, countPublications, type PublicationSummary } from '../lib/supabase/publication-search';
 import { MapPreview } from '../components/home/map-preview';
 
@@ -49,13 +48,6 @@ export function HomePage() {
       description: SITE_DESCRIPTION,
       canonicalPath: '/',
     });
-
-    const structuredData = generateWebsiteStructuredData({
-      name: SITE_NAME,
-      description: SITE_DESCRIPTION,
-      url: SITE_URL,
-    });
-    injectStructuredData(structuredData, 'website-structured-data');
 
     let permissionListener: (() => void) | null = null;
     let isRequestingLocation = false;
@@ -170,7 +162,6 @@ export function HomePage() {
     }
 
     return () => {
-      removeStructuredData('website-structured-data');
       if (permissionListener) {
         permissionListener();
       }

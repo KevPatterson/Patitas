@@ -38,6 +38,11 @@ function removeMeta(name: string, property = false) {
 const SITE_NAME = 'Patitas';
 const OG_LOCALE = 'es_ES';
 const DEFAULT_OG_IMAGE = '/og-image.png';
+// Al volver de una página noindex hay que restaurar una política indexable; si
+// solo se borrara la etiqueta, el HTML quedaría sin `max-snippet` ni
+// `max-image-preview`, que son los que usan los motores generativos al citar.
+const INDEXABLE_ROBOTS =
+  'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 
 /** Convierte una ruta relativa en URL absoluta: los crawlers no aceptan relativas. */
 function absoluteUrl(value: string): string {
@@ -84,7 +89,7 @@ export function setPageMeta({ title, description, canonicalPath, image, noindex 
   if (noindex) {
     upsertMeta('robots', 'noindex, nofollow');
   } else {
-    removeMeta('robots');
+    upsertMeta('robots', INDEXABLE_ROBOTS);
   }
 
   if (canonicalPath) {

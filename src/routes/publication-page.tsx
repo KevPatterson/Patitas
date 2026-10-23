@@ -171,8 +171,10 @@ export function PublicationPage() {
       noindex: publication.status !== 'ACTIVE',
     });
 
-    // Agregar structured data para publicaciones perdidas/encontradas
-    if ((publication.type === 'LOST' || publication.type === 'FOUND') && image) {
+    // Datos estructurados para cualquier tipo de caso con foto: perdidos,
+    // encontrados, abandonados, avistamientos y adopciones. Así los asistentes
+    // pueden citar también las adopciones, no solo los reencuentros.
+    if (image) {
       const loc = normalizeLocation(publication.location);
       const structuredData = generateLostPetStructuredData({
         name: publication.title,

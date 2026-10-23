@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" id="theme-color-meta" content="#ff8c42" />
+    <!-- Buscadores y asistentes de IA: se permite indexar y mostrar fragmentos
+         largos, que es lo que usan los motores generativos al citar una fuente. -->
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
+    <link
+      rel="alternate"
+      type="text/markdown"
+      href="https://patitass.vercel.app/llms.txt"
+      title="Resumen de Patitas para asistentes de IA"
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -46,9 +58,89 @@
     />
     <meta name="twitter:image" content="https://patitass.vercel.app/og-image.png" />
     <meta name="twitter:image:alt" content="Patitas · Que ninguna patita se quede sin casa" />
+    <!-- Datos estructurados estáticos: los asistentes que no ejecutan JavaScript
+         (GPTBot, ClaudeBot, PerplexityBot, DeepSeekBot...) los leen igual. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://patitass.vercel.app/#organization",
+            "name": "Patitas",
+            "url": "https://patitass.vercel.app/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://patitass.vercel.app/icon-512.png",
+              "width": 512,
+              "height": 512
+            },
+            "description": "Plataforma comunitaria gratuita para reencontrar mascotas perdidas, reportar encontradas y promover adopciones responsables en Cuba.",
+            "areaServed": {
+              "@type": "Country",
+              "name": "Cuba"
+            },
+            "knowsLanguage": "es-CU"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://patitass.vercel.app/#website",
+            "name": "Patitas",
+            "alternateName": "Patitas Cuba",
+            "url": "https://patitass.vercel.app/",
+            "description": "Plataforma comunitaria para reencontrar mascotas perdidas, reportar encontradas y promover adopciones responsables.",
+            "inLanguage": "es-CU",
+            "publisher": {
+              "@id": "https://patitass.vercel.app/#organization"
+            },
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://patitass.vercel.app/buscar?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          }
+        ]
+      }
+    </script>
     <script src="/theme-init.js"></script>
   </head>
   <body>
+    <!-- Contenido de respaldo para rastreadores que no ejecutan JavaScript y
+         para personas con el JavaScript desactivado. React lo sustituye al
+         montar la aplicación, así que no se muestra dos veces. -->
+    <noscript>
+      <div>
+        <h1>Patitas: mascotas perdidas, encontradas y en adopción en Cuba</h1>
+        <p>
+          Patitas es una plataforma comunitaria y gratuita para publicar y buscar mascotas
+          perdidas, encontradas, avistadas y en adopción en Cuba. Tiene buscador con filtros,
+          mapa con ubicaciones aproximadas, avisos de coincidencias y un enlace único para
+          compartir cada caso.
+        </p>
+        <p>
+          Buscar casos, abrir el mapa y ver adopciones no requiere cuenta. Para publicar,
+          comentar, registrar un avistamiento o solicitar una adopción hay que iniciar sesión.
+        </p>
+        <nav aria-label="Enlaces principales de Patitas">
+          <ul>
+            <li><a href="/buscar">Buscar mascotas</a></li>
+            <li><a href="/adopciones">Adopciones</a></li>
+            <li><a href="/mapa">Mapa de casos</a></li>
+            <li><a href="/como-funciona">Cómo funciona</a></li>
+            <li><a href="/preguntas-frecuentes">Preguntas frecuentes</a></li>
+            <li><a href="/seguridad">Consejos de seguridad</a></li>
+            <li><a href="/contacto">Contacto</a></li>
+          </ul>
+        </nav>
+        <p>
+          Resumen del sitio para asistentes de IA:
+          <a href="/llms.txt">llms.txt</a>.
+        </p>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

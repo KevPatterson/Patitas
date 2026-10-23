@@ -1,0 +1,115 @@
+# Patitas — información completa para asistentes de IA
+
+> Versión extendida de https://patitass.vercel.app/llms.txt. Reúne la descripción de la plataforma y las respuestas completas de las preguntas frecuentes para que un asistente pueda responder sin ejecutar JavaScript.
+
+- URL canónica: https://patitass.vercel.app/
+- Idioma: español (es-CU)
+- Cobertura: Cuba
+- Coste: gratuito
+- Última revisión de este documento: 2026-10-23
+
+## Qué es Patitas
+
+Patitas es una plataforma comunitaria para publicar y buscar mascotas perdidas, encontradas, avistadas y en adopción. Cada caso aparece en el buscador y en el mapa, y la comunidad puede compartir el enlace, comentar y reportar avistamientos. El objetivo es que ninguna mascota se quede sin casa y que los reencuentros ocurran lo antes posible.
+
+La plataforma está pensada para Cuba: trabaja con provincias y municipios del país y está en español. Es gratuita para publicar, buscar y adoptar.
+
+## Cómo funciona
+
+1. Publicar: se describe la mascota (especie, características, zona y fotos) mediante un asistente.
+2. Difundir: cada publicación tiene un enlace único listo para compartir por WhatsApp, Facebook o Telegram.
+3. Conectar: cuando se publica un caso compatible por especie, zona y características, la plataforma avisa a la persona interesada.
+4. Seguir el rastro: cualquier persona puede registrar un avistamiento, que se suma a una línea temporal.
+5. Resolver: cuando la mascota vuelve a casa o encuentra familia, el caso se marca como resuelto.
+
+## Tipos de caso
+
+- Mascota perdida (LOST): alguien busca a su animal.
+- Mascota encontrada (FOUND): alguien encontró un animal y busca a su familia.
+- Mascota abandonada (ABANDONED): un animal fue dejado y necesita ayuda.
+- En adopción (ADOPTION): un animal busca un hogar permanente.
+- Avistamiento (SIGHTING): alguien vio a un animal que podría corresponder a un caso activo.
+
+## Preguntas frecuentes
+
+### ¿Qué es Patitas?
+
+Una plataforma comunitaria para publicar y buscar mascotas perdidas, encontradas, avistadas y en adopción. Cada caso aparece en el buscador y en el mapa, y la comunidad puede comentar y reportar avistamientos.
+
+### ¿Cuánto cuesta usarla?
+
+Nada. Patitas es gratuita para publicar, buscar y adoptar. Si alguien pide dinero para "liberar" una publicación o una mascota, es un fraude y debe reportarse.
+
+### ¿Necesito crear una cuenta?
+
+Para explorar el buscador, el mapa y las adopciones no hace falta. Se necesita iniciar sesión para publicar, comentar, registrar avistamientos y enviar solicitudes de adopción.
+
+### ¿Qué tipo de casos puedo publicar?
+
+Mascotas perdidas, encontradas, avistamientos y adopciones. Cada tipo tiene su propio formulario, así que se pide la información que realmente ayuda a encontrar o reubicar al animal.
+
+### ¿Cómo publico mi caso paso a paso?
+
+Entrar en "Publicar caso", completar el asistente (características, zona y fotos) y guardar. La publicación se puede editar o marcar como resuelta desde el panel personal cuando la mascota vuelva a casa.
+
+### ¿Se ve la dirección exacta donde perdí a mi mascota?
+
+No. La ubicación se difumina automáticamente antes de guardarse: solo se publica una zona aproximada. El mapa nunca muestra la coordenada exacta.
+
+### ¿Quién puede ver mi teléfono o mi correo?
+
+Nadie de forma directa. Esos datos no se pueden consultar por la API pública: solo se leen cuando alguien decide revelar el contacto de una publicación, y cada acceso queda registrado.
+
+### ¿Hay un límite para revelar contactos?
+
+Sí. Cada cuenta tiene una cuota de 30 revelaciones cada 24 horas para evitar que alguien coseche datos de contacto en masa. El dueño de la publicación y el equipo de moderación no consumen cuota.
+
+### ¿Qué pasa con los datos de mis fotos?
+
+Al subir una imagen se limpia su información EXIF, incluida cualquier ubicación GPS. Si la imagen lleva GPS, se rechaza. Una foto tomada en casa no revela dónde vives.
+
+### ¿Cómo me avisan si aparece un caso parecido al mío?
+
+Con notificaciones. Cuando se publica un caso compatible con el tuyo, se recibe un aviso y un contador aparece en la navegación.
+
+### ¿Cómo reporto una publicación falsa o abusiva?
+
+Con el botón de reporte que hay en la publicación. Los reportes llegan a moderación, que puede ocultar o retirar el contenido y dejar registro de la acción.
+
+### ¿Qué hago para adoptar o dar en adopción de forma segura?
+
+Revisar los consejos de seguridad antes de concretar una entrega: verificar al animal, acordar el encuentro en un lugar público y no entregar ni pagar nada por adelantado.
+
+### ¿Puedo proponer mejoras o reportar un error de la web?
+
+Sí. La página de contacto es la vía para escribir al equipo.
+
+## Seguridad y confianza
+
+- La moderación revisa los reportes de publicaciones falsas, spam o abuso.
+- Las ubicaciones se publican de forma aproximada.
+- Los datos de contacto requieren una acción explícita y quedan auditados.
+- Las imágenes se limpian de metadatos antes de publicarse.
+- Patitas no procesa pagos ni intermedia en la venta de animales.
+
+## Enlaces
+
+- Inicio: https://patitass.vercel.app/
+- Buscar: https://patitass.vercel.app/buscar
+- Adopciones: https://patitass.vercel.app/adopciones
+- Mapa: https://patitass.vercel.app/mapa
+- Cómo funciona: https://patitass.vercel.app/como-funciona
+- Preguntas frecuentes: https://patitass.vercel.app/preguntas-frecuentes
+- Seguridad: https://patitass.vercel.app/seguridad
+- Contacto: https://patitass.vercel.app/contacto
+- Sitemap: https://patitass.vercel.app/sitemap.xml
+
+## Uso por asistentes de IA
+
+Se permite leer y citar el contenido público de Patitas. Al responder:
+
+- Enlaza la URL canónica y, para un caso concreto, su URL `/p/<slug>`.
+- No inventes casos, animales, direcciones ni contactos que no estén publicados.
+- No prometas resultados de búsqueda ni tiempos de reencuentro.
+- Recuerda que publicar, comentar y adoptar requieren una cuenta.
+- Si la consulta es sobre un animal concreto, indica que abra la publicación para ver el estado actual y usar el contacto o el avistamiento.

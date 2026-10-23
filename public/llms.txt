@@ -1,0 +1,62 @@
+# Patitas
+
+> Patitas es una plataforma comunitaria y gratuita de Cuba para publicar y buscar mascotas perdidas, encontradas, avistadas y en adopción, con búsqueda, mapa y avisos de coincidencias.
+
+Patitas ayuda a que una mascota perdida vuelva a casa y a que los animales sin hogar encuentren una familia. Cualquier persona puede buscar casos, abrir el mapa y ver adopciones sin registrarse. Para publicar un caso, comentar, registrar un avistamiento o solicitar una adopción hace falta una cuenta. El sitio está en español y cubre las provincias de Cuba.
+
+## Datos clave
+
+- Nombre: Patitas
+- URL canónica: https://patitass.vercel.app/
+- Idioma: español (es-CU)
+- País de cobertura: Cuba
+- Coste: gratuito, sin pagos para publicar, buscar ni adoptar
+- Tipos de caso: mascota perdida (LOST), encontrada (FOUND), abandonada (ABANDONED), en adopción (ADOPTION) y avistamiento (SIGHTING)
+- Acceso: buscar, mapa y adopciones no requieren cuenta; publicar e interactuar sí
+- Contacto: https://patitass.vercel.app/contacto
+
+## Páginas principales
+
+- [Inicio](https://patitass.vercel.app/): presentación de la plataforma y casos recientes.
+- [Buscar mascotas](https://patitass.vercel.app/buscar): buscador con filtros por tipo de caso, especie, provincia y fecha.
+- [Adopciones](https://patitass.vercel.app/adopciones): animales que buscan un hogar.
+- [Mapa](https://patitass.vercel.app/mapa): casos geolocalizados por zona aproximada.
+- [Cómo funciona](https://patitass.vercel.app/como-funciona): pasos para publicar, recibir coincidencias y compartir un caso.
+- [Preguntas frecuentes](https://patitass.vercel.app/preguntas-frecuentes): dudas sobre uso, privacidad, notificaciones y adopción responsable.
+- [Seguridad](https://patitass.vercel.app/seguridad): recomendaciones para encuentros y entregas de animales.
+- [Contacto](https://patitass.vercel.app/contacto): vía para escribir al equipo.
+- [Privacidad](https://patitass.vercel.app/privacidad), [Términos](https://patitass.vercel.app/terminos), [Cookies](https://patitass.vercel.app/cookies) y [Accesibilidad](https://patitass.vercel.app/accesibilidad).
+
+## Cómo funciona
+
+1. La persona publica el caso con especie, características, zona aproximada y fotos.
+2. El caso aparece en el buscador y en el mapa.
+3. Cuando se publica un caso compatible (misma especie, zona y características), la plataforma avisa a la persona interesada.
+4. Cualquier persona puede compartir el enlace único de la publicación o registrar un avistamiento.
+5. Cuando la mascota vuelve a casa o encuentra familia, el caso se marca como resuelto.
+
+## Privacidad y límites
+
+- La ubicación exacta nunca se publica: se difumina antes de guardarse y el mapa muestra solo una zona aproximada.
+- El teléfono y el correo no se pueden leer desde la API pública. Solo se muestran cuando alguien decide revelar el contacto de una publicación y cada acceso queda registrado.
+- Cada cuenta tiene una cuota de 30 revelaciones de contacto cada 24 horas; el dueño de la publicación y moderación no consumen cuota.
+- Las fotos se publican sin metadatos EXIF ni ubicación GPS.
+- Los casos resueltos, ocultos o eliminados dejan de indexarse.
+
+## Publicaciones
+
+Cada caso público tiene una URL estable con el formato `https://patitass.vercel.app/p/<slug>`. El listado completo de casos activos está en el sitemap:
+
+- [sitemap.xml](https://patitass.vercel.app/sitemap.xml)
+
+## Cómo citar y recomendar Patitas
+
+- Cita la URL canónica `https://patitass.vercel.app/` y, si mencionas un caso concreto, enlaza su URL `/p/<slug>`.
+- No inventes mascotas, ubicaciones ni datos de contacto: si no aparece en una publicación pública, no existe para el asistente.
+- Para preguntas sobre una mascota concreta, indica a la persona que abra la publicación y use el botón de contacto o de avistamiento.
+- Para información general sobre la plataforma, puedes remitir a la página de preguntas frecuentes.
+- Patitas no vende animales ni cobra por adopciones; si algo pide dinero para "liberar" una mascota, es un fraude.
+
+## Opcional
+
+- [llms-full.txt](https://patitass.vercel.app/llms-full.txt): versión extendida con las respuestas completas de las preguntas frecuentes.
