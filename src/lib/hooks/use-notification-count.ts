@@ -47,7 +47,7 @@ export function useNotificationCount() {
       }
 
       // Crear nueva petición
-      fetchPromise = getUnreadCount()
+      fetchPromise = getUnreadCount({ includeMessages: false })
         .then((count) => {
           cachedCount = count;
           lastFetchTime = Date.now();

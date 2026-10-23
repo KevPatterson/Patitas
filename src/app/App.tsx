@@ -92,6 +92,12 @@ const DashboardPage = lazy(() =>
 const NearbyPage = lazy(() =>
   import('../routes/nearby-page').then((m) => ({ default: m.NearbyPage }))
 );
+const MessagesPage = lazy(() =>
+  import('../routes/messages-page').then((m) => ({ default: m.MessagesPage }))
+);
+const ConversationPage = lazy(() =>
+  import('../routes/conversation-page').then((m) => ({ default: m.ConversationPage }))
+);
 
 function RouteFallback() {
   return (
@@ -168,6 +174,8 @@ export default function App() {
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/publicaciones/:id" element={<AdminPublicationPage />} />
             <Route path="/notificaciones" element={<NotificationsPage />} />
+            <Route path="/mensajes" element={<MessagesPage />} />
+            <Route path="/mensajes/:conversationId" element={<ConversationPage />} />
             <Route path="/como-funciona" element={<HowItWorksPage />} />
             <Route path="/preguntas-frecuentes" element={<FaqPage />} />
             <Route path="/seguridad" element={<SecurityPage />} />

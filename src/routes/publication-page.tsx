@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Calendar, CheckCircle, MapPin, PawPrint, X, Heart, Flag, Pencil, Trash2, Shield, XCircle } from 'lucide-react';
+import { AlertTriangle, Calendar, CheckCircle, MapPin, PawPrint, X, Heart, Flag, Pencil, Trash2, Shield, XCircle, MessageCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { TextareaField } from '../components/ui/textarea-field';
 import { StatusBadge } from '../components/ui/status-badge';
@@ -23,6 +23,8 @@ import { CommentsSection } from '../components/publications/comments-section';
 import { resolvePublication, getSightings, deletePublication } from '../lib/supabase/publication-actions';
 import { findMatches } from '../lib/matching/match-calculator';
 import { createAdoptionRequest } from '../lib/supabase/adoption-requests';
+import { chatErrorMessage, startConversation } from '../lib/supabase/chat';
+import { getChatButtonLabel } from '../lib/constants/chat-copy';
 import { generateLostPetStructuredData, injectStructuredData, removeStructuredData } from '../lib/seo/structured-data';
 import { SPECIES_LABELS, SEX_LABELS, SIZE_LABELS, AGE_LABELS } from '../lib/constants/labels';
 
@@ -59,6 +61,8 @@ export function PublicationPage() {
   const [takedownDetails, setTakedownDetails] = useState('');
   const [takedownLoading, setTakedownLoading] = useState(false);
   const [takedownMessage, setTakedownMessage] = useState<string | null>(null);
+  const [startingChat, setStartingChat] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
   const loadSightings = async () => {
     if (!publication) return;
     const data = await getSightings(publication.id);
@@ -250,6 +254,27 @@ export function PublicationPage() {
       setAdoptError(error instanceof Error ? error.message : 'No pudimos enviar la solicitud.');
     } finally {
       setAdoptLoading(false);
+    }
+  };
+
+  const handleStartChat = async () => {
+    if (!publication) return;
+
+    if (!user) {
+      navigate(`/auth/login?next=${encodeURIComponent(`/p/${publication.slug}`)}`);
+      return;
+    }
+
+    setStartingChat(true);
+    setChatError(null);
+
+    try {
+      const conversationId = await startConversation(publication.id);
+      navigate(`/mensajes/${conversationId}`);
+    } catch (error) {
+      setChatError(chatErrorMessage(error, 'No pudimos abrir la conversación.'));
+    } finally {
+      setStartingChat(false);
     }
   };
 
@@ -606,6 +631,43 @@ export function PublicationPage() {
                       </div>
                     )
                   ) : null}
+
+                  {/* Chat interno: canal principal para preguntar por la mascota.
+                      El copy cambia según el tipo de publicación. */}
+                  {publication.status === 'ACTIVE' && !isOwner ? (
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant={publication.type === 'ADOPTION' ? 'adoption' : 'secondary'}
+                        onClick={handleStartChat}
+                        loading={startingChat}
+                        className="w-full gap-2"
+                      >
+                        <MessageCircle size={16} />
+                        {getChatButtonLabel(publication.type)}
+                      </Button>
+                      <p className="text-xs leading-relaxed text-foreground/60">
+                        La conversación queda dentro de Patitas y solo la ven tú y el dueño. Nunca
+                        envíes dinero por adelantado.
+                      </p>
+                      {chatError ? (
+                        <p className="rounded-2xl border border-lost/20 bg-lost/10 px-4 py-3 text-sm font-medium text-lost-dark">
+                          {chatError}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {user ? (
+                    <Link
+                      to="/mensajes"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-foreground/10 px-4 py-2.5 text-sm font-semibold text-foreground/70 transition-colors hover:bg-foreground/5 hover:text-foreground"
+                    >
+                      <MessageCircle size={16} />
+                      Ir a mis mensajes
+                    </Link>
+                  ) : null}
+
                   {/* Botón Retirar para publicaciones importadas */}
                   {publication.is_imported && publication.status !== 'HIDDEN' && publication.status !== 'DELETED' ? (
                     <Button

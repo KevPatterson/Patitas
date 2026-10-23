@@ -48,9 +48,15 @@ export async function getNotifications(limit = 50): Promise<Notification[]> {
 }
 
 /**
- * Obtener contador de notificaciones no leídas
+ * Obtener contador de notificaciones no leídas.
+ *
+ * `includeMessages: false` deja fuera los avisos de chat: la cabecera tiene un
+ * badge propio para mensajes y, si se contaran en los dos, el mismo mensaje
+ * aparecería duplicado.
  */
-export async function getUnreadCount(): Promise<number> {
+export async function getUnreadCount(
+  options: { includeMessages?: boolean } = {}
+): Promise<number> {
   try {
     const { data: userResponse, error: authError } = await supabase.auth.getUser();
     
@@ -61,11 +67,17 @@ export async function getUnreadCount(): Promise<number> {
 
     const user = userResponse.user;
 
-    const { count, error } = await supabase
+    let query = supabase
       .from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('profile_id', user.id)
       .eq('is_read', false);
+
+    if (options.includeMessages === false) {
+      query = query.neq('type', 'MESSAGE');
+    }
+
+    const { count, error } = await query;
 
     if (error) {
       console.error('Error getting unread count:', error);

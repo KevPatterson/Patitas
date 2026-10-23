@@ -10,6 +10,7 @@ import { PendingReviewQueue } from '../components/admin/pending-review-queue';
 import { ExternalSourcesManager } from '../components/admin/external-sources-manager';
 import { AdminMetrics } from '../components/admin/admin-metrics';
 import { AuditLogPanel } from '../components/admin/audit-log-panel';
+import { ChatReportsPanel } from '../components/admin/chat-reports-panel';
 import { UserPlus, Shield, Copy, AlertTriangle, Flag, CheckCircle, TrendingUp, Eye } from 'lucide-react';
 import { ExternalLink, History } from 'lucide-react';
 type DashboardCounts = {
@@ -57,7 +58,7 @@ type UserProfile = {
   deleted_at: string | null;
 };
 
-type Tab = 'dashboard' | 'reports' | 'users' | 'publications' | 'duplicates' | 'moderation' | 'takedowns' | 'pending-review' | 'sources' | 'metrics' | 'audit';
+type Tab = 'dashboard' | 'reports' | 'users' | 'publications' | 'duplicates' | 'moderation' | 'takedowns' | 'pending-review' | 'sources' | 'metrics' | 'audit' | 'chat-reports';
 
 export function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -258,6 +259,7 @@ export function AdminPage() {
     { id: 'metrics', label: 'Métricas', icon: <TrendingUp className="size-5" /> },
     { id: 'audit', label: 'Auditoría', icon: <History className="size-5" /> },
     { id: 'reports', label: 'Reportes', icon: <Shield className="size-5" /> },
+    { id: 'chat-reports', label: 'Mensajes reportados', icon: <Flag className="size-5" /> },
     { id: 'duplicates', label: 'Duplicados', icon: <Copy className="size-5" /> },
     { id: 'moderation', label: 'Moderación IA', icon: <AlertTriangle className="size-5" /> },
     { id: 'pending-review', label: 'Pendientes revisión', icon: <Eye className="size-5" /> },
@@ -476,6 +478,8 @@ export function AdminPage() {
           </div>
         </div>
       )}
+
+      {activeTab === 'chat-reports' && <ChatReportsPanel />}
 
       {activeTab === 'duplicates' && (
         <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md">

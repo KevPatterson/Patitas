@@ -275,7 +275,7 @@ export function NotificationsPage() {
                         to={notification.link}
                         className="text-xs font-semibold text-orange hover:text-orange-dark transition-colors"
                       >
-                        Ver publicación →
+                        {notification.type === 'MESSAGE' ? 'Abrir conversación →' : 'Ver publicación →'}
                       </Link>
                     )}
 

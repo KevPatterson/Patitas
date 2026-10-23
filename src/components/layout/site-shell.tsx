@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Search, MapPin, LogOut, User, type LucideIcon } from 'lucide-react';
+import { Bell, Search, MapPin, LogOut, User, MessageCircle, type LucideIcon } from 'lucide-react';
 import { signOut } from '../../lib/supabase/auth';
 import { useAuth } from '../../app/auth-context';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
+import { useChatUnreadCount } from '../../lib/hooks/use-chat-unread-count';
 import { getOAuthAvatarUrl, getProfileAvatarUrl, AVATAR_UPDATED_EVENT } from '../../lib/supabase/profiles';
 import { Logo } from '../Logo';
 import { ThemeSwitch } from '../ui/theme-switch';
@@ -47,7 +48,19 @@ function WhatsAppMark({ className }: { className?: string }) {
 type SiteShellProps = {
   children: React.ReactNode;
 };
-function NavItem({ href, label, Icon, badge }: { href: string; label: string; Icon: LucideIcon; badge?: number }) {
+function NavItem({
+  href,
+  label,
+  Icon,
+  badge,
+  badgeLabel = 'elementos sin leer',
+}: {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+  badge?: number;
+  badgeLabel?: string;
+}) {
   return (
     <NavLink
       to={href}
@@ -65,7 +78,7 @@ function NavItem({ href, label, Icon, badge }: { href: string; label: string; Ic
           {(badge ?? 0) > 0 && (
             <span 
               className="absolute -right-1 -top-1 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-foreground bg-found px-1 text-[11px] font-bold leading-none text-primary-foreground"
-              aria-label={`${badge} notificaciones no leídas`}
+              aria-label={`${badge} ${badgeLabel}`}
             >
               {(badge ?? 0) > 9 ? '9+' : badge}
             </span>
@@ -76,11 +89,45 @@ function NavItem({ href, label, Icon, badge }: { href: string; label: string; Ic
   );
 }
 
+/**
+ * Acceso compacto a mensajes para móvil. La cabecera es el sitio acordado
+ * para el chat: la BottomNav se queda con las cinco secciones principales.
+ */
+function MobileIconLink({
+  href,
+  label,
+  Icon,
+  badge,
+}: {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+  badge?: number;
+}) {
+  return (
+    <Link
+      to={href}
+      className="relative flex size-[42px] items-center justify-center rounded-[14px] border-2 border-transparent text-[hsl(var(--muted-foreground))] transition-all duration-base hover:border-foreground hover:bg-highlight hover:text-foreground active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
+      aria-label={
+        (badge ?? 0) > 0 ? `${label} (${badge} sin leer)` : label
+      }
+    >
+      <Icon className="size-5" strokeWidth={2} aria-hidden="true" />
+      {(badge ?? 0) > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-foreground bg-found px-1 text-[11px] font-bold leading-none text-primary-foreground">
+          {(badge ?? 0) > 9 ? '9+' : badge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export function SiteShell({ children }: SiteShellProps) {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const unreadCount = useNotificationCount();
+  const unreadChatCount = useChatUnreadCount();
   // Tras iniciar sesión se vuelve al destino actual; dentro de las páginas de
   // auth se deja la ruta pelada para no encadenar redirecciones.
   const loginHref = location.pathname.startsWith('/auth')
@@ -163,7 +210,22 @@ export function SiteShell({ children }: SiteShellProps) {
               <NavItem href="/mapa" label="Mapa" Icon={MapPin} />
               
               {user && (
-                <NavItem href="/notificaciones" label="Avisos" Icon={Bell} badge={unreadCount} />
+                <>
+                  <NavItem
+                    href="/mensajes"
+                    label="Mensajes"
+                    Icon={MessageCircle}
+                    badge={unreadChatCount}
+                    badgeLabel="mensajes sin leer"
+                  />
+                  <NavItem
+                    href="/notificaciones"
+                    label="Avisos"
+                    Icon={Bell}
+                    badge={unreadCount}
+                    badgeLabel="notificaciones no leídas"
+                  />
+                </>
               )}
             </div>
             
@@ -232,8 +294,14 @@ export function SiteShell({ children }: SiteShellProps) {
                     </button>
                   </div>
 
-                  {/* Móvil - Solo Perfil y Logout */}
+                  {/* Móvil - Mensajes, Perfil y Logout */}
                   <div className="flex items-center gap-1 lg:hidden">
+                    <MobileIconLink
+                      href="/mensajes"
+                      label="Mensajes"
+                      Icon={MessageCircle}
+                      badge={unreadChatCount}
+                    />
                     <Link
                       to={profileHref}
                       className="flex items-center justify-center rounded-full border-2 border-foreground bg-surface p-2 transition-all duration-base hover:bg-highlight active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
