@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  createPhoneAuthSchema,
   loginSchema,
   registerSchema,
   newPasswordSchema,
-  phoneOtpSchema,
   resetPasswordSchema,
 } from '../auth';
 
@@ -130,43 +128,5 @@ describe('resetPasswordSchema', () => {
   it('solo necesita un email válido', () => {
     expect(resetPasswordSchema.safeParse({ email: 'persona@ejemplo.com' }).success).toBe(true);
     expect(resetPasswordSchema.safeParse({ email: 'no-es-email' }).success).toBe(false);
-  });
-});
-
-describe('createPhoneAuthSchema · login', () => {
-  const schema = createPhoneAuthSchema('login');
-
-  it('acepta un teléfono local cubano', () => {
-    expect(schema.safeParse({ phone: '5 123 4567' }).success).toBe(true);
-  });
-
-  it('rechaza teléfonos inválidos', () => {
-    for (const phone of ['', 'abc', '123', '+0123456789']) {
-      expect(schema.safeParse({ phone }).success, phone).toBe(false);
-    }
-  });
-
-  it('no exige nombre ni usuario al entrar', () => {
-    expect(schema.safeParse({ phone: '+5351234567' }).success).toBe(true);
-  });
-});
-
-describe('createPhoneAuthSchema · registro', () => {
-  const schema = createPhoneAuthSchema('register');
-
-  it('exige nombre y usuario válidos', () => {
-    const base = { phone: '+5351234567', fullName: 'Kevin Patterson', username: 'kevin' };
-    expect(schema.safeParse(base).success).toBe(true);
-    expect(schema.safeParse({ ...base, fullName: 'K' }).success).toBe(false);
-    expect(schema.safeParse({ ...base, username: 'ab' }).success).toBe(false);
-    expect(schema.safeParse({ phone: '+5351234567' }).success).toBe(false);
-  });
-});
-
-describe('phoneOtpSchema', () => {
-  it('solo acepta seis dígitos', () => {
-    expect(phoneOtpSchema.safeParse({ token: '123456' }).success).toBe(true);
-    expect(phoneOtpSchema.safeParse({ token: '12345' }).success).toBe(false);
-    expect(phoneOtpSchema.safeParse({ token: '12345a' }).success).toBe(false);
   });
 });

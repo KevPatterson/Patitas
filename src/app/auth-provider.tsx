@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
       setLoading(false);
-      // Al iniciar sesión (Google, email o teléfono) sincronizamos el perfil.
+      // Al iniciar sesión (Google o email) sincronizamos el perfil.
       if (event === 'SIGNED_IN' && nextSession) {
         void syncProfileFromAuth(nextSession.user).catch((e) => {
           console.warn('Error sincronizando perfil desde auth:', e);

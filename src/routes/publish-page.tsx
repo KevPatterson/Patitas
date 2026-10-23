@@ -613,7 +613,7 @@ export function PublishPage() {
         <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-6 lg:p-8 space-y-6 shadow-md">
           <div className="flex items-center justify-between gap-4 text-sm font-semibold text-foreground/70">
             <span>Paso {step} de {totalSteps}</span>
-            <span className="text-turquoise">{user.email ?? user.phone ?? '—'}</span>
+            <span className="text-turquoise">{user.email ?? '—'}</span>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-2 px-2 -mx-2" aria-label="Pasos del wizard">

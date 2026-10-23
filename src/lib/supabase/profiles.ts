@@ -15,8 +15,8 @@ export function notifyAvatarUpdated() {
 }
 
 /**
- * Nombre de usuario de respaldo para cuentas sin correo (por ejemplo, acceso
- * por teléfono). Se basa en el UUID para no chocar con el índice único.
+ * Nombre de usuario de respaldo para cuentas sin correo. Se basa en el UUID
+ * para no chocar con el índice único.
  */
 function fallbackUsername(user: User): string {
   const emailPrefix = user.email?.split('@')[0]?.trim();
