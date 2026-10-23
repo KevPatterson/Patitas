@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Phone, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { Button } from '../ui/button';
 import { TextField } from '../ui/text-field';
 import {
@@ -14,7 +14,6 @@ import {
 import {
   signInWithPhoneOtp,
   verifyPhoneOtp,
-  type PhoneChannel,
 } from '../../lib/supabase/auth';
 import { isValidPhone, normalizePhone } from '../../lib/auth/phone';
 import { phoneAuthErrorMessage } from '../../lib/auth/error-messages';
@@ -32,7 +31,6 @@ type SignUpData = {
 export function PhoneAuthForm({ mode, next }: PhoneAuthFormProps) {
   const navigate = useNavigate();
   const [step, setStep] = useState<'phone' | 'code'>('phone');
-  const [channel, setChannel] = useState<PhoneChannel>('sms');
   const [normalizedPhone, setNormalizedPhone] = useState('');
   const [signUpData, setSignUpData] = useState<SignUpData>({});
   const [cooldown, setCooldown] = useState(0);
@@ -59,8 +57,6 @@ export function PhoneAuthForm({ mode, next }: PhoneAuthFormProps) {
     return () => window.clearTimeout(timer);
   }, [cooldown]);
 
-  const channelLabel = channel === 'whatsapp' ? 'WhatsApp' : 'SMS';
-
   const onSubmitPhone = async (values: PhoneAuthInput) => {
     setServerError(null);
     setInfoMessage(null);
@@ -84,7 +80,7 @@ export function PhoneAuthForm({ mode, next }: PhoneAuthFormProps) {
 
     setIsSending(true);
     try {
-      await signInWithPhoneOtp(phone, channel, {
+      await signInWithPhoneOtp(phone, 'sms', {
         shouldCreateUser: true,
         ...nextSignUpData,
       });
@@ -92,7 +88,7 @@ export function PhoneAuthForm({ mode, next }: PhoneAuthFormProps) {
       setSignUpData(nextSignUpData);
       setStep('code');
       setCooldown(60);
-      setInfoMessage(`Te enviamos un código de 6 dígitos por ${channelLabel}.`);
+      setInfoMessage('Te enviamos un código de 6 dígitos por SMS.');
     } catch (error) {
       setServerError(phoneAuthErrorMessage(error));
     } finally {
@@ -118,12 +114,12 @@ export function PhoneAuthForm({ mode, next }: PhoneAuthFormProps) {
     setServerError(null);
     setIsSending(true);
     try {
-      await signInWithPhoneOtp(normalizedPhone, channel, {
+      await signInWithPhoneOtp(normalizedPhone, 'sms', {
         shouldCreateUser: true,
         ...signUpData,
       });
       setCooldown(60);
-      setInfoMessage(`Te enviamos un nuevo código por ${channelLabel}.`);
+      setInfoMessage('Te enviamos un nuevo código por SMS.');
     } catch (error) {
       setServerError(phoneAuthErrorMessage(error));
     } finally {
@@ -149,9 +145,7 @@ export function PhoneAuthForm({ mode, next }: PhoneAuthFormProps) {
                 Código enviado a {normalizedPhone}
               </p>
               <p className="text-xs leading-relaxed text-foreground/60">
-                Revisa{' '}
-                {channel === 'whatsapp' ? 'WhatsApp' : 'tus mensajes SMS'} e
-                ingresa el código de 6 dígitos.
+                Revisa tus mensajes SMS e ingresa el código de 6 dígitos.
               </p>
               <button
                 type="button"
@@ -254,44 +248,6 @@ export function PhoneAuthForm({ mode, next }: PhoneAuthFormProps) {
         {...phoneForm.register('phone')}
       />
 
-      <div className="space-y-2">
-        <span className="block text-sm font-semibold text-foreground">
-          Recibir código por
-        </span>
-        <div
-          className="grid grid-cols-2 gap-2"
-          role="group"
-          aria-label="Canal del código"
-        >
-          <button
-            type="button"
-            aria-pressed={channel === 'sms'}
-            onClick={() => setChannel('sms')}
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 px-4 text-sm font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 ${
-              channel === 'sms'
-                ? 'border-orange bg-orange/10 text-orange-dark'
-                : 'border-foreground/10 bg-surface text-foreground/70 hover:border-foreground/20'
-            }`}
-          >
-            <MessageCircle className="size-4" />
-            SMS
-          </button>
-          <button
-            type="button"
-            aria-pressed={channel === 'whatsapp'}
-            onClick={() => setChannel('whatsapp')}
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 px-4 text-sm font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 ${
-              channel === 'whatsapp'
-                ? 'border-found bg-found/10 text-found'
-                : 'border-foreground/10 bg-surface text-foreground/70 hover:border-foreground/20'
-            }`}
-          >
-            <Phone className="size-4" />
-            WhatsApp
-          </button>
-        </div>
-      </div>
-
       {serverError ? (
         <div className="rounded-xl bg-lost/10 border-2 border-lost/20 px-4 py-3 text-sm font-medium text-lost">
           {serverError}
@@ -311,7 +267,7 @@ export function PhoneAuthForm({ mode, next }: PhoneAuthFormProps) {
         loading={isSending}
         disabled={isSending}
       >
-        Enviar código por {channelLabel}
+        Enviar código
       </Button>
 
       <p className="text-center text-xs leading-relaxed text-foreground/60">
