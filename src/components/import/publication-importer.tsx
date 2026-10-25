@@ -605,6 +605,8 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
     // la imagen. Si era una captura de texto, el formulario no gana nada con
     // usarla como foto de la publicación.
     let imageFile: File | undefined;
+    let imageError: string | null = null;
+    
     if (reviewHasPet && reviewImage) {
       // Si la imagen viene de un enlace (Facebook), descargarla y crear File
       if (!file && reviewImage.startsWith('http')) {
@@ -615,17 +617,30 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
             const blob = await response.blob();
             imageFile = new File([blob], 'imported-image.jpg', { type: blob.type || 'image/jpeg' });
             console.log('[applyReview] Imagen descargada, tamaño:', blob.size, 'tipo:', blob.type);
+          } else if (response.status === 403) {
+            // Facebook CDN bloquea acceso directo: usar proxy o avisar al usuario
+            imageError = 'No se pudo descargar la imagen (403). Facebook bloquea el acceso directo. Sube una captura de pantalla o la foto directamente.';
+            console.warn('[applyReview] Error 403 descargando imagen de Facebook CDN');
           } else {
             console.warn('[applyReview] Error descargando imagen:', response.status, response.statusText);
           }
         } catch (err) {
           console.error('[applyReview] Error descargando imagen:', err);
+          imageError = 'Error de red al descargar la imagen. Sube la foto manualmente.';
         }
       } else if (file) {
         imageFile = file;
       }
+    } else if (reviewImage && !reviewHasPet) {
+      // Hay imagen pero la IA no detectó mascota
+      imageError = 'La IA no detectó una mascota en la imagen. Sube una foto donde se vea el animal o una captura de pantalla del aviso.';
+      console.log('[applyReview] No se adjunta imagen - IA no detectó mascota:', { reviewHasPet, reviewImage: !!reviewImage });
     } else {
       console.log('[applyReview] No se adjunta imagen:', { reviewHasPet, reviewImage: !!reviewImage, file: !!file });
+    }
+
+    if (imageError) {
+      setError(imageError);
     }
 
     onApply(review, imageFile);
@@ -842,6 +857,12 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
                 <p className="flex items-start gap-1.5 text-xs font-medium text-found">
                   <CheckCircle className="size-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                   La mascota aparece en la foto: se añadirá también como imagen de la publicación.
+                </p>
+              )}
+              {!reviewHasPet && (
+                <p className="flex items-start gap-1.5 text-xs font-medium text-lost">
+                  <AlertCircle className="size-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                  La IA no detectó una mascota en esta imagen. Sube una foto donde se vea el animal o una captura del aviso.
                 </p>
               )}
             </div>
