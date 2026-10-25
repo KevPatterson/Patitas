@@ -224,3 +224,43 @@ export function blobToBase64(blob: Blob): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
+
+/** Lado máximo para las imágenes que se envían al autocompletado con IA. */
+export const AI_IMPORT_MAX_SIDE = 1280;
+
+/**
+ * Prepara una imagen para el autocompletado con IA: 1280 px de lado y JPEG 85 %.
+ *
+ * El formulario envía la imagen como data URL base64 (un 33 % más de tamaño) y
+ * el modelo de visión factura tokens de imagen: con 1280 px se lee igual el
+ * texto de un cartel gastando muchos menos.
+ */
+export async function fileToDataUrl(file: File): Promise<string> {
+  try {
+    const dataUrl = await readAsDataUrl(file);
+    const image = await loadImage(dataUrl);
+    const longestSide = Math.max(image.width, image.height);
+    const scale = longestSide > AI_IMPORT_MAX_SIDE ? AI_IMPORT_MAX_SIDE / longestSide : 1;
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new CompressionError('Tu navegador no permite procesar imágenes');
+    }
+
+    // Fondo blanco: un PNG con transparencia se vería negro al pasar a JPEG.
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+
+    return canvas.toDataURL('image/jpeg', 0.85);
+  } catch {
+    // Si el navegador no puede decodificar la imagen, se envía el original.
+    return readAsDataUrl(file);
+  }
+}

@@ -6,14 +6,14 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import 'leaflet/dist/leaflet.css';
-import { Circle, Tag, Globe } from 'lucide-react';
+import { Circle, Tag } from 'lucide-react';
 import { useAuth } from '../app/auth-context';
 import { Button, LinkButton } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
 import { TextareaField } from '../components/ui/textarea-field';
 import { CatLoader } from '../components/ui/cat-loader';
-import { ImageDataExtractor } from '../components/ai/image-data-extractor';
-import { FacebookImportWizard } from '../components/import/FacebookImportWizard';
+import { PublicationImporter } from '../components/import/publication-importer';
+import { mergeImportedData, type ImportedData } from '../lib/import/merge-imported-data';
 import { createLocation, createPublication, uploadPublicationImages, createPet, deletePublicationImages } from '../lib/supabase/publications';
 import { isFeatureEnabled } from '../lib/config/feature-flags';
 import type { UploadProgress } from '../lib/supabase/publication-images';
@@ -132,7 +132,6 @@ export function PublishPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successSlug, setSuccessSlug] = useState<string | null>(null);
-  const [showFacebookImport, setShowFacebookImport] = useState(false);
   const [facebookSourceUrl, setFacebookSourceUrl] = useState<string>('');
 
   // Cargar datos de publicación existente al editar
@@ -295,35 +294,6 @@ export function PublishPage() {
     }
   };
 
-  type AIData = {
-    type?: 'LOST' | 'FOUND' | 'ADOPTION' | 'ABANDONED' | 'SIGHTING';
-    title?: string;
-    description?: string;
-    species?: string;
-    breed?: string;
-    sex?: string;
-    size?: string;
-    ageApprox?: string;
-    color?: string;
-    characteristics?: string;
-    collar?: boolean;
-    plate?: boolean;
-    province?: string;
-    municipality?: string;
-    zone?: string;
-    address?: string;
-    latitude?: number;
-    longitude?: number;
-    locationPrecision?: 'municipality' | 'province' | 'none';
-    reward?: string;
-    eventDate?: string;
-    eventTimeApprox?: string;
-    contactMode?: 'INTERNAL' | 'PHONE' | 'WHATSAPP' | 'EMAIL';
-    contactPhone?: string;
-    contactWhatsapp?: string;
-    contactEmail?: string;
-  };
-
   /** Geocodifica una dirección con contexto de Cuba. */
   const geocodeAddress = async (parts: string[]): Promise<{ lat: number; lng: number } | null> => {
     const query = [...parts.filter((part) => part && part.trim()), 'Cuba'].join(', ');
@@ -368,7 +338,7 @@ export function PublishPage() {
    * Afina la ubicación municipal con la dirección o la zona que leyó la IA.
    * Si Nominatim no encuentra nada, se conserva el centro del municipio.
    */
-  const refineAiLocation = async (data: AIData) => {
+  const refineAiLocation = async (data: ImportedData) => {
     if (!data.address && !data.zone) return;
 
     try {
@@ -386,83 +356,46 @@ export function PublishPage() {
     }
   };
 
-  const handleAIDataExtracted = (data: AIData) => {
-    const aiCoordinates =
-      data.latitude !== undefined && data.longitude !== undefined
-        ? fuzzedCoordinates(data.latitude, data.longitude)
-        : null;
+  /**
+   * Aplica los datos revisados sin pisar lo que el usuario ya escribió.
+   *
+   * El tipo de aviso sí se aplica siempre: es la intención del aviso. El resto
+   * solo rellena campos vacíos. Las coordenadas se difuminan igual que las que
+   * escribe el usuario.
+   */
+  const handleImportedData = (data: ImportedData) => {
+    const { latitude, longitude } = data;
+    const hasCoordinates =
+      latitude !== undefined &&
+      longitude !== undefined &&
+      Number.isFinite(latitude) &&
+      Number.isFinite(longitude);
+
+    const fuzzed = hasCoordinates ? fuzzedCoordinates(latitude, longitude) : null;
+    // Solo se afina con la dirección si la zona de la IA se llegó a aplicar.
+    const zoneWasEmpty = !(values.zone ?? '').trim();
 
     setValues((current) => {
-      const zone = data.zone ?? (!(current.zone ?? '').trim() && data.address ? data.address : undefined);
+      const merged = mergeImportedData(current, data);
 
-      return {
-        ...current,
-        // El tipo detectado se aplica siempre: es la intención del aviso.
-        ...(data.type && { type: data.type }),
-        // Título y descripción solo si el usuario no ha escrito nada.
-        ...(data.title && !current.title.trim() && { title: data.title }),
-        ...(data.description && !current.description.trim() && {
-          description: data.description,
-        }),
-        // Datos del animal
-        ...(data.species && { species: data.species }),
-        ...(data.breed && { breed: data.breed }),
-        ...(data.sex && { sex: data.sex }),
-        ...(data.size && { size: data.size }),
-        ...(data.ageApprox && { ageApprox: data.ageApprox }),
-        ...(data.color && { color: data.color }),
-        ...(data.characteristics && { characteristics: data.characteristics }),
-        ...(data.collar !== undefined && { collar: data.collar }),
-        ...(data.plate !== undefined && { plate: data.plate }),
-        // Ubicación y contacto
-        ...(data.province && { province: data.province }),
-        ...(data.municipality && { municipality: data.municipality }),
-        ...(zone && { zone }),
-        ...(data.reward && { reward: data.reward }),
-        ...(data.eventDate && { eventDate: data.eventDate }),
-        ...(data.eventTimeApprox && { eventTimeApprox: data.eventTimeApprox }),
-        ...(data.contactMode && { contactMode: data.contactMode }),
-        ...(data.contactPhone && { contactPhone: data.contactPhone }),
-        ...(data.contactWhatsapp && { contactWhatsapp: data.contactWhatsapp }),
-        ...(data.contactEmail && { contactEmail: data.contactEmail }),
-        ...(aiCoordinates && {
-          approximateLat: aiCoordinates.lat,
-          approximateLng: aiCoordinates.lng,
-        }),
-      };
+      return fuzzed
+        ? { ...merged, approximateLat: fuzzed.lat, approximateLng: fuzzed.lng }
+        : merged;
     });
 
-    if (data.latitude !== undefined && data.longitude !== undefined) {
+    if (fuzzed) {
       setLocationPrecision(data.locationPrecision === 'province' ? 'province' : 'municipality');
     }
 
-    // El municipio ya está marcado; si hay calle o zona, se afina en segundo plano.
-    if (data.address || data.zone) void refineAiLocation(data);
-  };
-
-  const handleFacebookImportComplete = (data: PublicationFormValues, sourceUrl: string) => {
-    const lat = Number(data.approximateLat);
-    const lng = Number(data.approximateLng);
-    const hasCoordinates =
-      Boolean(data.approximateLat) &&
-      Boolean(data.approximateLng) &&
-      Number.isFinite(lat) &&
-      Number.isFinite(lng);
-
-    if (hasCoordinates) {
-      // Las coordenadas importadas son el centro del municipio: se difuminan
-      // igual que las que escribe el usuario.
-      const fuzzed = fuzzedCoordinates(lat, lng);
-      setValues({ ...data, approximateLat: fuzzed.lat, approximateLng: fuzzed.lng });
-      setLocationPrecision('municipality');
-    } else {
-      setValues(data);
+    if (data.sourceUrl) {
+      setFacebookSourceUrl(data.sourceUrl);
+    } else if (facebookSourceUrl) {
+      // Si los datos aplicados no vienen de Facebook, no se atribuye la fuente.
+      setFacebookSourceUrl('');
     }
 
-    setFacebookSourceUrl(sourceUrl);
-    setShowFacebookImport(false);
-    // Saltar al paso 2 (datos de mascota) si está en paso 1
-    if (step === 1) setStep(2);
+    // El municipio ya está marcado; si hay calle o zona, se afina en segundo plano.
+    if ((data.address || data.zone) && zoneWasEmpty) void refineAiLocation(data);
   };
 
   const handleGeocode = async () => {
@@ -825,39 +758,13 @@ export function PublishPage() {
 
           {step === 2 && (
             <div className="space-y-4">
-              {/* Acciones de IA: Extracción de imagen + Importar Facebook */}
-              <div className="space-y-3">
-                {/* Autocompletado por IA: oculto si la IA está desactivada
-                    (tarea 5.4). Con el proveedor mock los datos serían inventados. */}
-                {isFeatureEnabled('ai') && (
-                  <ImageDataExtractor
-                    onDataExtracted={handleAIDataExtracted}
-                    disabled={submitting}
-                  />
-                )}
-                
-                <div className="border-2 border-dashed border-purple/20 rounded-2xl p-4 bg-purple/5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded-xl bg-purple/10 flex items-center justify-center">
-                        <Globe className="size-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground">Importar desde Facebook</p>
-                        <p className="text-sm text-foreground/60">Pega un enlace público o sube una captura → la IA pre-llena el formulario</p>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="secondary" 
-                      onClick={() => setShowFacebookImport(true)}
-                      className="gap-2"
-                    >
-                      <Globe className="size-4" />
-                      Importar
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              {/* Autocompletado unificado: foto/captura y enlace de Facebook
+                  terminan en la misma revisión editable. Oculto si la IA está
+                  desactivada (tarea 5.4): con el proveedor mock los datos
+                  serían inventados. */}
+              {isFeatureEnabled('ai') && (
+                <PublicationImporter onApply={handleImportedData} disabled={submitting} />
+              )}
 
               {/* Campos del formulario */}
               <div className="grid gap-4 md:grid-cols-2">
@@ -1383,15 +1290,6 @@ export function PublishPage() {
               <LinkButton href={`/auth/login?next=${encodeURIComponent('/publicar')}`}>Iniciar sesión</LinkButton>
               <LinkButton href="/auth/register" variant="secondary">Crear cuenta</LinkButton>
             </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Facebook Import Modal */}
-      {showFacebookImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-surface rounded-3xl border-2 border-foreground/10 shadow-2xl p-6 lg:p-8">
-            <FacebookImportWizard onImportComplete={handleFacebookImportComplete} />
           </div>
         </div>
       )}
