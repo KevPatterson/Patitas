@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Search, MapPinned, PlusCircle, Bell, Heart } from 'lucide-react';
+import { Home, Search, MapPinned, PlusCircle, MessageCircle, Heart } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useNotificationCount } from '../../lib/hooks/use-notification-count';
+import { useChatUnreadCount } from '../../lib/hooks/use-chat-unread-count';
 import { useAuth } from '../../app/auth-context';
 interface NavItem {
   to: string;
@@ -9,20 +9,18 @@ interface NavItem {
   icon: LucideIcon;
   highlight?: boolean;
 }
-
 export function BottomNav() {
   const location = useLocation();
   const { user } = useAuth();
-  const unreadCount = useNotificationCount();
+  const unreadChatCount = useChatUnreadCount();
   const isLoggedIn = !!user;
-
   const items: readonly NavItem[] = [
     { to: '/', label: 'Inicio', icon: Home },
     { to: '/buscar', label: 'Buscar', icon: Search },
     { to: '/publicar', label: 'Publicar', icon: PlusCircle, highlight: true },
     { to: '/mapa', label: 'Mapa', icon: MapPinned },
     isLoggedIn
-      ? { to: '/notificaciones', label: 'Notifs', icon: Bell }
+      ? { to: '/mensajes', label: 'Mensajes', icon: MessageCircle }
       : { to: '/adopciones', label: 'Adopciones', icon: Heart },
   ];
 
@@ -40,7 +38,7 @@ export function BottomNav() {
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to + '/'));
-          const showBadge = item.to === '/notificaciones' && unreadCount > 0;
+          const showBadge = item.to === '/mensajes' && unreadChatCount > 0;
 
           if (item.highlight) {
             return (
@@ -87,7 +85,7 @@ export function BottomNav() {
                   className="absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full text-white text-[8px] font-bold flex items-center justify-center shadow-sm animate-paw-pulse"
                   style={{ backgroundColor: 'hsl(var(--destructive))' }}
                 >
-                  {unreadCount > 9 ? '9+' : unreadCount}
+                  {unreadChatCount > 9 ? '9+' : unreadChatCount}
                 </span>
               )}
             </NavLink>

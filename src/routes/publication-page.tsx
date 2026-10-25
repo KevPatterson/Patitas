@@ -647,8 +647,7 @@ export function PublicationPage() {
                         {getChatButtonLabel(publication.type)}
                       </Button>
                       <p className="text-xs leading-relaxed text-foreground/60">
-                        La conversación queda dentro de Patitas y solo la ven tú y el dueño. Nunca
-                        envíes dinero por adelantado.
+                        La conversación queda dentro de Patitas y solo la ven tú y el dueño. En caso de haber algún intercambio de dinero, nunca envíes dinero por adelantado.
                       </p>
                       {chatError ? (
                         <p className="rounded-2xl border border-lost/20 bg-lost/10 px-4 py-3 text-sm font-medium text-lost-dark">

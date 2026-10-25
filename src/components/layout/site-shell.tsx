@@ -220,7 +220,7 @@ export function SiteShell({ children }: SiteShellProps) {
                   />
                   <NavItem
                     href="/notificaciones"
-                    label="Avisos"
+                    label="Notificaciones"
                     Icon={Bell}
                     badge={unreadCount}
                     badgeLabel="notificaciones no leídas"
@@ -294,13 +294,13 @@ export function SiteShell({ children }: SiteShellProps) {
                     </button>
                   </div>
 
-                  {/* Móvil - Mensajes, Perfil y Logout */}
+                  {/* Móvil - Notificaciones, Perfil y Logout */}
                   <div className="flex items-center gap-1 lg:hidden">
                     <MobileIconLink
-                      href="/mensajes"
-                      label="Mensajes"
-                      Icon={MessageCircle}
-                      badge={unreadChatCount}
+                      href="/notificaciones"
+                      label="Notificaciones"
+                      Icon={Bell}
+                      badge={unreadCount}
                     />
                     <Link
                       to={profileHref}
