@@ -548,13 +548,11 @@ async function createPublication(
       contact_phone: extracted.contact_phone ?? null,
       contact_whatsapp: extracted.contact_whatsapp ?? null,
       contact_email: extracted.contact_email ?? null,
-      microchip: null,
-      // `publications` no tiene columnas de ubicación: la ubicación vive en
-      // `locations` (province/municipality/zone son NOT NULL allí). La ingesta
-      // no crea ubicaciones para no ensuciar el catálogo; los datos extraídos
-      // quedan en `external_posts.extracted` para que el moderador los revise.
-      approximate_lat: null, // Se fuzzea automáticamente por trigger
-      approximate_lng: null,
+      // `publications` no tiene columnas de ubicación ni de microchip: la
+      // ubicación vive en `locations` y el microchip en `pets`. La ingesta no
+      // crea ubicaciones para no ensuciar el catálogo, así que los datos
+      // extraídos quedan en `external_posts.extracted` para que el moderador
+      // los revise.
       event_date: extracted.event_date ?? null,
       event_time_approx: extracted.event_time_approx ?? null,
       // Solo el auto-publicado nace visible. Sin revisión, la publicación es
