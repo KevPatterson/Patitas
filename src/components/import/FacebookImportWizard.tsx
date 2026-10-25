@@ -5,7 +5,7 @@ import { ExternalLink, Image, Loader2, AlertCircle, CheckCircle, X, Globe } from
 import { Button } from '../ui/button';
 import { TextField } from '../ui/text-field';
 import { supabase } from '../../lib/supabase/client';
-import { facebookLinkImportSchema } from '../../lib/validations/facebook-import';
+import { facebookLinkImportSchema, isFacebookBoilerplate } from '../../lib/validations/facebook-import';
 import type { PublicationFormValues } from '../../lib/validations/publication';
 import { PROVINCES } from '../../lib/constants/cuba';
 import { SPECIES_LABELS, SEX_LABELS, SIZE_LABELS, AGE_LABELS } from '../../lib/constants/labels';
@@ -320,11 +320,17 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
         throw new Error('El servidor no devolvió datos del enlace');
       }
 
+      const mapped = mapApiExtracted(data.extracted);
       const extracted: ExtractedData = {
-        ...mapApiExtracted(data.extracted),
-        // Los metadatos Open Graph son más fiables que el texto de la visión.
-        title: data.title ?? undefined,
-        description: data.description ?? undefined,
+        ...mapped,
+        // Lo extraído del texto del post manda; Open Graph solo rellena huecos
+        // y nunca aporta los textos genéricos de Facebook.
+        title:
+          mapped.title ??
+          (isFacebookBoilerplate(data.title) ? undefined : data.title ?? undefined),
+        description:
+          mapped.description ??
+          (isFacebookBoilerplate(data.description) ? undefined : data.description ?? undefined),
         sourceUrl: url,
       };
 

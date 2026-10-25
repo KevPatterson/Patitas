@@ -7,6 +7,11 @@ import {
   parseVisionJson,
   resolveCoordinates,
 } from '../_lib/ai/form-extraction';
+import {
+  extractOpenGraphMetadata,
+  extractPostText,
+  isFacebookBoilerplate,
+} from '../../src/lib/validations/facebook-import';
 
 /**
  * Estos tests fijan el contrato del autocompletado del formulario.
@@ -319,5 +324,50 @@ describe('findMunicipality', () => {
       province: 'Sancti Spíritus',
       municipality: 'Sancti Spíritus',
     });
+  });
+});
+
+describe('importación desde un enlace de Facebook', () => {
+  it('extrae los campos del mensaje del post aunque el Open Graph sea genérico', () => {
+    // Caso real: la foto tiene metadatos genéricos, pero el HTML incluye el
+    // mensaje del post. Antes se usaba solo el Open Graph y el formulario
+    // llegaba vacío.
+    const html = `
+      <html>
+        <head>
+          <meta property="og:title" content="Facebook" />
+          <meta property="og:description" content="See posts, photos and more on Facebook." />
+          <meta property="og:image" content="https://scontent.xx.fbcdn.net/foto.jpg?stp=dst-jpg&amp;oe=6AE3E88C" />
+        </head>
+        <body>
+          <div data-ad-preview="message">
+            Perro macho pequeño se perdió en Centro Habana, La Habana.<br />
+            Llama al 55512345. Recompensa 500 CUP.
+          </div>
+        </body>
+      </html>
+    `;
+
+    const metadata = extractOpenGraphMetadata(html);
+    const postText = extractPostText(html);
+
+    expect(metadata.image).toBe('https://scontent.xx.fbcdn.net/foto.jpg?stp=dst-jpg&oe=6AE3E88C');
+    expect(isFacebookBoilerplate(metadata.title)).toBe(true);
+    expect(isFacebookBoilerplate(metadata.description)).toBe(true);
+    expect(postText).toContain('Centro Habana');
+
+    const result = buildFormExtraction({
+      ocr: { text: postText ?? '', confidence: 0.6 },
+    });
+
+    expect(result.type).toBe('LOST');
+    expect(result.species).toBe('dog');
+    expect(result.sex).toBe('male');
+    expect(result.size).toBe('small');
+    expect(result.province).toBe('La Habana');
+    expect(result.municipality).toBe('Centro Habana');
+    expect(result.contactPhone).toBe('+5355512345');
+    expect(result.reward).toBe('$500');
+    expect(result.latitude).toBeCloseTo(23.138, 2);
   });
 });

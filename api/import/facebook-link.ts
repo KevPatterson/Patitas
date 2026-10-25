@@ -8,6 +8,8 @@ import { aiProviderIsReal, AI_ENABLED } from '../_lib/env.js';
 import {
   facebookLinkImportSchema,
   extractOpenGraphMetadata,
+  extractPostText,
+  isFacebookBoilerplate,
   FACEBOOK_IMPORT_CONSTANTS,
 } from '../../src/lib/validations/facebook-import.js';
 import { getAIProvider } from '../_lib/ai-provider.js';
@@ -151,7 +153,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const metadata = extractOpenGraphMetadata(html);
-  const hasUsefulData = metadata.title || metadata.description || metadata.image;
+  const postText = extractPostText(html);
+
+  // Los metadatos de una foto suelen ser genéricos ("Facebook", "See posts..."),
+  // así que solo cuentan como texto útil si no son boilerplate.
+  const title = isFacebookBoilerplate(metadata.title) ? null : metadata.title;
+  const description = isFacebookBoilerplate(metadata.description)
+    ? null
+    : metadata.description;
+
+  const hasUsefulData = Boolean(title || description || metadata.image || postText);
 
   if (!hasUsefulData) {
     return json(res, 200, {
@@ -197,20 +208,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // Los metadatos Open Graph hacen de OCR: el texto del post suele traer la
-  // ubicación, el teléfono y la fecha. La visión aporta lo físico (especie,
-  // color). `buildFormExtraction` unifica ambos y resuelve las coordenadas.
-  const ogText = [metadata.title, metadata.description].filter(Boolean).join('\n');
+  // El texto del post hace de OCR: suele traer la ubicación, el teléfono y la
+  // fecha. Los metadatos Open Graph solo se usan si aportan texto real. La
+  // visión aporta lo físico (especie, color). `buildFormExtraction` unifica
+  // ambos y resuelve las coordenadas.
+  const ocrText = [...new Set([postText, title, description].filter(Boolean))].join('\n');
   const extracted = buildFormExtraction({
-    ocr: ogText ? { text: ogText, confidence: 0.6 } : null,
+    ocr: ocrText ? { text: ocrText, confidence: 0.6 } : null,
     vision: visionInput,
   });
+
+  // Sin ningún campo real, es mejor decírselo al usuario que abrir una revisión
+  // vacía: el camino fiable en ese caso es la captura de pantalla.
+  const ignoredKeys = new Set([
+    'confidence',
+    'hasTextOverlay',
+    'locationPrecision',
+    'ocrText',
+    'latitude',
+    'longitude',
+  ]);
+  const hasExtractedFields = Object.entries(extracted).some(
+    ([key, value]) => !ignoredKeys.has(key) && value !== undefined && value !== ''
+  );
+
+  if (!hasExtractedFields) {
+    return json(res, 200, {
+      success: false,
+      error:
+        'El enlace no expone el texto del aviso (Facebook lo oculta tras el login). ' +
+        'Sube una captura de pantalla del post para extraer los datos.',
+      suggestion: 'UPLOAD_SCREENSHOT',
+    } satisfies FacebookImportResponse);
+  }
 
   return json(res, 200, {
     success: true,
     data: {
-      title: metadata.title,
-      description: metadata.description,
+      title,
+      description,
       image_url: metadata.image,
       extracted,
       confidence: extracted.confidence,

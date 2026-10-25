@@ -58,7 +58,51 @@ interface OGMetadata {
 }
 
 /**
- * Extraer metadatos Open Graph de HTML
+ * Textos genéricos que Facebook pone cuando no puede mostrar el aviso real.
+ * Si se cuelan en el formulario, la descripción acaba siendo publicidad de
+ * Facebook en lugar del contenido del post.
+ */
+const FACEBOOK_BOILERPLATE = [
+  /^facebook$/i,
+  /^meta$/i,
+  /see posts,? photos and more on facebook\.?$/i,
+  /ver (?:publicaciones|posts),? fotos y mucho m[aá]s en facebook\.?$/i,
+  /^(?:inicia sesi[oó]n|log ?in|entrar) (?:en )?facebook\.?$/i,
+  /facebook te ayuda a comunicarte/i,
+];
+
+export function isFacebookBoilerplate(value?: string | null): boolean {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return true;
+
+  return FACEBOOK_BOILERPLATE.some((pattern) => pattern.test(trimmed));
+}
+
+/**
+ * Busca el contenido de una etiqueta `<meta>` sin depender del orden de los
+ * atributos ni de si usa `property` o `name`.
+ */
+function findMetaContent(html: string, keys: string[]): string | null {
+  const metaTags = html.match(/<meta\b[^>]*>/gi) ?? [];
+
+  for (const key of keys) {
+    for (const tag of metaTags) {
+      const name = tag.match(/\b(?:property|name)\s*=\s*["']([^"']+)["']/i)?.[1];
+      if (!name || name.toLowerCase() !== key) continue;
+
+      const content = tag.match(/\bcontent\s*=\s*["']([^"']*)["']/i)?.[1];
+      if (content && content.trim()) return decodeHtmlEntities(content).trim();
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extraer metadatos Open Graph de HTML.
+ *
+ * El orden de los atributos varía entre páginas (`content` puede ir antes de
+ * `property`), así que se inspeccionan las etiquetas una a una.
  */
 export function extractOpenGraphMetadata(html: string): OGMetadata {
   const result: OGMetadata = {
@@ -67,65 +111,96 @@ export function extractOpenGraphMetadata(html: string): OGMetadata {
     image: null,
     url: null,
   };
-  
-  const ogPatterns: Record<keyof OGMetadata, RegExp> = {
-    title: /<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i,
-    description: /<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i,
-    image: /<meta\s+property=["']og:image(?::secure_url)?["']\s+content=["']([^"']+)["']/i,
-    url: /<meta\s+property=["']og:url["']\s+content=["']([^"']+)["']/i,
-  };
-  
-  const twitterPatterns: Record<Exclude<keyof OGMetadata, 'url'>, RegExp> = {
-    title: /<meta\s+name=["']twitter:title["']\s+content=["']([^"']+)["']/i,
-    description: /<meta\s+name=["']twitter:description["']\s+content=["']([^"']+)["']/i,
-    image: /<meta\s+name=["']twitter:image(?::src)?["']\s+content=["']([^"']+)["']/i,
-  };
-  
-  // Extraer Open Graph
-  for (const [key, pattern] of Object.entries(ogPatterns) as [keyof OGMetadata, RegExp][]) {
-    const match = html.match(pattern);
-    if (match && match[1]) {
-      result[key] = decodeHtmlEntities(match[1]);
-    }
-  }
-  
-  // Fallback a twitter cards si no hay OG
-  if (!result.title) {
-    const match = html.match(twitterPatterns.title);
-    if (match && match[1]) result.title = decodeHtmlEntities(match[1]);
-  }
-  if (!result.description) {
-    const match = html.match(twitterPatterns.description);
-    if (match && match[1]) result.description = decodeHtmlEntities(match[1]);
-  }
-  if (!result.image) {
-    const match = html.match(twitterPatterns.image);
-    if (match && match[1]) result.image = match[1];
-  }
-  
-  // Fallback a <title> tag
+
+  result.title =
+    findMetaContent(html, ['og:title']) ?? findMetaContent(html, ['twitter:title']);
+
+  result.description =
+    findMetaContent(html, ['og:description']) ??
+    findMetaContent(html, ['twitter:description']) ??
+    findMetaContent(html, ['description']);
+
+  // `og:image` admite variantes; algunas páginas solo publican la segura.
+  result.image =
+    findMetaContent(html, ['og:image', 'og:image:url', 'og:image:secure_url']) ??
+    findMetaContent(html, ['twitter:image', 'twitter:image:src']);
+
+  result.url = findMetaContent(html, ['og:url']);
+
+  // Fallback al <title> del documento.
   if (!result.title) {
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    if (titleMatch && titleMatch[1]) result.title = decodeHtmlEntities(titleMatch[1]);
+    if (titleMatch?.[1]) result.title = decodeHtmlEntities(titleMatch[1]).trim();
   }
-  
-  // Fallback a meta description
-  if (!result.description) {
-    const descMatch = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i);
-    if (descMatch && descMatch[1]) result.description = decodeHtmlEntities(descMatch[1]);
-  }
-  
+
   return result;
 }
 
+/** Convierte HTML en texto plano conservando los saltos de línea. */
+function stripHtml(value: string): string {
+  return decodeHtmlEntities(
+    value
+      .replace(/\s*<br\s*\/?>\s*/gi, '\n')
+      .replace(/<\/(?:p|div|li)>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+  )
+    .replace(/[ \t]+/g, ' ')
+    .replace(/[ \t]*\n[ \t]*/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
+ * Extrae el texto del post del HTML público.
+ *
+ * Los metadatos Open Graph de una foto suelen ser genéricos ("Facebook"), pero
+ * el HTML sí incluye el mensaje en `data-ad-preview="message"` o en el JSON
+ * embebido. Sin esto, importar un enlace no rellenaba ningún campo.
+ */
+export function extractPostText(html: string): string | null {
+  const messageDiv = html.match(
+    /<div[^>]*(?:data-ad-preview|data-ad-comet-preview)\s*=\s*["']message["'][^>]*>([\s\S]*?)<\/div>/i
+  );
+
+  if (messageDiv?.[1]) {
+    const text = stripHtml(messageDiv[1]);
+    if (text) return text;
+  }
+
+  const jsonText = html.match(/"message"\s*:\s*\{\s*"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+
+  if (jsonText?.[1]) {
+    try {
+      // El texto viene escapado como una cadena JSON.
+      const parsed: unknown = JSON.parse(`"${jsonText[1]}"`);
+      if (typeof parsed === 'string') {
+        const text = parsed.replace(/\s+/g, ' ').trim();
+        if (text) return text;
+      }
+    } catch {
+      // Cadena mal escapada: se ignora y se usa lo que haya de Open Graph.
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Decodifica entidades HTML.
+ *
+ * Antes las sustituciones estaban invertidas (`&` por `&`), así que `&amp;`
+ * seguía literal. Eso rompía las URL de las imágenes de Facebook (`?a=1&amp;b=2`),
+ * que después no se podían descargar ni mostrar.
+ */
 function decodeHtmlEntities(text: string): string {
   return text
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#0*39;/g, "'")
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }

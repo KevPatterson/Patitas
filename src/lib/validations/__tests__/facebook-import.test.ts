@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { 
   facebookLinkImportSchema, 
   extractOpenGraphMetadata,
+  extractPostText,
+  isFacebookBoilerplate,
   FACEBOOK_IMPORT_CONSTANTS 
 } from '../facebook-import';
 
@@ -174,6 +176,71 @@ describe('Facebook Import Validation', () => {
       const result = extractOpenGraphMetadata(html);
       
       expect(result.image).toBe('https://secure.example.com/dog.jpg');
+    });
+
+    it('decodifica las entidades de la URL de la imagen', () => {
+      // Facebook devuelve `&amp;` en las URL firmadas de su CDN. Sin decodificar,
+      // la imagen no se puede descargar ni mostrar.
+      const html = `
+        <meta property="og:image" content="https://scontent.xx.fbcdn.net/foto.jpg?stp=dst-jpg&amp;cstp=mx998x570&amp;oe=6AE3E88C" />
+      `;
+
+      const result = extractOpenGraphMetadata(html);
+
+      expect(result.image).toBe(
+        'https://scontent.xx.fbcdn.net/foto.jpg?stp=dst-jpg&cstp=mx998x570&oe=6AE3E88C'
+      );
+    });
+
+    it('acepta meta etiquetas con content antes de property', () => {
+      const html = `
+        <meta content="Perro perdido en Holguín" property="og:title" />
+        <meta content="https://example.com/dog.jpg" property="og:image" />
+      `;
+
+      const result = extractOpenGraphMetadata(html);
+
+      expect(result.title).toBe('Perro perdido en Holguín');
+      expect(result.image).toBe('https://example.com/dog.jpg');
+    });
+  });
+
+  describe('extractPostText', () => {
+    it('extrae el mensaje del post y lo convierte a texto plano', () => {
+      const html = `
+        <div data-ad-preview="message" class="x1yztbdb">
+          Perro perdido en Centro Habana.<br />
+          Llama al 55512345 &amp; pregunta por Ana.
+        </div>
+      `;
+
+      expect(extractPostText(html)).toBe(
+        'Perro perdido en Centro Habana.\nLlama al 55512345 & pregunta por Ana.'
+      );
+    });
+
+    it('extrae el mensaje del JSON embebido', () => {
+      const html = `<script>{"message":{"text":"Gata encontrada en Vedado\\nWhatsApp 55512345"}}</script>`;
+
+      expect(extractPostText(html)).toBe('Gata encontrada en Vedado WhatsApp 55512345');
+    });
+
+    it('devuelve null si no hay mensaje', () => {
+      expect(extractPostText('<html><head></head></html>')).toBeNull();
+    });
+  });
+
+  describe('isFacebookBoilerplate', () => {
+    it('detecta los textos genéricos de Facebook', () => {
+      expect(isFacebookBoilerplate('Facebook')).toBe(true);
+      expect(isFacebookBoilerplate('See posts, photos and more on Facebook.')).toBe(true);
+      expect(isFacebookBoilerplate('Ver publicaciones, fotos y mucho más en Facebook.')).toBe(true);
+      expect(isFacebookBoilerplate('Inicia sesión en Facebook')).toBe(true);
+      expect(isFacebookBoilerplate(null)).toBe(true);
+    });
+
+    it('no descarta el texto real del aviso', () => {
+      expect(isFacebookBoilerplate('Perro perdido en La Habana')).toBe(false);
     });
   });
 
