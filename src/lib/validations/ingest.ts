@@ -80,16 +80,24 @@ export function sanitizeExternalText(text: string | null | undefined): string {
 }
 
 /**
- * Validar timestamp HMAC (anti-replay)
+ * Validar timestamp HMAC (anti-replay).
+ *
+ * El worker de Python envía `int(time.time())`, es decir, **segundos** desde
+ * epoch (el mismo valor que entra en el mensaje firmado). Aquí se comparaba
+ * con `Date.now()`, que son milisegundos: la diferencia era del orden de
+ * 1,8e12 ms, siempre mayor que la ventana, y el endpoint devolvía 401 a todas
+ * las importaciones de Telegram.
+ *
+ * Se acepta también el valor en milisegundos para no romper a futuros clientes.
  */
 export function validateHmacTimestamp(timestamp: number): { valid: boolean; error?: string } {
-  const now = Date.now();
-  const diff = Math.abs(now - timestamp);
-  
+  const timestampMs = timestamp < 1e12 ? timestamp * 1000 : timestamp;
+  const diff = Math.abs(Date.now() - timestampMs);
+
   if (diff > HMAC_TIMESTAMP_WINDOW_MS) {
     return { valid: false, error: 'Timestamp fuera de ventana permitida (5 min)' };
   }
-  
+
   return { valid: true };
 }
 

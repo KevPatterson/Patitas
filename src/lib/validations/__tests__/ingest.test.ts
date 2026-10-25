@@ -146,27 +146,34 @@ describe('Ingest Validation', () => {
   });
 
   describe('validateHmacTimestamp', () => {
-    it('should accept recent timestamp', () => {
-      const now = Date.now();
-      const result = validateHmacTimestamp(now);
+    // El worker de Python firma en segundos desde epoch, no en milisegundos.
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    it('should accept recent timestamp in seconds', () => {
+      const result = validateHmacTimestamp(nowSeconds);
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept recent timestamp in milliseconds', () => {
+      const result = validateHmacTimestamp(Date.now());
       expect(result.valid).toBe(true);
     });
 
     it('should accept timestamp within 5 minutes', () => {
-      const fiveMinutesAgo = Date.now() - 4 * 60 * 1000;
-      const result = validateHmacTimestamp(fiveMinutesAgo);
+      const fourMinutesAgo = nowSeconds - 4 * 60;
+      const result = validateHmacTimestamp(fourMinutesAgo);
       expect(result.valid).toBe(true);
     });
 
     it('should reject timestamp older than 5 minutes', () => {
-      const sixMinutesAgo = Date.now() - 6 * 60 * 1000;
+      const sixMinutesAgo = nowSeconds - 6 * 60;
       const result = validateHmacTimestamp(sixMinutesAgo);
       expect(result.valid).toBe(false);
       expect(result.error).toContain('ventana');
     });
 
     it('should reject future timestamp beyond 5 minutes', () => {
-      const future = Date.now() + 6 * 60 * 1000;
+      const future = nowSeconds + 6 * 60;
       const result = validateHmacTimestamp(future);
       expect(result.valid).toBe(false);
     });
