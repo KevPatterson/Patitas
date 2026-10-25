@@ -1,17 +1,18 @@
 ﻿/**
  * Declaraciones ambientales para las dependencias OPCIONALES de IA.
  *
- * `tesseract.js` y `@google-cloud/vision` se cargan con `import()` dinámico
- * dentro de `api/_lib/ai-provider.ts` y NO están instaladas: el proveedor
- * activo se elige con la variable `AI_PROVIDER` y el valor por defecto
- * (`TESSERACT`) no es funcional sin instalar el paquete.
+ * `tesseract.js` se carga con `import()` dinámico y NO está instalado: el
+ * proveedor activo se elige con `AI_PROVIDER` y el valor por defecto
+ * (`MOCK`) no lo necesita.
  *
- * Sin estos stubs, `tsc` falla con TS2307 sobre `api/` y no se puede verificar
- * nada más del backend. No se instalan solo para satisfacer al compilador:
- * `@google-cloud/vision` arrastra gRPC y cientos de dependencias.
+ * `@google-cloud/vision` sí está en `package.json`, pero aquí se declara de
+ * forma laxa (`any`) porque solo se usan cuatro métodos y su tipado real arrastra
+ * los tipos generados de protobuf/gRPC, que chocan con las formas mínimas que
+ * consume `ai-provider.ts`.
  *
- * Los stubs son deliberadamente laxos (`any`) para poder tipar callbacks sin
- * declarar toda la librería. Ver hallazgo AI-01 en docs/AUDITORIA_SEGURIDAD.md.
+ * Sin estos stubs, `tsc` falla al compilar `api/`. Los stubs son deliberadamente
+ * laxos para poder tipar callbacks sin declarar toda la librería. Ver hallazgo
+ * AI-01 en docs/AUDITORIA_SEGURIDAD.md.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

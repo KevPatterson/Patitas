@@ -492,6 +492,24 @@ async function resolveImportOwner(): Promise<string> {
 }
 
 /**
+ * Título de respaldo cuando la extracción no propone uno.
+ *
+ * Antes quedaba siempre `Reporte importado de TELEGRAM`, que no dice nada y
+ * tiraba el texto real del aviso. Se usa el primer renglón con contenido.
+ */
+function buildFallbackTitle(text: string, platform: 'TELEGRAM' | 'FACEBOOK_PUBLIC'): string {
+  const firstLine = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.length > 0);
+
+  if (!firstLine) return `Reporte importado de ${platform}`;
+
+  const collapsed = firstLine.replace(/\s+/g, ' ');
+  return collapsed.length > 80 ? `${collapsed.slice(0, 77).trimEnd()}...` : collapsed;
+}
+
+/**
  * Crear publicación en estado PENDING_REVIEW (o PUBLISHED si auto-publish)
  */
 async function createPublication(
@@ -502,7 +520,8 @@ async function createPublication(
   platform: 'TELEGRAM' | 'FACEBOOK_PUBLIC',
   externalPostId: string,
   sourceTrusted: boolean,
-  hasImages: boolean
+  hasImages: boolean,
+  sourceText: string
 ): Promise<{ id: string; status: ExternalPostStatus }> {
   const shouldAutoPublish = 
     INGEST_AUTOPUBLISH &&
@@ -512,9 +531,18 @@ async function createPublication(
     (!AUTOPUBLISH_REQUIRE_LOCATION || extracted.province);
   
   const reviewStatus = shouldAutoPublish ? 'AUTO_APPROVED' : null;
+
+  // El texto del aviso es real y útil: se usa como título/descripción cuando la
+  // extracción no trae nada (con Vision, `analyzeText` solo clasifica y no
+  // rellena estos campos).
+  const title = extracted.title?.trim() || buildFallbackTitle(sourceText, platform);
+  const description =
+    extracted.description?.trim() ||
+    sourceText.trim().slice(0, 2000) ||
+    'Importado desde fuente externa';
   
   // Generar slug único
-  const baseSlug = (extracted.title ?? 'mascota-importada')
+  const baseSlug = title
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -531,8 +559,8 @@ async function createPublication(
     .insert({
       slug,
       type: classification.type,
-      title: extracted.title ?? `Reporte importado de ${platform}`,
-      description: extracted.description ?? 'Importado desde fuente externa',
+      title,
+      description,
       species: extracted.species ?? 'Desconocido',
       breed: extracted.breed ?? null,
       sex: extracted.sex ?? null,
@@ -807,7 +835,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       data.platform,
       externalPost.id,
       source.is_trusted,
-      data.image_paths.length > 0
+      data.image_paths.length > 0,
+      sanitizedText
     );
 
     // 5.1 Copiar las fotos del staging al bucket público y asociarlas.

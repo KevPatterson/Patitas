@@ -33,10 +33,11 @@ export type VisionResult = {
 /**
  * Tipos locales para los SDK opcionales.
  *
- * `tesseract.js` y `@google-cloud/vision` no están instalados (ver
- * api/types/ai-dependencies.d.ts), así que sus retornos llegan como `any` y los
- * callbacks de `.map()` serían `implicit any` con `strict`. Estas formas
- * mínimas documentan lo que realmente consumimos.
+ * `tesseract.js` no está instalado y `@google-cloud/vision` se declara de forma
+ * laxa en `api/types/ai-dependencies.d.ts` (solo se usan cuatro métodos y sus
+ * tipos de protobuf chocan con estas formas mínimas). En ambos casos los
+ * retornos llegan como `any` y los callbacks de `.map()` serían `implicit any`
+ * con `strict`. Estas formas mínimas documentan lo que realmente consumimos.
  */
 type TesseractWord = {
   text: string;

@@ -15,6 +15,7 @@
     "seed:test": "node scripts/seed-test-publications.mjs"
   },
   "dependencies": {
+    "@google-cloud/vision": "^6.2.0",
     "@hookform/resolvers": "^5.9.1",
     "@supabase/supabase-js": "^2.117.2",
     "@types/leaflet": "^1.9.22",

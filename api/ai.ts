@@ -8,7 +8,9 @@ import { handleExtractFromImage } from './_lib/ai/handlers/extract-from-image.js
 import { handleProcessPublication } from './_lib/ai/handlers/process-publication.js';
 import { handleProcessJob } from './_lib/ai/handlers/process-job.js';
 
-export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
+// 8 MB de imagen en base64 ocupan ~10,7 MB; con el JSON completo hace falta
+// margen, así que el límite sube a 12 MB.
+export const config = { api: { bodyParser: { sizeLimit: '12mb' } } };
 
 /**
  * POST /api/ai?action=<action> — router de los handlers de IA.

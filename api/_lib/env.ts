@@ -59,6 +59,27 @@ export function providerAvailable(): { ok: true } | { ok: false; reason: string 
     return { ok: false, reason: 'El proveedor OPENAI todavía no está implementado.' };
   }
 
+  if (AI_PROVIDER === 'GOOGLE_VISION') {
+    const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+
+    if (!credentials) {
+      return {
+        ok: false,
+        reason:
+          'El proveedor GOOGLE_VISION requiere GOOGLE_APPLICATION_CREDENTIALS_JSON con el JSON de la cuenta de servicio.',
+      };
+    }
+
+    try {
+      JSON.parse(credentials);
+    } catch {
+      return {
+        ok: false,
+        reason: 'GOOGLE_APPLICATION_CREDENTIALS_JSON no contiene un JSON válido.',
+      };
+    }
+  }
+
   return { ok: true };
 }
 

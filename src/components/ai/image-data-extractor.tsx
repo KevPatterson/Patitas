@@ -1,7 +1,9 @@
 import { useState, type ChangeEvent } from 'react';
-import { Sparkles, Upload, X, AlertCircle } from 'lucide-react';
+import { Sparkles, Upload, X, AlertCircle, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import { CatLoader } from '../ui/cat-loader';
+import { supabase } from '../../lib/supabase/client';
+import { AGE_LABELS, SEX_LABELS, SIZE_LABELS, SPECIES_LABELS } from '../../lib/constants/labels';
 
 type ExtractedData = {
   // Datos del animal
@@ -30,7 +32,23 @@ type ExtractedData = {
   // Metadatos
   confidence: number;
   hasTextOverlay?: boolean; // Indica si detectó texto en la imagen
+  petName?: string;
+  ocrText?: string;
 };
+
+/** Respuesta de `/api/ai?action=extract-from-image`. */
+type ExtractResponse = {
+  ok: boolean;
+  extracted: ExtractedData;
+  provider_is_real: boolean;
+  disclaimer: string | null;
+};
+
+/** Muestra el valor legible de un enum del formulario (dog -> Perro). */
+function labelFor(labels: Record<string, string>, value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return labels[value] ?? value;
+}
 
 type ImageDataExtractorProps = {
   onDataExtracted: (data: ExtractedData) => void;
@@ -43,6 +61,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
+  const [disclaimer, setDisclaimer] = useState<string | null>(null);
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -66,6 +85,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
     setPreview(URL.createObjectURL(selectedFile));
     setError(null);
     setExtractedData(null);
+    setDisclaimer(null);
   };
 
   const handleExtract = async () => {
@@ -75,6 +95,14 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
     setError(null);
 
     try {
+      // El endpoint exige sesión: se envía el JWT de Supabase en el header.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error('Inicia sesión para usar el asistente de IA.');
+      }
+
       // Convertir el archivo a base64
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
@@ -90,18 +118,27 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ image: base64Image }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'No se pudo procesar la imagen');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || errorData.error || 'No se pudo procesar la imagen'
+        );
       }
 
-      const data: ExtractedData = await response.json();
-      setExtractedData(data);
-      onDataExtracted(data);
+      const data: ExtractResponse = await response.json();
+
+      if (!data.ok || !data.extracted) {
+        throw new Error('El servidor no devolvió datos de la imagen.');
+      }
+
+      setExtractedData(data.extracted);
+      setDisclaimer(data.provider_is_real ? null : data.disclaimer);
+      onDataExtracted(data.extracted);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al procesar la imagen');
     } finally {
@@ -117,6 +154,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
     setPreview(null);
     setError(null);
     setExtractedData(null);
+    setDisclaimer(null);
   };
 
   return (
@@ -196,15 +234,30 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
                 </div>
                 <h4 className="font-semibold text-foreground">Datos extraídos</h4>
                 <span className="ml-auto text-xs font-semibold text-turquoise">
-                  {Math.round(extractedData.confidence * 100)}% confianza
+                  {Math.round((Number.isFinite(extractedData.confidence) ? extractedData.confidence : 0) * 100)}% confianza
                 </span>
               </div>
 
+              {disclaimer && (
+                <div className="flex items-start gap-2 rounded-xl bg-orange/10 border border-orange/30 px-3 py-2">
+                  <Info className="size-4 text-orange shrink-0 mt-0.5" aria-hidden="true" />
+                  <p className="text-xs font-medium text-foreground/80">{disclaimer}</p>
+                </div>
+              )}
+
               <dl className="grid gap-2 text-sm">
+                {extractedData.petName && (
+                  <div className="flex justify-between">
+                    <dt className="text-foreground/60">Nombre:</dt>
+                    <dd className="font-semibold text-foreground">{extractedData.petName}</dd>
+                  </div>
+                )}
                 {extractedData.species && (
                   <div className="flex justify-between">
                     <dt className="text-foreground/60">Especie:</dt>
-                    <dd className="font-semibold text-foreground">{extractedData.species}</dd>
+                    <dd className="font-semibold text-foreground">
+                      {labelFor(SPECIES_LABELS, extractedData.species)}
+                    </dd>
                   </div>
                 )}
                 {extractedData.breed && (
@@ -222,19 +275,25 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
                 {extractedData.size && (
                   <div className="flex justify-between">
                     <dt className="text-foreground/60">Tamaño:</dt>
-                    <dd className="font-semibold text-foreground">{extractedData.size}</dd>
+                    <dd className="font-semibold text-foreground">
+                      {labelFor(SIZE_LABELS, extractedData.size)}
+                    </dd>
                   </div>
                 )}
                 {extractedData.sex && (
                   <div className="flex justify-between">
                     <dt className="text-foreground/60">Sexo:</dt>
-                    <dd className="font-semibold text-foreground">{extractedData.sex}</dd>
+                    <dd className="font-semibold text-foreground">
+                      {labelFor(SEX_LABELS, extractedData.sex)}
+                    </dd>
                   </div>
                 )}
                 {extractedData.ageApprox && (
                   <div className="flex justify-between">
                     <dt className="text-foreground/60">Edad aproximada:</dt>
-                    <dd className="font-semibold text-foreground">{extractedData.ageApprox}</dd>
+                    <dd className="font-semibold text-foreground">
+                      {labelFor(AGE_LABELS, extractedData.ageApprox)}
+                    </dd>
                   </div>
                 )}
                 {extractedData.characteristics && (
@@ -330,6 +389,15 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
                         Placa detectada
                       </span>
                     )}
+                  </div>
+                )}
+
+                {extractedData.ocrText && (
+                  <div className="col-span-full pt-2 border-t border-turquoise/20">
+                    <dt className="text-foreground/60 mb-1">Texto detectado en la imagen:</dt>
+                    <dd className="max-h-24 overflow-y-auto whitespace-pre-wrap rounded-lg bg-surface/70 p-2 text-xs text-foreground/80">
+                      {extractedData.ocrText}
+                    </dd>
                   </div>
                 )}
               </dl>
