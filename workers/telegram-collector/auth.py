@@ -94,8 +94,16 @@ def create_ingest_payload(
         "image_paths": image_paths,
         "posted_at": posted_at,
     }
-    # Serializar de forma determinística (claves ordenadas)
-    payload_bytes = json.dumps(payload_data, sort_keys=True, separators=(",", ":")).encode()
+    # Serializar de forma determinística (claves ordenadas).
+    #
+    # `ensure_ascii=False` es obligatorio: el servidor reconstruye el mensaje con
+    # JSON.stringify, que emite los caracteres no ASCII tal cual en UTF-8. Con el
+    # valor por defecto (True) Python los escapaba como \uXXXX y la firma no
+    # coincidía en cuanto el texto llevaba acentos o emoji, así que el endpoint
+    # respondía 401 «Firma inválida» a casi todas las importaciones.
+    payload_bytes = json.dumps(
+        payload_data, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
 
     # Generar firma
     signature = generate_hmac_signature(payload_bytes, settings.ingest_hmac_secret, timestamp)

@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { canonicalIngestPayload } from '../_lib/ingest-hmac';
 
@@ -6,7 +7,7 @@ import { canonicalIngestPayload } from '../_lib/ingest-hmac';
  * (`workers/telegram-collector/auth.py`) y la verifica este endpoint. Antes de la
  * Fase 1 **no coincidían**:
  *
- *   worker:  f"{timestamp}." + json.dumps(payload, sort_keys=True, separators=(",", ":"))
+ *   worker:  f"{timestamp}." + json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
  *   server:  JSON.stringify({...}) sin ordenar y sin el prefijo del timestamp
  *
  * Así que ninguna firma válida podía pasar. Estos tests fijan el formato del
@@ -71,6 +72,27 @@ describe('payload canónico de ingesta (paridad con el worker de Python)', () =>
     });
 
     expect(actual).toBe(expected);
+  });
+
+  it('coincide con el vector del worker cuando el texto lleva acentos y emoji', () => {
+    // Vector calculado con el auth.py real:
+    //   json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    //     .encode("utf-8")
+    // Si alguien vuelve a poner ensure_ascii=True (el valor por defecto), el
+    // mensaje canónico escapa los caracteres no ASCII como \uXXXX y esta firma
+    // deja de coincidir: es el fallo que rompía la ingesta de Telegram.
+    const data = {
+      ...base,
+      raw_text: 'Perrito en adopción — Vedado, La Habana. Escribe a María José 🐾',
+      image_paths: ['telegram/abc/1.jpg'],
+    };
+
+    const message = canonicalIngestPayload(data);
+    const signature = createHmac('sha256', 'test-secret').update(message, 'utf8').digest('hex');
+
+    expect(signature).toBe('84a482e5fdc68d1b336766393b0642b8f364131bf22dc99cc47c28afd1e73621');
+    expect(message).toContain('adopción — Vedado');
+    expect(message).not.toContain('\\u00f3');
   });
 
   it('NO firma el timestamp ni la propia firma dentro del JSON', () => {

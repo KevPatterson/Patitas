@@ -8,10 +8,15 @@
  * `workers/telegram-collector/auth.py`:
  *
  *     message = f"{timestamp}.".encode() + json.dumps(
- *         payload, sort_keys=True, separators=(",", ":")
- *     ).encode()
+ *         payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+ *     ).encode("utf-8")
  *
  * donde `payload` son los campos de contenido SIN `timestamp` ni `signature`.
+ *
+ * `ensure_ascii=False` no es un detalle: `JSON.stringify` emite los caracteres
+ * no ASCII tal cual, mientras que el valor por defecto de Python (True) los
+ * escapaba como `\uXXXX`. Con acentos o emoji en `raw_text` los bytes firmados
+ * diferían y la ingesta devolvía 401 «Firma inválida».
  *
  * Antes de la Fase 1 el servidor calculaba otra cosa (JSON sin ordenar y sin el
  * prefijo del timestamp y, además, sin cubrir `raw_text` ni `image_paths`), así
