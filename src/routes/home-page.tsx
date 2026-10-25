@@ -56,8 +56,14 @@ export function HomePage() {
 
     // Función para obtener la ubicación aproximada por IP (fallback)
     const getFallbackLocation = async () => {
+      // Sin timeout, una red lenta deja el indicador de ubicación cargando para siempre
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
       try {
-        const response = await fetch('https://ipapi.co/json/');
+        const response = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+        if (!response.ok) {
+          throw new Error(`Respuesta ${response.status}`);
+        }
         const data = await response.json();
 
         if (data.latitude && data.longitude) {
@@ -70,7 +76,9 @@ export function HomePage() {
           return true;
         }
       } catch (error) {
-        console.error('❌ Error IP:', error);
+        console.warn('No se pudo obtener la ubicación por IP:', error);
+      } finally {
+        clearTimeout(timeoutId);
       }
       setLoadingLocation(false);
       return false;
@@ -173,7 +181,8 @@ export function HomePage() {
 
     async function load() {
       try {
-        const [recent, adoptions, lostCount, foundCount, adoptionCount, adoptedCount, totalCount] = await Promise.all([
+        // allSettled: con red inestable, un fallo parcial no debe vaciar toda la portada
+        const results = await Promise.allSettled([
           searchPublications({ status: 'ACTIVE', limit: 50, offset: 0 }), // Cargar más para filtrar por distancia
           searchPublications({ type: 'ADOPTION', status: 'ACTIVE', limit: 3, offset: 0 }),
           countPublications({ type: 'LOST', status: 'ACTIVE' }),
@@ -183,17 +192,30 @@ export function HomePage() {
           countPublications({ status: 'ACTIVE' }),
         ]);
 
-        if (active) {
-          setAllCases(recent); // Guardar todos los casos
-          setAdoptionCases(adoptions);
-          setStats({
-            LOST: lostCount,
-            FOUND: foundCount,
-            ADOPTION: adoptionCount,
-            ADOPTED: adoptedCount,
-            total: totalCount,
-          });
+        if (!active) return;
+
+        const [recent, adoptions, lostCount, foundCount, adoptionCount, adoptedCount, totalCount] = results;
+
+        for (const result of results) {
+          if (result.status === 'rejected') {
+            console.warn('No se pudo cargar una parte de la portada:', result.reason);
+          }
         }
+
+        if (recent.status === 'fulfilled') {
+          setAllCases(recent.value); // Guardar todos los casos
+        }
+        if (adoptions.status === 'fulfilled') {
+          setAdoptionCases(adoptions.value);
+        }
+
+        setStats((prev) => ({
+          LOST: lostCount.status === 'fulfilled' ? lostCount.value : prev.LOST,
+          FOUND: foundCount.status === 'fulfilled' ? foundCount.value : prev.FOUND,
+          ADOPTION: adoptionCount.status === 'fulfilled' ? adoptionCount.value : prev.ADOPTION,
+          ADOPTED: adoptedCount.status === 'fulfilled' ? adoptedCount.value : prev.ADOPTED,
+          total: totalCount.status === 'fulfilled' ? totalCount.value : prev.total,
+        }));
       } catch (error) {
         console.error('Error loading home data:', error);
       } finally {
