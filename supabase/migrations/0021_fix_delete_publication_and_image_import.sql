@@ -89,7 +89,7 @@ create trigger publications_archive_chats_delete
   execute function public.archive_chats_on_publication_delete();
 
 -- ════════════════════════════════════════════════════════════════════════════
--- 3. Asegurar que el trigger de search_vector no falle
+-- 3. Asegurar que el trigger de search_vector no falle (solo publications)
 -- ════════════════════════════════════════════════════════════════════════════
 
 drop trigger if exists publications_search_vector_trigger on public.publications;
@@ -129,13 +129,12 @@ create trigger publications_search_vector_trigger
   execute function public.publications_search_vector_update();
 
 -- ════════════════════════════════════════════════════════════════════════════
--- 4. Fix para set_updated_at en publications
+-- 4. Fix para set_updated_at en publications SOLO (no tocar función compartida)
 -- ════════════════════════════════════════════════════════════════════════════
 
 drop trigger if exists publications_set_updated_at on public.publications;
-drop function if exists public.set_updated_at();
 
-create or replace function public.set_updated_at()
+create or replace function public.set_updated_at_publications()
 returns trigger
 language plpgsql
 as $$
@@ -144,13 +143,11 @@ begin
   return new;
 exception
   when others then
-    raise warning 'set_updated_at error: %', sqlerrm;
+    raise warning 'set_updated_at_publications error: %', sqlerrm;
     return new;
 end;
 $$;
 
-do $$ begin
-  create trigger publications_set_updated_at before update on public.publications for each row execute function public.set_updated_at();
-exception when duplicate_object then null; end $$;
+create trigger publications_set_updated_at before update on public.publications for each row execute function public.set_updated_at_publications();
 
-comment on function public.set_updated_at() is 'Actualiza updated_at automáticamente. Incluye exception handler.';
+comment on function public.set_updated_at_publications() is 'Actualiza updated_at en publications. Incluye exception handler.';
