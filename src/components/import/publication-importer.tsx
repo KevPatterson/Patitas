@@ -30,7 +30,7 @@ import {
   SPECIES_LABELS,
   TYPE_LABELS,
 } from '../../lib/constants/labels';
-import { PROVINCES } from '../../lib/constants/cuba';
+import { PROVINCES, CUBA } from '../../lib/constants/cuba';
 
 /** Respuesta cruda de los endpoints (mezcla claves camelCase y snake_case). */
 type RawExtracted = {
@@ -325,8 +325,8 @@ const REVIEW_FIELDS: ReviewFieldConfig[] = [
   { key: 'contactPhone', label: 'Teléfono', kind: 'text' },
   { key: 'contactWhatsapp', label: 'WhatsApp', kind: 'text' },
   { key: 'contactEmail', label: 'Email', kind: 'text' },
-  { key: 'province', label: 'Provincia', kind: 'select', options: PROVINCES },
-  { key: 'municipality', label: 'Municipio', kind: 'text' },
+  { key: 'province', label: 'Provincia', kind: 'select', options: PROVINCES, always: true },
+  { key: 'municipality', label: 'Municipio', kind: 'text', always: true },
   { key: 'zone', label: 'Zona o barrio', kind: 'text' },
   { key: 'address', label: 'Dirección', kind: 'text' },
   { key: 'eventDate', label: 'Fecha del evento', kind: 'date' },
@@ -575,7 +575,25 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
   };
 
   const updateReview = (key: keyof ImportedData, value: string | boolean) => {
-    setReview((current) => (current ? { ...current, [key]: value } : current));
+    setReview((current) => {
+      if (!current) return current;
+
+      // Al cambiar la provincia, un municipio de otra provincia deja de ser
+      // válido. Se limpia para que las coordenadas se resuelvan con el nuevo
+      // contexto en vez de conservar un punto de la ubicación anterior.
+      if (key === 'province' && typeof value === 'string') {
+        const municipalities = CUBA[value as keyof typeof CUBA] ?? [];
+        const currentMunicipality =
+          typeof current.municipality === 'string' ? current.municipality : '';
+        const municipality = municipalities.includes(currentMunicipality)
+          ? currentMunicipality
+          : '';
+
+        return { ...current, province: value, municipality };
+      }
+
+      return { ...current, [key]: value };
+    });
   };
 
   const discardReview = () => {
@@ -818,6 +836,28 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
                     />
                     {field.label}
                   </label>
+                );
+              }
+
+              if (field.key === 'municipality' && typeof review.province === 'string' && review.province) {
+                const municipalities = CUBA[review.province as keyof typeof CUBA] ?? [];
+                const currentValue = typeof value === 'string' ? value : '';
+                const options = municipalities.map((name) => ({ value: name, label: name }));
+
+                // Un valor no canónico se conserva para que el usuario decida.
+                if (currentValue && !municipalities.includes(currentValue)) {
+                  options.unshift({ value: currentValue, label: currentValue });
+                }
+
+                return (
+                  <SelectField
+                    key={field.key}
+                    id={inputId}
+                    label={field.label}
+                    value={currentValue}
+                    options={options}
+                    onChange={(next) => updateReview(field.key, next)}
+                  />
                 );
               }
 

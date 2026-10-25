@@ -14,6 +14,8 @@ import { TextareaField } from '../components/ui/textarea-field';
 import { CatLoader } from '../components/ui/cat-loader';
 import { PublicationImporter } from '../components/import/publication-importer';
 import { mergeImportedData, type ImportedData } from '../lib/import/merge-imported-data';
+import { geocodeMatchesLocation, type GeocodeCandidate } from '../lib/import/location-validation';
+import { resolveCubaCoordinates } from '../lib/constants/cuba-locations';
 import { createLocation, createPublication, uploadPublicationImages, createPet, deletePublicationImages } from '../lib/supabase/publications';
 import { isFeatureEnabled } from '../lib/config/feature-flags';
 import type { UploadProgress } from '../lib/supabase/publication-images';
@@ -241,12 +243,54 @@ export function PublishPage() {
 
   const totalSteps = 5;
 
+  /** Difumina una coordenada ±50 m antes de mostrarla o guardarla. */
+  const fuzzedCoordinates = (lat: number, lng: number) => ({
+    lat: (lat + (Math.random() - 0.5) * 0.001).toFixed(6),
+    lng: (lng + (Math.random() - 0.5) * 0.001).toFixed(6),
+  });
+
+  /**
+   * Recalcula el marcador a partir de la provincia y el municipio elegidos.
+   *
+   * Sin esto, cambiar el municipio después de importar dejaba el marcador en el
+   * municipio anterior: el formulario decía una cosa y el mapa otra.
+   */
+  const withLocationCoordinates = (next: PublicationFormValues): PublicationFormValues => {
+    const resolved = resolveCubaCoordinates({
+      province: next.province,
+      municipality: next.municipality,
+    });
+
+    if (resolved.latitude === undefined || resolved.longitude === undefined) {
+      return { ...next, approximateLat: '', approximateLng: '' };
+    }
+
+    const fuzzed = fuzzedCoordinates(resolved.latitude, resolved.longitude);
+    return { ...next, approximateLat: fuzzed.lat, approximateLng: fuzzed.lng };
+  };
+
   const updateValue = <K extends keyof PublicationFormValues>(key: K, value: PublicationFormValues[K]) => {
     if (key === 'province') {
-      setValues((current) => ({ ...current, [key]: value, municipality: '' }));
-    } else {
-      setValues((current) => ({ ...current, [key]: value }));
+      const province = value as string;
+      const resolved = resolveCubaCoordinates({ province, municipality: '' });
+
+      setValues((current) =>
+        withLocationCoordinates({ ...current, province, municipality: '' })
+      );
+      setLocationPrecision(resolved.locationPrecision);
+      return;
     }
+
+    if (key === 'municipality') {
+      const municipality = value as string;
+      const resolved = resolveCubaCoordinates({ province: values.province, municipality });
+
+      setValues((current) => withLocationCoordinates({ ...current, municipality }));
+      setLocationPrecision(resolved.locationPrecision);
+      return;
+    }
+
+    setValues((current) => ({ ...current, [key]: value }));
   };
 
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
@@ -295,11 +339,11 @@ export function PublishPage() {
   };
 
   /** Geocodifica una dirección con contexto de Cuba. */
-  const geocodeAddress = async (parts: string[]): Promise<{ lat: number; lng: number } | null> => {
+  const geocodeAddress = async (parts: string[]): Promise<GeocodeCandidate | null> => {
     const query = [...parts.filter((part) => part && part.trim()), 'Cuba'].join(', ');
 
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=cu`,
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=cu&addressdetails=1`,
       // `Accept-Language` es una cabecera segura para CORS; `User-Agent` no se
       // puede fijar desde el navegador y provocaba que la petición fallara.
       { headers: { 'Accept-Language': 'es' } }
@@ -310,20 +354,33 @@ export function PublishPage() {
     const data: unknown = await response.json();
     if (!Array.isArray(data) || data.length === 0) return null;
 
-    const first = data[0] as { lat?: string; lon?: string };
+    const first = data[0] as {
+      lat?: string;
+      lon?: string;
+      display_name?: string;
+      address?: Record<string, string>;
+    };
     const lat = Number(first.lat);
     const lng = Number(first.lon);
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
-    return { lat, lng };
+    // La jerarquía permite comprobar que el resultado pertenece al municipio
+    // extraído antes de mover el marcador.
+    return {
+      lat,
+      lng,
+      displayName: first.display_name,
+      state: first.address?.state,
+      county: first.address?.county,
+      city: first.address?.city,
+      cityDistrict: first.address?.city_district,
+      suburb: first.address?.suburb,
+      town: first.address?.town,
+      village: first.address?.village,
+      municipality: first.address?.municipality,
+    };
   };
-
-  /** Difumina una coordenada ±50 m antes de mostrarla o guardarla. */
-  const fuzzedCoordinates = (lat: number, lng: number) => ({
-    lat: (lat + (Math.random() - 0.5) * 0.001).toFixed(6),
-    lng: (lng + (Math.random() - 0.5) * 0.001).toFixed(6),
-  });
 
   /** Aplica coordenadas con la difuminación de ±50 m del formulario. */
   const applyCoordinates = (lat: number, lng: number, precision: MapPrecision) => {
@@ -336,20 +393,43 @@ export function PublishPage() {
 
   /**
    * Afina la ubicación municipal con la dirección o la zona que leyó la IA.
-   * Si Nominatim no encuentra nada, se conserva el centro del municipio.
+   *
+   * El resultado de Nominatim solo se aplica si pertenece al municipio y la
+   * provincia que quedaron en el formulario. Si no, se conserva el centro del
+   * municipio: es preferible un punto aproximado correcto a uno exacto en otro
+   * lugar.
    */
-  const refineAiLocation = async (data: ImportedData) => {
+  const refineAiLocation = async (
+    data: ImportedData,
+    location: { province?: string; municipality?: string }
+  ) => {
     if (!data.address && !data.zone) return;
+
+    const expected = resolveCubaCoordinates(location);
+    if (expected.latitude === undefined || expected.longitude === undefined) return;
 
     try {
       const coordinates = await geocodeAddress([
         data.address ?? data.zone ?? '',
         data.zone ?? '',
-        data.municipality ?? '',
-        data.province ?? '',
+        location.municipality ?? '',
+        location.province ?? '',
       ]);
 
-      if (coordinates) applyCoordinates(coordinates.lat, coordinates.lng, 'address');
+      if (!coordinates) return;
+
+      const matches = geocodeMatchesLocation(coordinates, {
+        province: location.province,
+        municipality: location.municipality,
+        expected: { lat: expected.latitude, lng: expected.longitude },
+      });
+
+      if (!matches) {
+        console.warn('Se descartó una geocodificación fuera del municipio:', coordinates);
+        return;
+      }
+
+      applyCoordinates(coordinates.lat, coordinates.lng, 'address');
     } catch (error) {
       // El marcador del municipio ya está puesto; no se molesta al usuario.
       console.warn('No se pudo afinar la ubicación extraída por IA:', error);
@@ -360,31 +440,47 @@ export function PublishPage() {
    * Aplica los datos revisados sin pisar lo que el usuario ya escribió.
    *
    * El tipo de aviso sí se aplica siempre: es la intención del aviso. El resto
-   * solo rellena campos vacíos. Las coordenadas se difuminan igual que las que
-   * escribe el usuario.
+   * solo rellena campos vacíos. Las coordenadas se recalculan con la provincia
+   * y el municipio que quedaron en el formulario (no con los de la extracción)
+   * para que una corrección en la revisión no deje el marcador en otro lugar.
    */
   const handleImportedData = (data: ImportedData) => {
-    const { latitude, longitude } = data;
-    const hasCoordinates =
-      latitude !== undefined &&
-      longitude !== undefined &&
-      Number.isFinite(latitude) &&
-      Number.isFinite(longitude);
+    const merged = mergeImportedData(values, data);
+    const coordinates = resolveCubaCoordinates({
+      province: merged.province,
+      municipality: merged.municipality,
+    });
 
-    const fuzzed = hasCoordinates ? fuzzedCoordinates(latitude, longitude) : null;
+    const latitude = coordinates.latitude;
+    const longitude = coordinates.longitude;
+    const hasCoordinates = latitude !== undefined && longitude !== undefined;
+
+    // Si el usuario ya había marcado un punto y la importación no cambió la
+    // ubicación, no se mueve el marcador: solo se completan los demás campos.
+    const locationChanged =
+      values.province !== merged.province || values.municipality !== merged.municipality;
+    const hadCoordinates = Boolean(values.approximateLat && values.approximateLng);
+    const shouldApplyCoordinates = hasCoordinates && (!hadCoordinates || locationChanged);
+    // Si la ubicación cambió pero no se pudo resolver, el marcador anterior ya
+    // no corresponde: se limpia para que el usuario marque el punto correcto.
+    const shouldClearCoordinates = locationChanged && !hasCoordinates;
+
+    const fuzzed = shouldApplyCoordinates ? fuzzedCoordinates(latitude, longitude) : null;
     // Solo se afina con la dirección si la zona de la IA se llegó a aplicar.
     const zoneWasEmpty = !(values.zone ?? '').trim();
 
-    setValues((current) => {
-      const merged = mergeImportedData(current, data);
-
-      return fuzzed
+    setValues(
+      fuzzed
         ? { ...merged, approximateLat: fuzzed.lat, approximateLng: fuzzed.lng }
-        : merged;
-    });
+        : shouldClearCoordinates
+          ? { ...merged, approximateLat: '', approximateLng: '' }
+          : merged
+    );
 
-    if (fuzzed) {
-      setLocationPrecision(data.locationPrecision === 'province' ? 'province' : 'municipality');
+    if (shouldApplyCoordinates) {
+      setLocationPrecision(coordinates.locationPrecision);
+    } else if (shouldClearCoordinates) {
+      setLocationPrecision('none');
     }
 
     if (data.sourceUrl) {
@@ -395,7 +491,12 @@ export function PublishPage() {
     }
 
     // El municipio ya está marcado; si hay calle o zona, se afina en segundo plano.
-    if ((data.address || data.zone) && zoneWasEmpty) void refineAiLocation(data);
+    if (shouldApplyCoordinates && (data.address || data.zone) && zoneWasEmpty) {
+      void refineAiLocation(data, {
+        province: merged.province,
+        municipality: merged.municipality,
+      });
+    }
   };
 
   const handleGeocode = async () => {
@@ -418,6 +519,27 @@ export function PublishPage() {
       if (!coordinates) {
         setErrorMessage(
           'No se encontró la dirección. Intenta ser más específico o usa el mapa directamente.'
+        );
+        return;
+      }
+
+      const expected = resolveCubaCoordinates({
+        province: values.province,
+        municipality: values.municipality,
+      });
+
+      const matches = geocodeMatchesLocation(coordinates, {
+        province: values.province,
+        municipality: values.municipality,
+        expected:
+          expected.latitude !== undefined && expected.longitude !== undefined
+            ? { lat: expected.latitude, lng: expected.longitude }
+            : undefined,
+      });
+
+      if (!matches) {
+        setErrorMessage(
+          'La dirección encontrada no coincide con la provincia y el municipio seleccionados. Corrige la ubicación o marca el punto en el mapa.'
         );
         return;
       }
@@ -508,14 +630,8 @@ export function PublishPage() {
       if (isEditing && editingPublicationId) {
         // MODO EDICIÓN: Actualizar publicación existente
 
-        // Actualizar ubicación si cambió
-        const _locationId = await createLocation({
-          province: parsed.province,
-          municipality: parsed.municipality,
-          zone: parsed.zone,
-          approximateLat: parsed.approximateLat,
-          approximateLng: parsed.approximateLng,
-        });
+        // `updatePublication` actualiza la ubicación de la publicación; crear
+        // otra aquí dejaba una fila huérfana y el mapa no cambiaba.
 
         // Actualizar mascota - crear nueva o usar existente
         const _petId = await createPet({
@@ -556,6 +672,7 @@ export function PublishPage() {
           province: parsed.province,
           municipality: parsed.municipality,
           zone: parsed.zone,
+          approximateLat: parsed.approximateLat,
           approximateLng: parsed.approximateLng,
         });
 

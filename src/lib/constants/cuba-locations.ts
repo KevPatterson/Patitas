@@ -5,6 +5,11 @@
  * si el aviso solo dice el municipio, el marcador cae en su centro; si dice
  * una dirección, el cliente intenta geocodificarla para afinar.
  *
+ * El módulo vive en `src` para que lo compartan el formulario y las funciones
+ * de Vercel: las coordenadas deben calcularse con la misma tabla en ambos
+ * lados. Si el cliente recalcula al revisar la ubicación, el marcador no puede
+ * quedarse con las coordenadas de un municipio anterior.
+ *
  * Fuente: GeoNames (https://www.geonames.org/), licencia CC BY 4.0.
  * Generado a partir de CU.txt (feature codes ADM1 y ADM2).
  */
@@ -203,3 +208,106 @@ export const MUNICIPALITY_COORDINATES: Record<string, Coordinates> = {
   "Isla de la Juventud|Nueva Gerona": { lat: 21.8876, lng: -82.8066 },
   "Isla de la Juventud|La Fe": { lat: 21.7418, lng: -82.7559 },
 };
+
+export type LocationPrecision = 'municipality' | 'province' | 'none';
+
+/** Normaliza un nombre para comparar sin tildes ni mayúsculas. */
+export function normalizeLocationName(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Busca las coordenadas canónicas de un municipio.
+ *
+ * Si no se indica la provincia solo se resuelve cuando el nombre es único:
+ * hay municipios homónimos (por ejemplo, San Luis en Pinar del Río y en
+ * Santiago de Cuba) y adivinar uno de ellos marcaría el mapa en otra provincia.
+ */
+export function findMunicipalityCoordinates(
+  province?: string,
+  municipality?: string
+): { province: string; municipality: string; coordinates: Coordinates } | undefined {
+  const target = normalizeLocationName(municipality ?? '');
+  if (!target) return undefined;
+
+  const entries = Object.entries(MUNICIPALITY_COORDINATES)
+    .map(([key, coordinates]) => {
+      const separator = key.indexOf('|');
+      return {
+        province: key.slice(0, separator),
+        municipality: key.slice(separator + 1),
+        coordinates,
+      };
+    })
+    .filter((entry) => normalizeLocationName(entry.municipality) === target);
+
+  if (entries.length === 0) return undefined;
+
+  if (province) {
+    const normalizedProvince = normalizeLocationName(province);
+    return entries.find(
+      (entry) => normalizeLocationName(entry.province) === normalizedProvince
+    );
+  }
+
+  return entries.length === 1 ? entries[0] : undefined;
+}
+
+/**
+ * Resuelve el punto base de una ubicación: municipio si existe, provincia si no.
+ *
+ * Es la misma regla que aplica el servidor al extraer un aviso, pero aquí se
+ * recalcula con la ubicación que el usuario dejó en la revisión. Así, si
+ * corrige el municipio, el marcador no conserva las coordenadas anteriores.
+ */
+export function resolveCubaCoordinates(input: {
+  province?: string;
+  municipality?: string;
+}): { latitude?: number; longitude?: number; locationPrecision: LocationPrecision } {
+  const municipality = findMunicipalityCoordinates(input.province, input.municipality);
+
+  if (municipality) {
+    return {
+      latitude: municipality.coordinates.lat,
+      longitude: municipality.coordinates.lng,
+      locationPrecision: 'municipality',
+    };
+  }
+
+  const provinceName = input.province
+    ? Object.keys(PROVINCE_COORDINATES).find(
+        (name) => normalizeLocationName(name) === normalizeLocationName(input.province ?? '')
+      )
+    : undefined;
+
+  if (provinceName) {
+    const coordinates = PROVINCE_COORDINATES[provinceName];
+    return {
+      latitude: coordinates.lat,
+      longitude: coordinates.lng,
+      locationPrecision: 'province',
+    };
+  }
+
+  return { locationPrecision: 'none' };
+}
+
+/** Distancia aproximada en kilómetros entre dos coordenadas. */
+export function distanceKm(a: Coordinates, b: Coordinates): number {
+  const earthRadiusKm = 6371;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const deltaLat = toRadians(b.lat - a.lat);
+  const deltaLng = toRadians(b.lng - a.lng);
+  const lat1 = toRadians(a.lat);
+  const lat2 = toRadians(b.lat);
+  const haversine =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+
+  return 2 * earthRadiusKm * Math.asin(Math.sqrt(haversine));
+}

@@ -61,6 +61,21 @@ export function mergeImportedData(
       ? imported.contactMode
       : undefined;
 
+  const province =
+    imported.province && !current.province ? imported.province : current.province;
+
+  // El municipio solo se aplica si pertenece a la provincia efectiva. Si no,
+  // el `<select>` quedaría con un valor fuera de la lista y las coordenadas
+  // acabarían en otro lugar.
+  const municipalityBelongs =
+    !province || !imported.province || imported.province === province;
+  const municipality =
+    imported.municipality &&
+    !(current.municipality ?? '').trim() &&
+    municipalityBelongs
+      ? imported.municipality
+      : undefined;
+
   return {
     ...current,
     ...(imported.type && { type: imported.type }),
@@ -81,9 +96,8 @@ export function mergeImportedData(
     ...(imported.collar && { collar: true }),
     ...(imported.plate && { plate: true }),
     // Ubicación y contacto
-    ...(imported.province && !current.province && { province: imported.province }),
-    ...(imported.municipality &&
-      !(current.municipality ?? '').trim() && { municipality: imported.municipality }),
+    ...(province && province !== current.province && { province }),
+    ...(municipality && { municipality }),
     ...(zone && !(current.zone ?? '').trim() && { zone }),
     ...(imported.reward && !(current.reward ?? '').trim() && { reward: imported.reward }),
     ...(imported.eventDate && !current.eventDate && { eventDate: imported.eventDate }),

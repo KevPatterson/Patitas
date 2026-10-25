@@ -21,6 +21,7 @@
     "api",
     "src/lib/validations/facebook-import.ts",
     "src/lib/validations/ingest.ts",
-    "src/lib/constants/labels.ts"
+    "src/lib/constants/labels.ts",
+    "src/lib/constants/cuba-locations.ts"
   ]
 }

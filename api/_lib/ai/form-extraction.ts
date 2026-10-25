@@ -21,7 +21,7 @@ import {
   MUNICIPALITY_COORDINATES,
   PROVINCE_COORDINATES,
   type Coordinates,
-} from './cuba-locations.js';
+} from '../../../src/lib/constants/cuba-locations.js';
 
 export type FormSpecies = 'dog' | 'cat' | 'bird' | 'rabbit' | 'rodent' | 'reptile' | 'other';
 export type FormSize = 'small' | 'medium' | 'large';

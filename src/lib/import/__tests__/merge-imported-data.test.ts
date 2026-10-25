@@ -131,6 +131,31 @@ describe('mergeImportedData', () => {
     expect(result.plate).toBe(true);
   });
 
+  it('no aplica un municipio de otra provincia si el usuario ya eligió una', () => {
+    const current: PublicationFormValues = {
+      ...baseValues,
+      province: 'Matanzas',
+    };
+
+    const result = mergeImportedData(current, {
+      province: 'La Habana',
+      municipality: 'Centro Habana',
+    });
+
+    expect(result.province).toBe('Matanzas');
+    expect(result.municipality).toBe('');
+  });
+
+  it('aplica provincia y municipio juntos cuando el formulario está vacío', () => {
+    const result = mergeImportedData(baseValues, {
+      province: 'La Habana',
+      municipality: 'Centro Habana',
+    });
+
+    expect(result.province).toBe('La Habana');
+    expect(result.municipality).toBe('Centro Habana');
+  });
+
   it('no cambia el modo de contacto elegido por el usuario', () => {
     const current: PublicationFormValues = {
       ...baseValues,
