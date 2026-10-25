@@ -71,6 +71,14 @@ export type FormExtraction = {
   /** Texto reconocido en la imagen, para que el usuario pueda contrastarlo. */
   ocrText?: string;
   hasTextOverlay: boolean;
+  /**
+   * Indica si la visión detectó a la mascota dentro de la imagen.
+   *
+   * Es una señal aparte de `species`: un cartel puede nombrar al perro sin que
+   * el animal aparezca en la foto. El cliente solo usa la imagen como foto de
+   * la publicación cuando este valor es `true`.
+   */
+  hasPet?: boolean;
   /** 0..1. Media de las fuentes que aportaron datos. */
   confidence: number;
 };
@@ -172,6 +180,16 @@ const SPECIES_PATTERNS: Array<[FormSpecies, RegExp]> = [
   ['rodent', /\b(roedor|roedores|h[aá]mster|hamster|cobaya|rat[oó]n|mouse)\b/i],
   ['reptile', /\b(reptil|reptiles|tortuga|iguana|serpiente|snake|lizard)\b/i],
 ];
+
+/**
+ * Etiquetas de visión que indican que hay un animal en la imagen.
+ *
+ * Se usan como respaldo cuando el modelo no devuelve `has_pet` de forma
+ * explícita. No se busca en el texto OCR: un cartel que dice "perro perdido"
+ * no significa que el perro esté en la foto.
+ */
+const PET_LABEL_PATTERN =
+  /\b(perr[oa]s?|dogs?|cachorr[oa]s?|pupp(?:y|ies)|gat[oa]s?|cats?|kittens?|felino|ave|bird|p[aá]jaro|conejo|rabbit|roedor|hamster|cobaya|reptil|tortuga|iguana|serpiente|pet|mascota|animal)\b/i;
 
 const SIZE_PATTERNS: Array<[FormSize, RegExp]> = [
   ['small', /\b(peque[nñ][oa]s?|small|mini|chiquit[oa]s?)\b/i],
@@ -894,6 +912,18 @@ function extractFromVisionJson(parsed: Record<string, unknown>): Partial<FormExt
   const species = normalizeSpecies(pickString(parsed, ['species', 'especie']));
   if (species) result.species = species;
 
+  // Señal explícita del modelo: ¿se ve la mascota en la imagen? Se respeta tal
+  // cual, incluso un `false`, porque un cartel puede nombrar al animal sin
+  // mostrarlo.
+  const hasPet = pickBoolean(parsed, [
+    'has_pet',
+    'hasPet',
+    'pet_visible',
+    'petVisible',
+    'mascota_visible',
+  ]);
+  if (hasPet !== undefined) result.hasPet = hasPet;
+
   const size = normalizeSize(pickString(parsed, ['size', 'tamano', 'tamaño']));
   if (size) result.size = size;
 
@@ -1077,6 +1107,13 @@ export function extractAttributesFromVision(vision: VisionInput): Partial<FormEx
   if (!result.species) {
     const species = firstMatch(SPECIES_PATTERNS, normalizedHaystack);
     if (species) result.species = species;
+  }
+
+  // Respaldo cuando el modelo no devolvió `has_pet`: las etiquetas de visión o
+  // una especie detectada por visión implican que el animal está en la imagen.
+  if (result.hasPet === undefined) {
+    const petInLabels = vision.labels.some((item) => PET_LABEL_PATTERN.test(item.label));
+    if (petInLabels || result.species) result.hasPet = true;
   }
 
   if (!result.size) {
@@ -1301,6 +1338,7 @@ export function buildFormExtraction(input: {
 
   assign('type', fromOcr.type ?? fromVision.type);
   assign('species', fromVision.species ?? fromOcr.species);
+  assign('hasPet', fromVision.hasPet);
   assign('breed', fromVision.breed ?? fromOcr.breed);
   assign('color', fromVision.color ?? fromOcr.color);
   assign('size', fromVision.size ?? fromOcr.size);

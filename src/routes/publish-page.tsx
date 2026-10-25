@@ -270,6 +270,10 @@ export function PublishPage() {
   };
 
   const updateValue = <K extends keyof PublicationFormValues>(key: K, value: PublicationFormValues[K]) => {
+    // Al corregir un campo, el aviso anterior deja de ser útil: si era el de
+    // especie o color, ya no corresponde al estado actual del formulario.
+    if (errorMessage) setErrorMessage(null);
+
     if (key === 'province') {
       const province = value as string;
       const resolved = resolveCubaCoordinates({ province, municipality: '' });
@@ -444,7 +448,12 @@ export function PublishPage() {
    * y el municipio que quedaron en el formulario (no con los de la extracción)
    * para que una corrección en la revisión no deje el marcador en otro lugar.
    */
-  const handleImportedData = (data: ImportedData) => {
+  const handleImportedData = (data: ImportedData, imageFile?: File) => {
+    // Si el usuario había intentado continuar antes de importar, el aviso de
+    // validación ya no aplica: los datos nuevos pueden haber rellenado el campo
+    // que faltaba. Dejarlo visible hacía pensar que la importación había fallado.
+    setErrorMessage(null);
+
     const merged = mergeImportedData(values, data);
     const coordinates = resolveCubaCoordinates({
       province: merged.province,
@@ -468,6 +477,26 @@ export function PublishPage() {
     const fuzzed = shouldApplyCoordinates ? fuzzedCoordinates(latitude, longitude) : null;
     // Solo se afina con la dirección si la zona de la IA se llegó a aplicar.
     const zoneWasEmpty = !(values.zone ?? '').trim();
+
+    // Manejar imagen importada: si la visión confirmó que hay mascota (hasPet),
+    // la imagen se añade como primera foto (portada) si no hay otras.
+    if (imageFile) {
+      const previewUrl = URL.createObjectURL(imageFile);
+      setFiles((current) => {
+        // Si no hay imágenes, agregar como primera (portada)
+        if (current.length === 0) {
+          return [imageFile];
+        }
+        // Si ya hay imágenes, agregar al final
+        return [...current, imageFile];
+      });
+      setFilePreviews((current) => {
+        if (current.length === 0) {
+          return [previewUrl];
+        }
+        return [...current, previewUrl];
+      });
+    }
 
     setValues(
       fuzzed
@@ -831,6 +860,11 @@ export function PublishPage() {
 
           {step === 1 && (
             <div className="space-y-4">
+              {/* Autocompletado unificado: foto/captura y enlace de Facebook
+                  en el primer paso para prefill título, descripción y datos. */}
+              {isFeatureEnabled('ai') && (
+                <PublicationImporter onApply={handleImportedData} disabled={submitting} />
+              )}
               <fieldset className="space-y-3">
                 <legend className="text-sm font-semibold text-foreground">Tipo de caso</legend>
                 <div className="grid gap-3 sm:grid-cols-5">
@@ -875,14 +909,6 @@ export function PublishPage() {
 
           {step === 2 && (
             <div className="space-y-4">
-              {/* Autocompletado unificado: foto/captura y enlace de Facebook
-                  terminan en la misma revisión editable. Oculto si la IA está
-                  desactivada (tarea 5.4): con el proveedor mock los datos
-                  serían inventados. */}
-              {isFeatureEnabled('ai') && (
-                <PublicationImporter onApply={handleImportedData} disabled={submitting} />
-              )}
-
               {/* Campos del formulario */}
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">

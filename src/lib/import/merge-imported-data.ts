@@ -35,6 +35,13 @@ export type ImportedData = {
   eventDate?: string;
   eventTimeApprox?: string;
   sourceUrl?: string;
+  /**
+   * Señal de la visión: la mascota aparece en la imagen.
+   *
+   * No es un campo del formulario. El importador la usa para adjuntar la foto
+   * como imagen de la publicación cuando el usuario todavía no subió ninguna.
+   */
+  hasPet?: boolean;
   confidence?: number;
   ocrText?: string;
 };

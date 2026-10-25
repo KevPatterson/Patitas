@@ -9,6 +9,7 @@ import {
   facebookLinkImportSchema,
   extractOpenGraphMetadata,
   extractPostText,
+  extractPostImages,
   isFacebookBoilerplate,
   FACEBOOK_IMPORT_CONSTANTS,
 } from '../../src/lib/validations/facebook-import.js';
@@ -151,9 +152,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     return internalError(res, 'facebook-link/fetch', error);
   }
-
   const metadata = extractOpenGraphMetadata(html);
   const postText = extractPostText(html);
+  const postImages = extractPostImages(html);
 
   // Los metadatos de una foto suelen ser genéricos ("Facebook", "See posts..."),
   // así que solo cuentan como texto útil si no son boilerplate.
@@ -162,7 +163,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ? null
     : metadata.description;
 
-  const hasUsefulData = Boolean(title || description || metadata.image || postText);
+  const hasUsefulData = Boolean(title || description || metadata.image || postText || postImages.length > 0);
 
   if (!hasUsefulData) {
     return json(res, 200, {
@@ -172,17 +173,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } satisfies FacebookImportResponse);
   }
 
-  // Imagen de Open Graph: es contenido controlado por un tercero, así que pasa
-  // por el mismo guard y por la verificación de magic bytes.
+  // Priorizar imágenes extraídas del post sobre og:image (que suele ser genérica).
+  // Usar la primera imagen válida del post para análisis de visión.
+  const imageForVision = postImages[0] ?? metadata.image;
+
+  // Imagen para visión: pasa por el guard y verificación de magic bytes.
   let visionInput: { labels: Array<{ label: string; confidence: number }>; description?: string } | null =
     null;
 
-  if (metadata.image && AI_ENABLED) {
+  if (imageForVision && AI_ENABLED) {
     try {
-      const download = await fetchRemoteImage(metadata.image, { maxBytes: 8 * 1024 * 1024 });
+      const download = await fetchRemoteImage(imageForVision, { maxBytes: 8 * 1024 * 1024 });
 
       if (download.ok) {
-        const payload = toImagePayload(new Uint8Array(download.bytes), metadata.image);
+        const payload = toImagePayload(new Uint8Array(download.bytes), imageForVision);
 
         if (payload.ok) {
           const provider = getAIProvider();
@@ -190,7 +194,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             payload.image,
             'Analiza esta imagen de una mascota. ' +
               'Devuelve SOLO un JSON válido con: type (LOST/FOUND/ADOPTION/ABANDONED/SIGHTING), ' +
-              'species (dog/cat/bird/rabbit/rodent/reptile/other), breed, color, ' +
+              'species (dog/cat/bird/rabbit/rodent/reptile/other), ' +
+              'has_pet (true si la mascota aparece en la imagen; false si es solo texto o un cartel sin el animal), ' +
+              'breed, color, ' +
               'size (small/medium/large), sex (male/female), age (puppy/young/adult/senior), ' +
               'collar (true/false), plate (true/false), characteristics, ' +
               'province y municipality (nombres exactos de Cuba), zone, address. ' +
@@ -204,7 +210,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
     } catch (error) {
-      console.warn('[facebook-link] visión no disponible para el og:image', error);
+      console.warn('[facebook-link] visión no disponible para la imagen del post', error);
     }
   }
 
@@ -223,6 +229,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ignoredKeys = new Set([
     'confidence',
     'hasTextOverlay',
+    'hasPet',
     'locationPrecision',
     'ocrText',
     'latitude',
@@ -247,7 +254,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     data: {
       title,
       description,
-      image_url: metadata.image,
+      image_url: imageForVision,
       extracted,
       confidence: extracted.confidence,
       provider_is_real: aiProviderIsReal(),

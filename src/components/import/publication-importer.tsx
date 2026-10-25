@@ -21,6 +21,7 @@ import {
   isFacebookBoilerplate,
 } from '../../lib/validations/facebook-import';
 import type { ImportedData } from '../../lib/import/merge-imported-data';
+import { normalizeSpeciesValue } from '../../lib/import/species';
 import {
   AGE_LABELS,
   ALLOWED_IMAGE_TYPES,
@@ -67,6 +68,8 @@ type RawExtracted = {
   reward?: string;
   confidence?: number | Record<string, number>;
   ocrText?: string;
+  hasPet?: boolean;
+  has_pet?: boolean;
 };
 
 type ImageResponse = {
@@ -92,28 +95,6 @@ type LinkResponse = {
 };
 
 const DEMO_DISCLAIMER = 'Resultados de demostración: el proveedor de IA configurado no es real.';
-
-const SPECIES_FROM_API: Record<string, string> = {
-  perro: 'dog',
-  perra: 'dog',
-  dog: 'dog',
-  canino: 'dog',
-  gato: 'cat',
-  gata: 'cat',
-  cat: 'cat',
-  felino: 'cat',
-  ave: 'bird',
-  pajaro: 'bird',
-  bird: 'bird',
-  conejo: 'rabbit',
-  rabbit: 'rabbit',
-  roedor: 'rodent',
-  rodent: 'rodent',
-  reptil: 'reptile',
-  reptile: 'reptile',
-  otro: 'other',
-  other: 'other',
-};
 
 const SIZE_FROM_API: Record<string, string> = {
   pequeno: 'small',
@@ -223,6 +204,7 @@ function hasMeaningfulData(data: ImportedData): boolean {
     'confidence',
     'sourceUrl',
     'ocrText',
+    'hasPet',
     'locationPrecision',
     'latitude',
     'longitude',
@@ -252,7 +234,7 @@ function normalizeExtracted(raw: RawExtracted | undefined, sourceUrl?: string): 
     type: mapValue(TYPE_FROM_API, api.type),
     title: cleanText(api.title),
     description: cleanText(api.description),
-    species: mapValue(SPECIES_FROM_API, api.species),
+    species: normalizeSpeciesValue(api.species),
     breed: cleanText(api.breed),
     color: cleanText(api.color),
     size: mapValue(SIZE_FROM_API, api.size),
@@ -276,6 +258,7 @@ function normalizeExtracted(raw: RawExtracted | undefined, sourceUrl?: string): 
     eventDate: normalizeDateInput(api.event_date ?? api.eventDate),
     eventTimeApprox: normalizeTimeInput(api.event_time ?? api.eventTimeApprox),
     sourceUrl,
+    hasPet: api.hasPet === true || api.has_pet === true ? true : undefined,
     confidence: typeof api.confidence === 'number' ? api.confidence : undefined,
     ocrText: cleanText(api.ocrText),
   };
@@ -313,7 +296,7 @@ const REVIEW_FIELDS: ReviewFieldConfig[] = [
     placeholder: 'Perro perdido en Centro Habana',
   },
   { key: 'description', label: 'Descripción', kind: 'textarea', always: true },
-  { key: 'species', label: 'Especie', kind: 'select', options: SPECIES_LABELS },
+  { key: 'species', label: 'Especie', kind: 'select', options: SPECIES_LABELS, always: true },
   { key: 'breed', label: 'Raza', kind: 'text' },
   { key: 'color', label: 'Color', kind: 'text' },
   { key: 'size', label: 'Tamaño', kind: 'select', options: SIZE_LABELS },
@@ -370,7 +353,12 @@ function SelectField({
 }
 
 type PublicationImporterProps = {
-  onApply: (data: ImportedData) => void;
+  /**
+   * Aplica los datos revisados. `imageFile` solo llega cuando la visión
+   * confirmó que la mascota aparece en la imagen: el formulario la usa como
+   * foto de la publicación si el usuario todavía no subió ninguna.
+   */
+  onApply: (data: ImportedData, imageFile?: File) => void;
   disabled?: boolean;
 };
 
@@ -394,6 +382,9 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
   const [linkError, setLinkError] = useState<string | null>(null);
   const [review, setReview] = useState<ImportedData | null>(null);
   const [reviewImage, setReviewImage] = useState<string | null>(null);
+  // La visión confirmó que la mascota sale en la imagen: se ofrecerá también
+  // como foto de la publicación.
+  const [reviewHasPet, setReviewHasPet] = useState(false);
   const [disclaimer, setDisclaimer] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
 
@@ -415,6 +406,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
       setPreview(URL.createObjectURL(selected));
       setReview(null);
       setReviewImage(null);
+      setReviewHasPet(false);
       setDisclaimer(null);
       setError(null);
       setApplied(false);
@@ -444,6 +436,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
     setPreview(null);
     setReview(null);
     setReviewImage(null);
+    setReviewHasPet(false);
     setDisclaimer(null);
     setError(null);
     setApplied(false);
@@ -491,6 +484,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
 
       setReview(extracted);
       setReviewImage(preview);
+      setReviewHasPet(extracted.hasPet === true);
       setDisclaimer(result.provider_is_real ? null : result.disclaimer ?? DEMO_DISCLAIMER);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al analizar la imagen');
@@ -565,6 +559,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
 
       setReview(extracted);
       setReviewImage(cleanText(data.image_url) ?? null);
+      setReviewHasPet(false);
       setDisclaimer(data.provider_is_real === false ? DEMO_DISCLAIMER : null);
       setLinkOpen(false);
     } catch (err) {
@@ -599,6 +594,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
   const discardReview = () => {
     setReview(null);
     setReviewImage(null);
+    setReviewHasPet(false);
     setDisclaimer(null);
     setApplied(false);
   };
@@ -606,7 +602,12 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
   const applyReview = () => {
     if (!review) return;
 
-    onApply(review);
+    // La foto solo se adjunta cuando la visión confirmó que la mascota está en
+    // la imagen. Si era una captura de texto, el formulario no gana nada con
+    // usarla como foto de la publicación.
+    const imageFile = reviewHasPet ? file ?? undefined : undefined;
+
+    onApply(review, imageFile);
     discardReview();
     setApplied(true);
     setLink('');
@@ -808,12 +809,20 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
           )}
 
           {reviewImage && (
-            <div className="relative rounded-xl overflow-hidden border-2 border-foreground/10 max-w-sm mx-auto">
-              <img
-                src={reviewImage}
-                alt="Imagen importada"
-                className="w-full h-40 object-cover"
-              />
+            <div className="mx-auto max-w-sm space-y-2">
+              <div className="relative rounded-xl overflow-hidden border-2 border-foreground/10">
+                <img
+                  src={reviewImage}
+                  alt="Imagen importada"
+                  className="w-full h-40 object-cover"
+                />
+              </div>
+              {reviewHasPet && (
+                <p className="flex items-start gap-1.5 text-xs font-medium text-found">
+                  <CheckCircle className="size-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                  La mascota aparece en la foto: se añadirá también como imagen de la publicación.
+                </p>
+              )}
             </div>
           )}
 
@@ -951,7 +960,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
         <ul className="list-disc space-y-1 pl-4">
           <li>La IA lee el cartel, la foto o el texto del post y solo aporta datos reales.</li>
           <li>Si un dato no aparece, queda vacío para que lo completes tú.</li>
-          <li>La imagen no se guarda: solo se usa para extraer información.</li>
+          <li>Si la mascota aparece en la foto, se usa también como imagen de la publicación.</li>
           <li>Al aplicar, se respeta lo que ya habías escrito en el formulario.</li>
         </ul>
       </div>

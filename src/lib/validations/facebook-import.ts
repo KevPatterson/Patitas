@@ -186,18 +186,173 @@ export function extractPostText(html: string): string | null {
 }
 
 /**
+ * Extrae URLs de imágenes del post de Facebook.
+ *
+ * Busca en el HTML del post (no en Open Graph) para encontrar las imágenes
+ * reales adjuntas al post, evitando la imagen genérica del grupo/página.
+ */
+export function extractPostImages(html: string): string[] {
+  const images: string[] = [];
+
+  // 1. Buscar en el div del mensaje (data-ad-preview="message")
+  const messageDivMatch = html.match(
+    /<div[^>]*(?:data-ad-preview|data-ad-comet-preview)\s*=\s*["']message["'][^>]*>([\s\S]*?)<\/div>/i
+  );
+
+  if (messageDivMatch?.[1]) {
+    const messageHtml = messageDivMatch[1];
+
+    // Buscar tags <img> con src
+    const imgMatches = messageHtml.matchAll(/<img[^>]+src\s*=\s*["']([^"']+)["'][^>]*>/gi);
+    for (const match of imgMatches) {
+      const url = decodeHtmlEntities(match[1]);
+      if (url && isLikelyPostImage(url)) {
+        images.push(url);
+      }
+    }
+
+    // Buscar background-image en style
+    const bgMatches = messageHtml.matchAll(/background-image\s*:\s*url\(["']?([^"')]+)["']?\)/gi);
+    for (const match of bgMatches) {
+      const url = decodeHtmlEntities(match[1]);
+      if (url && isLikelyPostImage(url)) {
+        images.push(url);
+      }
+    }
+  }
+
+  // 2. Buscar en JSON embebido (attachments/media)
+  const jsonImageMatches = html.matchAll(/"(?:image|photo|media)"\s*:\s*\{\s*"uri"\s*:\s*"([^"]+)"/gi);
+  for (const match of jsonImageMatches) {
+    const url = decodeHtmlEntities(match[1]);
+    if (url && isLikelyPostImage(url)) {
+      images.push(url);
+    }
+  }
+
+  // 3. Buscar en data-ft o data-store JSON
+  const dataFtMatches = html.matchAll(/data-ft\s*=\s*["']([^"']+)["']/gi);
+  for (const match of dataFtMatches) {
+    try {
+      const parsed = JSON.parse(decodeHtmlEntities(match[1]));
+      const attachedImages = findImagesInObject(parsed);
+      for (const url of attachedImages) {
+        if (isLikelyPostImage(url)) {
+          images.push(url);
+        }
+      }
+    } catch {
+      // Ignorar JSON inválido
+    }
+  }
+
+  // Deduplicar manteniendo orden
+  return [...new Set(images)];
+}
+
+/**
+ * Verifica si una URL parece ser una imagen del post (no avatar, no icono, no genérica).
+ */
+function isLikelyPostImage(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const hostname = u.hostname.toLowerCase();
+    const pathname = u.pathname.toLowerCase();
+
+    // Debe ser de CDN de Facebook
+    if (!hostname.includes('fbcdn.net') && !hostname.includes('scontent')) {
+      return false;
+    }
+
+    // Excluir avatares, iconos, sprites, imágenes genéricas de grupo
+    const excludePatterns = [
+      '/s160x160/', // avatares pequeños
+      '/s320x320/', // avatares medianos
+      '/s40x40/',
+      '/s48x48/',
+      '/s64x64/',
+      '/s72x72/',
+      '/s96x96/',
+      '/s100x100/',
+      '/s128x128/',
+      '/s144x144/',
+      '/s180x180/',
+      '/s200x200/',
+      'profile_pic',
+      'cover_photo',
+      'group_cover',
+      'page_cover',
+      'avatar',
+      'icon',
+      'sprite',
+      'emoji',
+      'sticker',
+      '/safe_image.php', // enlaces externos
+      'static.xx.fbcdn.net', // assets estáticos
+    ];
+
+    for (const pattern of excludePatterns) {
+      if (pathname.includes(pattern) || hostname.includes(pattern)) {
+        return false;
+      }
+    }
+
+    // Debe tener extensión de imagen o parámetros de imagen de Facebook
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.heic'];
+    const hasImageExt = imageExtensions.some((ext) => pathname.includes(ext));
+    const hasFbImageParams = u.searchParams.has('stp') || u.searchParams.has('oe') || u.searchParams.has('_nc_');
+
+    return hasImageExt || hasFbImageParams;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Busca recursivamente URLs de imágenes en un objeto JSON.
+ */
+function findImagesInObject(obj: unknown, found: string[] = []): string[] {
+  if (!obj || typeof obj !== 'object') return found;
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      findImagesInObject(item, found);
+    }
+  } else {
+    for (const [key, value] of Object.entries(obj)) {
+      const lowerKey = key.toLowerCase();
+      if (
+        typeof value === 'string' &&
+        (lowerKey.includes('image') ||
+          lowerKey.includes('photo') ||
+          lowerKey.includes('media') ||
+          lowerKey.includes('src') ||
+          lowerKey.includes('uri') ||
+          lowerKey.includes('url')) &&
+        value.startsWith('http')
+      ) {
+        found.push(value);
+      } else if (value && typeof value === 'object') {
+        findImagesInObject(value, found);
+      }
+    }
+  }
+  return found;
+}
+
+/**
  * Decodifica entidades HTML.
  *
- * Antes las sustituciones estaban invertidas (`&` por `&`), así que `&amp;`
- * seguía literal. Eso rompía las URL de las imágenes de Facebook (`?a=1&amp;b=2`),
+ * Antes las sustituciones estaban invertidas (`&` por `&`), así que `&`
+ * seguía literal. Eso rompía las URL de las imágenes de Facebook (`?a=1&b=2`),
  * que después no se podían descargar ni mostrar.
  */
 function decodeHtmlEntities(text: string): string {
   return text
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
+    .replace(/&/gi, '&')
+    .replace(/</gi, '<')
+    .replace(/>/gi, '>')
+    .replace(/"/gi, '"')
     .replace(/&apos;/gi, "'")
     .replace(/&#0*39;/g, "'")
     .replace(/&nbsp;/gi, ' ')

@@ -150,7 +150,9 @@ export async function handleExtractFromImage(req: VercelRequest, res: VercelResp
           'Analiza la foto o captura de una mascota (perdida, encontrada, en adopción o abandonada). ' +
             'Devuelve SOLO un JSON válido, sin markdown, con estas claves: ' +
             'type (LOST/FOUND/ADOPTION/ABANDONED/SIGHTING), ' +
-            'species (dog/cat/bird/rabbit/rodent/reptile/other), breed, color, ' +
+            'species (dog/cat/bird/rabbit/rodent/reptile/other), ' +
+            'has_pet (true si la mascota aparece en la imagen; false si es solo un cartel, texto o captura sin el animal), ' +
+            'breed, color, ' +
             'size (small/medium/large), sex (male/female), age (puppy/young/adult/senior), ' +
             'collar (true/false), plate (true/false), characteristics, pet_name, ' +
             'title (máximo 70 caracteres), description (lo que dice el aviso), ' +
