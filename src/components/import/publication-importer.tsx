@@ -556,10 +556,9 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
         setPreview(null);
         setFile(null);
       }
-
       setReview(extracted);
       setReviewImage(cleanText(data.image_url) ?? null);
-      setReviewHasPet(false);
+      setReviewHasPet(extracted.hasPet === true);
       setDisclaimer(data.provider_is_real === false ? DEMO_DISCLAIMER : null);
       setLinkOpen(false);
     } catch (err) {
@@ -599,13 +598,29 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
     setApplied(false);
   };
 
-  const applyReview = () => {
+  const applyReview = async () => {
     if (!review) return;
 
     // La foto solo se adjunta cuando la visión confirmó que la mascota está en
     // la imagen. Si era una captura de texto, el formulario no gana nada con
     // usarla como foto de la publicación.
-    const imageFile = reviewHasPet ? file ?? undefined : undefined;
+    let imageFile: File | undefined;
+    if (reviewHasPet && reviewImage) {
+      // Si la imagen viene de un enlace (Facebook), descargarla y crear File
+      if (!file && reviewImage.startsWith('http')) {
+        try {
+          const response = await fetch(reviewImage);
+          if (response.ok) {
+            const blob = await response.blob();
+            imageFile = new File([blob], 'imported-image.jpg', { type: blob.type || 'image/jpeg' });
+          }
+        } catch {
+          // Si falla la descarga, continuar sin imagen
+        }
+      } else if (file) {
+        imageFile = file;
+      }
+    }
 
     onApply(review, imageFile);
     discardReview();
