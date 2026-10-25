@@ -60,7 +60,7 @@ export function providerAvailable(): { ok: true } | { ok: false; reason: string 
   }
 
   if (AI_PROVIDER === 'CLOUDFLARE') {
-    if (!process.env.CLOUDFLARE_ACCOUNT_ID || !process.env.CLOUDFLARE_API_TOKEN) {
+    if (!process.env.CLOUDFLARE_ACCOUNT_ID?.trim() || !process.env.CLOUDFLARE_API_TOKEN?.trim()) {
       return {
         ok: false,
         reason:
@@ -141,7 +141,9 @@ export function aiProviderIsReal(): boolean {
   if (!AI_ENABLED) return false;
 
   if (AI_PROVIDER === 'CLOUDFLARE') {
-    return Boolean(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN);
+    return Boolean(
+      process.env.CLOUDFLARE_ACCOUNT_ID?.trim() && process.env.CLOUDFLARE_API_TOKEN?.trim()
+    );
   }
 
   if (AI_PROVIDER === 'GOOGLE_VISION') {

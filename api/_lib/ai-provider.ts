@@ -647,9 +647,21 @@ const CLOUDFLARE_VISION_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
 const CLOUDFLARE_TEXT_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8-fast';
 const CLOUDFLARE_TIMEOUT_MS = 45_000;
 
+/**
+ * Normaliza una variable de entorno pegada a mano.
+ *
+ * Al copiar el token desde el panel es fácil arrastrar un salto de línea o las
+ * comillas, y entonces el header queda `Bearer "cfut_..."` y Cloudflare
+ * responde 401. Se recortan espacios y un par de comillas envolventes.
+ */
+function cleanEnvValue(value: string | undefined): string | undefined {
+  const cleaned = value?.trim().replace(/^(["'])(.*)\1$/, '$2').trim();
+  return cleaned || undefined;
+}
+
 function getCloudflareProvider(): IAIProvider {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const accountId = cleanEnvValue(process.env.CLOUDFLARE_ACCOUNT_ID);
+  const apiToken = cleanEnvValue(process.env.CLOUDFLARE_API_TOKEN);
 
   if (!accountId || !apiToken) {
     throw new Error(
