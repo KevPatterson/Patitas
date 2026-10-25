@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ExternalLink, Image, Loader2, AlertCircle, CheckCircle, X, Globe } from 'lucide-react';
 import { Button } from '../ui/button';
 import { TextField } from '../ui/text-field';
+import { supabase } from '../../lib/supabase/client';
 import { facebookLinkImportSchema } from '../../lib/validations/facebook-import';
 import type { PublicationFormValues } from '../../lib/validations/publication';
 import { PROVINCES } from '../../lib/constants/cuba';
@@ -12,7 +13,7 @@ import { SPECIES_LABELS, SEX_LABELS, SIZE_LABELS, AGE_LABELS } from '../../lib/c
 type ImportTab = 'link' | 'screenshot';
 
 type ExtractedData = {
-  type?: 'LOST' | 'FOUND' | 'ADOPTION' | 'ABANDONED';
+  type?: 'LOST' | 'FOUND' | 'ADOPTION' | 'ABANDONED' | 'SIGHTING';
   title?: string;
   description?: string;
   species?: string;
@@ -32,6 +33,10 @@ type ExtractedData = {
   province?: string;
   municipality?: string;
   zone?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  locationPrecision?: 'municipality' | 'province' | 'none';
   eventDate?: string;
   eventTimeApprox?: string;
   confidence: Record<string, number>;
@@ -39,26 +44,219 @@ type ExtractedData = {
 };
 
 type ExtractedApiData = {
-  type?: 'LOST' | 'FOUND' | 'ADOPTION' | 'ABANDONED';
+  type?: string;
   title?: string;
   description?: string;
   species?: string;
   breed?: string;
   color?: string;
-  size?: 'PEQUENO' | 'MEDIANO' | 'GRANDE';
-  sex?: 'MACHO' | 'HEMBRA';
+  size?: string;
+  sex?: string;
+  age?: string;
+  ageApprox?: string;
+  characteristics?: string;
   collar?: boolean;
   plate?: boolean;
   province?: string;
   municipality?: string;
   zone?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  locationPrecision?: 'municipality' | 'province' | 'none';
   event_date?: string;
+  eventDate?: string;
+  event_time?: string;
+  eventTimeApprox?: string;
   contact_phone?: string;
+  contactPhone?: string;
   contact_whatsapp?: string;
+  contactWhatsapp?: string;
   contact_email?: string;
+  contactEmail?: string;
   reward?: string;
-  confidence?: Record<string, number>;
+  confidence?: Record<string, number> | number;
 };
+
+/** Respuesta de los endpoints de importación. */
+type ImportResponse = {
+  success?: boolean;
+  error?: string;
+  data?: {
+    title?: string;
+    description?: string;
+    image_url?: string;
+    extracted?: ExtractedApiData;
+    confidence?: number;
+  };
+};
+
+const SPECIES_FROM_API: Record<string, string> = {
+  perro: 'dog',
+  perra: 'dog',
+  dog: 'dog',
+  canino: 'dog',
+  gato: 'cat',
+  gata: 'cat',
+  cat: 'cat',
+  felino: 'cat',
+  ave: 'bird',
+  pajaro: 'bird',
+  bird: 'bird',
+  conejo: 'rabbit',
+  rabbit: 'rabbit',
+  roedor: 'rodent',
+  rodent: 'rodent',
+  reptil: 'reptile',
+  reptile: 'reptile',
+  otro: 'other',
+  other: 'other',
+};
+
+const SIZE_FROM_API: Record<string, string> = {
+  pequeno: 'small',
+  small: 'small',
+  mini: 'small',
+  mediano: 'medium',
+  medium: 'medium',
+  grande: 'large',
+  large: 'large',
+};
+
+const SEX_FROM_API: Record<string, string> = {
+  macho: 'male',
+  male: 'male',
+  hembra: 'female',
+  female: 'female',
+};
+
+const AGE_FROM_API: Record<string, string> = {
+  cachorro: 'puppy',
+  puppy: 'puppy',
+  joven: 'young',
+  young: 'young',
+  adulto: 'adult',
+  adult: 'adult',
+  anciano: 'senior',
+  senior: 'senior',
+  viejo: 'senior',
+};
+
+const TYPE_FROM_API: Record<string, ExtractedData['type']> = {
+  lost: 'LOST',
+  perdido: 'LOST',
+  found: 'FOUND',
+  encontrado: 'FOUND',
+  adoption: 'ADOPTION',
+  adopcion: 'ADOPTION',
+  abandoned: 'ABANDONED',
+  abandonado: 'ABANDONED',
+  sighting: 'SIGHTING',
+  avistamiento: 'SIGHTING',
+};
+
+function normalizeKey(value?: string): string {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function mapValue<T>(map: Record<string, T>, value?: string): T | undefined {
+  return map[normalizeKey(value)];
+}
+
+/** Convierte `dd/mm/aaaa` o ISO a `YYYY-MM-DD` para el `<input type="date">`. */
+function normalizeDateInput(value?: string): string | undefined {
+  if (!value) return undefined;
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+
+  const match = value.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+  if (!match) return undefined;
+
+  let year = Number(match[3]);
+  if (year < 100) year += 2000;
+
+  const month = Number(match[2]);
+  const day = Number(match[1]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
+
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/** Convierte `3:30 pm` o `15:30` a `HH:MM` para el `<input type="time">`. */
+function normalizeTimeInput(value?: string): string | undefined {
+  if (!value) return undefined;
+
+  const match = value.match(/(\d{1,2}):(\d{2})\s*(am|pm|a\.?\s?m\.?|p\.?\s?m\.?)?/i);
+  if (!match) return undefined;
+
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const meridiem = normalizeKey(match[3]);
+
+  if (meridiem === 'pm' && hour < 12) hour += 12;
+  if (meridiem === 'am' && hour === 12) hour = 0;
+  if (hour > 23 || minute > 59) return undefined;
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+/**
+ * Normaliza la respuesta de la API a los enums del formulario.
+ *
+ * `facebook-screenshot` devuelve `PEQUENO`/`MACHO` y `Perro`/`Gato`; el
+ * formulario usa `small`/`male` y `dog`/`cat`. Sin esta conversión los selects
+ * se quedaban vacíos aunque la IA hubiera detectado el dato.
+ */
+function mapApiExtracted(api: ExtractedApiData | undefined): ExtractedData {
+  if (!api) return { confidence: {} };
+
+  return {
+    type: mapValue(TYPE_FROM_API, api.type),
+    title: api.title,
+    description: api.description,
+    species: mapValue(SPECIES_FROM_API, api.species),
+    breed: api.breed,
+    color: api.color,
+    size: mapValue(SIZE_FROM_API, api.size),
+    sex: mapValue(SEX_FROM_API, api.sex),
+    ageApprox: mapValue(AGE_FROM_API, api.ageApprox ?? api.age),
+    characteristics: api.characteristics,
+    collar: api.collar ?? false,
+    plate: api.plate ?? false,
+    reward: api.reward,
+    contactPhone: api.contact_phone ?? api.contactPhone,
+    contactWhatsapp: api.contact_whatsapp ?? api.contactWhatsapp,
+    contactEmail: api.contact_email ?? api.contactEmail,
+    province: api.province,
+    municipality: api.municipality,
+    zone: api.zone,
+    address: api.address,
+    latitude: api.latitude,
+    longitude: api.longitude,
+    locationPrecision: api.locationPrecision,
+    eventDate: normalizeDateInput(api.event_date ?? api.eventDate),
+    eventTimeApprox: normalizeTimeInput(api.event_time ?? api.eventTimeApprox),
+    // `buildFormExtraction` devuelve una confianza global (número); el panel de
+    // revisión espera confianza por campo. Sin desglose no se muestra insignia.
+    confidence: typeof api.confidence === 'number' ? {} : api.confidence ?? {},
+  };
+}
+
+/** Devuelve el JWT de Supabase o lanza un error claro. */
+async function getAccessToken(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+
+  if (!token) {
+    throw new Error('Inicia sesión para importar desde Facebook.');
+  }
+
+  return token;
+}
 
 
 function getConfidenceColor(confidence: number): string {
@@ -97,7 +295,7 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
     }
     
     try {
-      const token = localStorage.getItem('sb-access-token') ?? '';
+      const token = await getAccessToken();
       const response = await fetch('/api/import/facebook-link', {
         method: 'POST',
         headers: {
@@ -106,38 +304,36 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
         },
         body: JSON.stringify({ url }),
       });
-      const result = await response.json();
-      // Convertir datos extraídos a nuestro formato
+
+      const result = (await response.json().catch(() => null)) as ImportResponse | null;
+
+      if (!response.ok) {
+        throw new Error(result?.error || `Error ${response.status} al importar el enlace`);
+      }
+
+      if (!result || result.success === false) {
+        throw new Error(result?.error || 'No se pudieron extraer datos del enlace');
+      }
+
       const data = result.data;
-      const apiExtracted = data.extracted as ExtractedApiData | undefined;
+      if (!data) {
+        throw new Error('El servidor no devolvió datos del enlace');
+      }
+
       const extracted: ExtractedData = {
+        ...mapApiExtracted(data.extracted),
+        // Los metadatos Open Graph son más fiables que el texto de la visión.
         title: data.title ?? undefined,
-        species: apiExtracted?.species,
-        breed: apiExtracted?.breed,
-        color: apiExtracted?.color,
-        size: apiExtracted?.size,
-        sex: apiExtracted?.sex,
-        collar: apiExtracted?.collar ?? false,
-        plate: apiExtracted?.plate ?? false,
-        reward: apiExtracted?.reward,
-        contactPhone: apiExtracted?.contact_phone,
-        contactWhatsapp: apiExtracted?.contact_whatsapp,
-        contactEmail: apiExtracted?.contact_email,
-        province: apiExtracted?.province,
-        municipality: apiExtracted?.municipality,
-        zone: apiExtracted?.zone,
-        eventDate: apiExtracted?.event_date,
-        confidence: apiExtracted?.confidence ?? {},
+        description: data.description ?? undefined,
         sourceUrl: url,
       };
 
       if (data.image_url) {
         setImagePreview(data.image_url);
       }
-      
+
       setExtractedData(extracted);
       setShowReview(true);
-      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -164,10 +360,10 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
     setImagePreview(previewUrl);
     
     try {
-      const token = localStorage.getItem('sb-access-token') ?? '';
+      const token = await getAccessToken();
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
-      
+
       const response = await fetch('/api/import/facebook-screenshot', {
         method: 'POST',
         headers: {
@@ -175,39 +371,21 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
         },
         body: uploadFormData,
       });
-      
-      const result = await response.json();
-      
+
+      const result = (await response.json().catch(() => null)) as ImportResponse | null;
+
       if (!response.ok) {
-        throw new Error(result.error || 'Error procesando imagen');
+        throw new Error(result?.error || `Error ${response.status} al procesar la imagen`);
       }
-      const apiExtracted = result.data?.extracted as ExtractedApiData | undefined;
-      const extracted: ExtractedData = {
-        type: apiExtracted?.type,
-        title: apiExtracted?.title,
-        description: apiExtracted?.description,
-        species: apiExtracted?.species,
-        breed: apiExtracted?.breed,
-        color: apiExtracted?.color,
-        size: apiExtracted?.size,
-        sex: apiExtracted?.sex,
-        collar: apiExtracted?.collar ?? false,
-        plate: apiExtracted?.plate ?? false,
-        reward: apiExtracted?.reward,
-        contactPhone: apiExtracted?.contact_phone,
-        contactWhatsapp: apiExtracted?.contact_whatsapp,
-        contactEmail: apiExtracted?.contact_email,
-        province: apiExtracted?.province,
-        municipality: apiExtracted?.municipality,
-        zone: apiExtracted?.zone,
-        eventDate: apiExtracted?.event_date,
-        confidence: apiExtracted?.confidence ?? {},
-        sourceUrl: undefined,
-      };
-      
+
+      if (!result || result.success === false) {
+        throw new Error(result?.error || 'No se pudieron extraer datos de la captura');
+      }
+
+      const extracted = mapApiExtracted(result.data?.extracted);
+
       setExtractedData(extracted);
       setShowReview(true);
-      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -223,13 +401,13 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
       type: extractedData.type ?? 'LOST',
       title: extractedData.title ?? `Reporte importado de Facebook`,
       description: extractedData.description ?? 'Importado desde Facebook',
-      species: extractedData.species ?? 'Perro',
+      species: extractedData.species ?? '',
       breed: extractedData.breed ?? '',
       sex: (extractedData.sex as PublicationFormValues['sex']) ?? '',
       size: (extractedData.size as PublicationFormValues['size']) ?? '',
-      ageApprox: '',
+      ageApprox: (extractedData.ageApprox as PublicationFormValues['ageApprox']) ?? '',
       color: extractedData.color ?? '',
-      characteristics: '',
+      characteristics: extractedData.characteristics ?? '',
       collar: extractedData.collar ?? false,
       plate: extractedData.plate ?? false,
       reward: extractedData.reward ?? '',
@@ -242,11 +420,13 @@ export function FacebookImportWizard({ onImportComplete }: { onImportComplete: (
       microchip: '',
       province: extractedData.province ?? '',
       municipality: extractedData.municipality ?? '',
-      zone: extractedData.zone ?? '',
-      approximateLat: '',
-      approximateLng: '',
+      zone: extractedData.zone ?? extractedData.address ?? '',
+      approximateLat:
+        extractedData.latitude !== undefined ? String(extractedData.latitude) : '',
+      approximateLng:
+        extractedData.longitude !== undefined ? String(extractedData.longitude) : '',
       eventDate: extractedData.eventDate ?? '',
-      eventTimeApprox: '',
+      eventTimeApprox: extractedData.eventTimeApprox ?? '',
     };
     
     onImportComplete(formData, extractedData.sourceUrl ?? '');

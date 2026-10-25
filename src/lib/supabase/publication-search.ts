@@ -94,16 +94,6 @@ function mapPublication(row: any): PublicationSummary {
   // Normalizar location: puede ser objeto o array[0]
   const location = Array.isArray(row.location) ? row.location[0] : row.location;
 
-  // Debug: log para verificar las coordenadas
-  if (!location?.approximate_lat || !location?.approximate_lng) {
-    console.warn('⚠️ Publicación sin coordenadas:', {
-      title: row.title,
-      hasLocation: !!location,
-      lat: location?.approximate_lat,
-      lng: location?.approximate_lng
-    });
-  }
-
   return {
     id: row.id,
     slug: row.slug,

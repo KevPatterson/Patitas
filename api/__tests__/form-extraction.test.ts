@@ -3,6 +3,9 @@ import {
   buildFormExtraction,
   extractAttributesFromVision,
   extractStructuredDataFromText,
+  findMunicipality,
+  parseVisionJson,
+  resolveCoordinates,
 } from '../_lib/ai/form-extraction';
 
 /**
@@ -50,8 +53,47 @@ describe('extractStructuredDataFromText', () => {
   it('extrae fecha y hora cuando aparecen', () => {
     const result = extractStructuredDataFromText('Se perdió el 12/05/2024 a las 18:30');
 
-    expect(result.eventDate).toBe('12/05/2024');
+    // El formulario usa <input type="date">, que solo acepta YYYY-MM-DD.
+    expect(result.eventDate).toBe('2024-05-12');
     expect(result.eventTimeApprox).toBe('18:30');
+  });
+
+  it('normaliza fechas escritas y horas con meridiano', () => {
+    const result = extractStructuredDataFromText('Se perdió el 12 de mayo de 2024 a las 3:30 pm');
+
+    expect(result.eventDate).toBe('2024-05-12');
+    expect(result.eventTimeApprox).toBe('15:30');
+  });
+
+  it('extrae el tipo de aviso', () => {
+    expect(extractStructuredDataFromText('Se busca perro en La Habana').type).toBe('LOST');
+    expect(extractStructuredDataFromText('Perro en adopción').type).toBe('ADOPTION');
+    expect(extractStructuredDataFromText('Encontré una gata').type).toBe('FOUND');
+  });
+
+  it('extrae provincia, municipio, zona y dirección', () => {
+    const result = extractStructuredDataFromText(
+      'Perdido en el municipio Centro Habana, reparto Vedado. Calle 23 #456. Llama al 55512345'
+    );
+
+    expect(result.province).toBe('La Habana');
+    expect(result.municipality).toBe('Centro Habana');
+    expect(result.zone).toBe('Vedado');
+    expect(result.address).toBe('Calle 23 #456');
+  });
+
+  it('no adivina un municipio homónimo sin provincia', () => {
+    // "San Luis" existe en Pinar del Río y en Santiago de Cuba: sin más pistas
+    // es imposible saber cuál es y no se debe inventar.
+    expect(extractStructuredDataFromText('Perdido en San Luis').municipality).toBeUndefined();
+  });
+
+  it('no confunde "la playa" con el municipio Playa', () => {
+    expect(extractStructuredDataFromText('Se perdió en la playa').municipality).toBeUndefined();
+    expect(
+      extractStructuredDataFromText('Se perdió en el municipio Playa').municipality
+    ).toBe('Playa');
+    expect(extractStructuredDataFromText('Se perdió en Playa').municipality).toBe('Playa');
   });
 
   it('no inventa datos con un texto vacío', () => {
@@ -143,5 +185,139 @@ describe('buildFormExtraction', () => {
     });
 
     expect(result.contactMode).toBeUndefined();
+  });
+
+  it('marca el municipio extraído y devuelve coordenadas utilizables', () => {
+    const result = buildFormExtraction({
+      ocr: {
+        text: 'Perro perdido en Centro Habana, La Habana. Calle 23 #456. Llama al 55512345',
+        confidence: 0.9,
+      },
+    });
+
+    expect(result.type).toBe('LOST');
+    expect(result.province).toBe('La Habana');
+    expect(result.municipality).toBe('Centro Habana');
+    expect(result.locationPrecision).toBe('municipality');
+    expect(result.latitude).toBeCloseTo(23.138, 2);
+    expect(result.longitude).toBeCloseTo(-82.3618, 2);
+    expect(result.address).toBe('Calle 23 #456');
+  });
+
+  it('usa la provincia como respaldo cuando no hay municipio', () => {
+    const result = buildFormExtraction({
+      ocr: { text: 'Gato encontrado en Mayabeque', confidence: 0.8 },
+    });
+
+    expect(result.province).toBe('Mayabeque');
+    expect(result.municipality).toBeUndefined();
+    expect(result.locationPrecision).toBe('province');
+    expect(result.latitude).toBeCloseTo(22.9615, 2);
+  });
+
+  it('compone título y descripción solo con datos extraídos', () => {
+    const result = buildFormExtraction({
+      ocr: {
+        text: 'Perro macho se perdió en Centro Habana. Color marrón. Llama al 55512345',
+        confidence: 0.9,
+      },
+    });
+
+    expect(result.title).toBe('Perro perdido en Centro Habana');
+    expect(result.description).toBeTruthy();
+    expect(result.description?.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it('respeta el título y la descripción que trae la visión', () => {
+    const result = buildFormExtraction({
+      vision: {
+        labels: [{ label: 'Dog', confidence: 0.9 }],
+        description: JSON.stringify({
+          title: 'Toby perdido en Playa',
+          description: 'Toby se perdió cerca del parque, lleva collar rojo.',
+        }),
+      },
+    });
+
+    expect(result.title).toBe('Toby perdido en Playa');
+    expect(result.description).toBe('Toby se perdió cerca del parque, lleva collar rojo.');
+  });
+
+  it('traduce el JSON de visión a enums y ubicación del formulario', () => {
+    const result = buildFormExtraction({
+      vision: {
+        labels: [{ label: 'Dog', confidence: 0.9 }],
+        description: JSON.stringify({
+          type: 'FOUND',
+          species: 'Perro',
+          size: 'PEQUENO',
+          sex: 'HEMBRA',
+          province: 'Holguin',
+          municipality: 'Guardalavaca',
+          zone: 'Playa Guardalavaca',
+          event_date: '2024-05-12',
+          event_time: '3:30 pm',
+          contact_phone: '55512345',
+        }),
+      },
+    });
+
+    expect(result.type).toBe('FOUND');
+    expect(result.species).toBe('dog');
+    expect(result.size).toBe('small');
+    expect(result.sex).toBe('female');
+    expect(result.province).toBe('Holguín');
+    expect(result.municipality).toBe('Guardalavaca');
+    expect(result.eventDate).toBe('2024-05-12');
+    expect(result.eventTimeApprox).toBe('15:30');
+    expect(result.contactPhone).toBe('+5355512345');
+  });
+});
+
+describe('parseVisionJson', () => {
+  it('acepta JSON envuelto en markdown', () => {
+    expect(parseVisionJson('```json\n{"species":"dog"}\n```')).toEqual({ species: 'dog' });
+  });
+
+  it('devuelve null cuando no hay JSON', () => {
+    expect(parseVisionJson('Image contains: Dog')).toBeNull();
+    expect(parseVisionJson(undefined)).toBeNull();
+  });
+});
+
+describe('resolveCoordinates', () => {
+  it('prefiere el municipio sobre la provincia', () => {
+    const result = resolveCoordinates({ province: 'La Habana', municipality: 'Centro Habana' });
+
+    expect(result.locationPrecision).toBe('municipality');
+    expect(result.latitude).toBeCloseTo(23.138, 2);
+    expect(result.longitude).toBeCloseTo(-82.3618, 2);
+  });
+
+  it('usa la provincia cuando solo hay provincia', () => {
+    const result = resolveCoordinates({ province: 'Pinar del Río' });
+
+    expect(result.locationPrecision).toBe('province');
+    expect(result.latitude).toBeCloseTo(22.4167, 2);
+  });
+
+  it('no inventa coordenadas sin ubicación', () => {
+    expect(resolveCoordinates({})).toEqual({ locationPrecision: 'none' });
+  });
+});
+
+describe('findMunicipality', () => {
+  it('desambigua por provincia', () => {
+    expect(findMunicipality('San Luis, Pinar del Rio')).toEqual({
+      province: 'Pinar del Río',
+      municipality: 'San Luis',
+    });
+  });
+
+  it('encuentra municipios con tilde aunque el texto no la traiga', () => {
+    expect(findMunicipality('Perdido en Sancti Spiritus')).toEqual({
+      province: 'Sancti Spíritus',
+      municipality: 'Sancti Spíritus',
+    });
   });
 });

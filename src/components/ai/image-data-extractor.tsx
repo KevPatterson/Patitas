@@ -3,7 +3,7 @@ import { Sparkles, Upload, X, AlertCircle, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import { CatLoader } from '../ui/cat-loader';
 import { supabase } from '../../lib/supabase/client';
-import { AGE_LABELS, SEX_LABELS, SIZE_LABELS, SPECIES_LABELS } from '../../lib/constants/labels';
+import { AGE_LABELS, SEX_LABELS, SIZE_LABELS, SPECIES_LABELS, TYPE_LABELS } from '../../lib/constants/labels';
 
 type ExtractedData = {
   // Datos del animal
@@ -16,11 +16,20 @@ type ExtractedData = {
   characteristics?: string;
   collar?: boolean;
   plate?: boolean;
-  
+
+  // Datos del aviso
+  type?: 'LOST' | 'FOUND' | 'ADOPTION' | 'ABANDONED' | 'SIGHTING';
+  title?: string;
+  description?: string;
+
   // Datos contextuales extraídos de texto en la imagen
   province?: string;
   municipality?: string;
   zone?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  locationPrecision?: 'municipality' | 'province' | 'none';
   reward?: string;
   eventDate?: string;
   eventTimeApprox?: string;
@@ -28,7 +37,7 @@ type ExtractedData = {
   contactPhone?: string;
   contactWhatsapp?: string;
   contactEmail?: string;
-  
+
   // Metadatos
   confidence: number;
   hasTextOverlay?: boolean; // Indica si detectó texto en la imagen
@@ -286,6 +295,20 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
               )}
 
               <dl className="grid gap-2 text-sm">
+                {extractedData.type && (
+                  <div className="flex justify-between">
+                    <dt className="text-foreground/60">Tipo:</dt>
+                    <dd className="font-semibold text-foreground">
+                      {labelFor(TYPE_LABELS, extractedData.type)}
+                    </dd>
+                  </div>
+                )}
+                {extractedData.title && (
+                  <div className="flex flex-col gap-1">
+                    <dt className="text-foreground/60">Título sugerido:</dt>
+                    <dd className="text-foreground">{extractedData.title}</dd>
+                  </div>
+                )}
                 {extractedData.petName && (
                   <div className="flex justify-between">
                     <dt className="text-foreground/60">Nombre:</dt>
@@ -344,7 +367,7 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
                 )}
                 
                 {/* Datos contextuales extraídos de texto */}
-                {(extractedData.province || extractedData.municipality || extractedData.zone) && (
+                {(extractedData.province || extractedData.municipality || extractedData.zone || extractedData.address) && (
                   <div className="col-span-full pt-2 border-t border-turquoise/20">
                     <p className="text-xs font-semibold text-foreground/60 mb-2">📍 Ubicación extraída:</p>
                     {extractedData.province && (
@@ -363,6 +386,12 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
                       <div className="flex justify-between">
                         <dt className="text-foreground/60">Zona:</dt>
                         <dd className="font-semibold text-foreground">{extractedData.zone}</dd>
+                      </div>
+                    )}
+                    {extractedData.address && (
+                      <div className="flex justify-between">
+                        <dt className="text-foreground/60">Dirección:</dt>
+                        <dd className="font-semibold text-foreground">{extractedData.address}</dd>
                       </div>
                     )}
                   </div>

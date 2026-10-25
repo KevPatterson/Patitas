@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import 'leaflet/dist/leaflet.css';
 import { Circle, Tag, Globe } from 'lucide-react';
 import { useAuth } from '../app/auth-context';
@@ -22,11 +25,50 @@ import { TYPE_LABELS, TYPE_EMOJIS, SPECIES_LABELS, SEX_LABELS, SIZE_LABELS, AGE_
 import { CUBA, PROVINCES } from '../lib/constants/cuba';
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
+// Los iconos se sirven desde el propio bundle: `unpkg.com` está bloqueado por
+// la CSP y el marcador no aparecía en el mapa.
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
 });
+
+type MapPrecision = 'municipality' | 'province' | 'address' | 'manual' | 'none';
+
+/**
+ * Recentra el mapa cuando la ubicación cambia por una fuente externa (IA,
+ * geocodificador o carga de una publicación en edición). Los clics manuales no
+ * recentran: el usuario ya está viendo el punto.
+ */
+function MapController({
+  latitude,
+  longitude,
+  precision,
+}: {
+  latitude?: string;
+  longitude?: string;
+  precision?: MapPrecision;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!latitude || !longitude || precision === 'manual') return;
+
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    const zoom = precision === 'address' ? 15 : precision === 'municipality' ? 12 : 9;
+    map.setView([lat, lng], zoom);
+
+    // El contenedor cambia de tamaño al montarse el paso 3; Leaflet necesita
+    // recalcular el tamaño o el mapa queda gris.
+    const timer = window.setTimeout(() => map.invalidateSize(), 0);
+    return () => window.clearTimeout(timer);
+  }, [latitude, longitude, precision, map]);
+
+  return null;
+}
 
 function LocationPicker({ onChange }: { onChange: (lat: string, lng: string) => void }) {
   useMapEvents({
@@ -86,6 +128,7 @@ export function PublishPage() {
   });
   const [addressSearch, setAddressSearch] = useState('');
   const [geocoding, setGeocoding] = useState(false);
+  const [locationPrecision, setLocationPrecision] = useState<MapPrecision>('none');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successSlug, setSuccessSlug] = useState<string | null>(null);
@@ -137,11 +180,23 @@ export function PublishPage() {
               province: location?.province ?? '',
               municipality: location?.municipality ?? '',
               zone: location?.zone ?? '',
-              approximateLat: '',
-              approximateLng: '',
+              // Antes se descartaban al editar: guardar el formulario borraba
+              // la ubicación que ya tenía la publicación.
+              approximateLat:
+                location?.approximate_lat !== null && location?.approximate_lat !== undefined
+                  ? String(location.approximate_lat)
+                  : '',
+              approximateLng:
+                location?.approximate_lng !== null && location?.approximate_lng !== undefined
+                  ? String(location.approximate_lng)
+                  : '',
               eventDate: publication.event_date ?? '',
-              eventTimeApprox: '',
+              eventTimeApprox: publication.event_time_approx ?? '',
             });
+
+            if (location?.approximate_lat != null && location?.approximate_lng != null) {
+              setLocationPrecision('municipality');
+            }
 
             setExistingImages(
               (publication.publication_images ?? []).map((img) => ({
@@ -240,7 +295,10 @@ export function PublishPage() {
     }
   };
 
-  const handleAIDataExtracted = (data: {
+  type AIData = {
+    type?: 'LOST' | 'FOUND' | 'ADOPTION' | 'ABANDONED' | 'SIGHTING';
+    title?: string;
+    description?: string;
     species?: string;
     breed?: string;
     sex?: string;
@@ -253,6 +311,10 @@ export function PublishPage() {
     province?: string;
     municipality?: string;
     zone?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+    locationPrecision?: 'municipality' | 'province' | 'none';
     reward?: string;
     eventDate?: string;
     eventTimeApprox?: string;
@@ -260,36 +322,143 @@ export function PublishPage() {
     contactPhone?: string;
     contactWhatsapp?: string;
     contactEmail?: string;
-  }) => {
-    // Actualizar los valores del formulario con los datos extraídos
-    setValues((current) => ({
-      ...current,
-      // Datos del animal
-      ...(data.species && { species: data.species }),
-      ...(data.breed && { breed: data.breed }),
-      ...(data.sex && { sex: data.sex }),
-      ...(data.size && { size: data.size }),
-      ...(data.ageApprox && { ageApprox: data.ageApprox }),
-      ...(data.color && { color: data.color }),
-      ...(data.characteristics && { characteristics: data.characteristics }),
-      ...(data.collar !== undefined && { collar: data.collar }),
-      ...(data.plate !== undefined && { plate: data.plate }),
-      // Datos contextuales (ubicación, contacto, etc.)
-      ...(data.province && { province: data.province }),
-      ...(data.municipality && { municipality: data.municipality }),
-      ...(data.zone && { zone: data.zone }),
-      ...(data.reward && { reward: data.reward }),
-      ...(data.eventDate && { eventDate: data.eventDate }),
-      ...(data.eventTimeApprox && { eventTimeApprox: data.eventTimeApprox }),
-      ...(data.contactMode && { contactMode: data.contactMode }),
-      ...(data.contactPhone && { contactPhone: data.contactPhone }),
-      ...(data.contactWhatsapp && { contactWhatsapp: data.contactWhatsapp }),
-      ...(data.contactEmail && { contactEmail: data.contactEmail }),
-    }));
+  };
+
+  /** Geocodifica una dirección con contexto de Cuba. */
+  const geocodeAddress = async (parts: string[]): Promise<{ lat: number; lng: number } | null> => {
+    const query = [...parts.filter((part) => part && part.trim()), 'Cuba'].join(', ');
+
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=cu`,
+      // `Accept-Language` es una cabecera segura para CORS; `User-Agent` no se
+      // puede fijar desde el navegador y provocaba que la petición fallara.
+      { headers: { 'Accept-Language': 'es' } }
+    );
+
+    if (!response.ok) throw new Error(`Nominatim respondió ${response.status}`);
+
+    const data: unknown = await response.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+
+    const first = data[0] as { lat?: string; lon?: string };
+    const lat = Number(first.lat);
+    const lng = Number(first.lon);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    return { lat, lng };
+  };
+
+  /** Difumina una coordenada ±50 m antes de mostrarla o guardarla. */
+  const fuzzedCoordinates = (lat: number, lng: number) => ({
+    lat: (lat + (Math.random() - 0.5) * 0.001).toFixed(6),
+    lng: (lng + (Math.random() - 0.5) * 0.001).toFixed(6),
+  });
+
+  /** Aplica coordenadas con la difuminación de ±50 m del formulario. */
+  const applyCoordinates = (lat: number, lng: number, precision: MapPrecision) => {
+    const fuzzed = fuzzedCoordinates(lat, lng);
+
+    updateValue('approximateLat', fuzzed.lat);
+    updateValue('approximateLng', fuzzed.lng);
+    setLocationPrecision(precision);
+  };
+
+  /**
+   * Afina la ubicación municipal con la dirección o la zona que leyó la IA.
+   * Si Nominatim no encuentra nada, se conserva el centro del municipio.
+   */
+  const refineAiLocation = async (data: AIData) => {
+    if (!data.address && !data.zone) return;
+
+    try {
+      const coordinates = await geocodeAddress([
+        data.address ?? data.zone ?? '',
+        data.zone ?? '',
+        data.municipality ?? '',
+        data.province ?? '',
+      ]);
+
+      if (coordinates) applyCoordinates(coordinates.lat, coordinates.lng, 'address');
+    } catch (error) {
+      // El marcador del municipio ya está puesto; no se molesta al usuario.
+      console.warn('No se pudo afinar la ubicación extraída por IA:', error);
+    }
+  };
+
+  const handleAIDataExtracted = (data: AIData) => {
+    const aiCoordinates =
+      data.latitude !== undefined && data.longitude !== undefined
+        ? fuzzedCoordinates(data.latitude, data.longitude)
+        : null;
+
+    setValues((current) => {
+      const zone = data.zone ?? (!(current.zone ?? '').trim() && data.address ? data.address : undefined);
+
+      return {
+        ...current,
+        // El tipo detectado se aplica siempre: es la intención del aviso.
+        ...(data.type && { type: data.type }),
+        // Título y descripción solo si el usuario no ha escrito nada.
+        ...(data.title && !current.title.trim() && { title: data.title }),
+        ...(data.description && !current.description.trim() && {
+          description: data.description,
+        }),
+        // Datos del animal
+        ...(data.species && { species: data.species }),
+        ...(data.breed && { breed: data.breed }),
+        ...(data.sex && { sex: data.sex }),
+        ...(data.size && { size: data.size }),
+        ...(data.ageApprox && { ageApprox: data.ageApprox }),
+        ...(data.color && { color: data.color }),
+        ...(data.characteristics && { characteristics: data.characteristics }),
+        ...(data.collar !== undefined && { collar: data.collar }),
+        ...(data.plate !== undefined && { plate: data.plate }),
+        // Ubicación y contacto
+        ...(data.province && { province: data.province }),
+        ...(data.municipality && { municipality: data.municipality }),
+        ...(zone && { zone }),
+        ...(data.reward && { reward: data.reward }),
+        ...(data.eventDate && { eventDate: data.eventDate }),
+        ...(data.eventTimeApprox && { eventTimeApprox: data.eventTimeApprox }),
+        ...(data.contactMode && { contactMode: data.contactMode }),
+        ...(data.contactPhone && { contactPhone: data.contactPhone }),
+        ...(data.contactWhatsapp && { contactWhatsapp: data.contactWhatsapp }),
+        ...(data.contactEmail && { contactEmail: data.contactEmail }),
+        ...(aiCoordinates && {
+          approximateLat: aiCoordinates.lat,
+          approximateLng: aiCoordinates.lng,
+        }),
+      };
+    });
+
+    if (data.latitude !== undefined && data.longitude !== undefined) {
+      setLocationPrecision(data.locationPrecision === 'province' ? 'province' : 'municipality');
+    }
+
+    // El municipio ya está marcado; si hay calle o zona, se afina en segundo plano.
+    if (data.address || data.zone) void refineAiLocation(data);
   };
 
   const handleFacebookImportComplete = (data: PublicationFormValues, sourceUrl: string) => {
-    setValues(data);
+    const lat = Number(data.approximateLat);
+    const lng = Number(data.approximateLng);
+    const hasCoordinates =
+      Boolean(data.approximateLat) &&
+      Boolean(data.approximateLng) &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lng);
+
+    if (hasCoordinates) {
+      // Las coordenadas importadas son el centro del municipio: se difuminan
+      // igual que las que escribe el usuario.
+      const fuzzed = fuzzedCoordinates(lat, lng);
+      setValues({ ...data, approximateLat: fuzzed.lat, approximateLng: fuzzed.lng });
+      setLocationPrecision('municipality');
+    } else {
+      setValues(data);
+    }
+
     setFacebookSourceUrl(sourceUrl);
     setShowFacebookImport(false);
     // Saltar al paso 2 (datos de mascota) si está en paso 1
@@ -307,47 +476,23 @@ export function PublishPage() {
 
     try {
       // Construir consulta con contexto de Cuba
-      const searchParts = [addressSearch];
-      if (values.municipality) searchParts.push(values.municipality);
-      if (values.province) searchParts.push(values.province);
-      searchParts.push('Cuba');
-      
-      const query = searchParts.join(', ');
+      const coordinates = await geocodeAddress([
+        addressSearch,
+        values.municipality,
+        values.province,
+      ]);
 
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=cu`,
-        {
-          headers: {
-            'User-Agent': 'Patitas App'
-          }
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error('Error al buscar la dirección');
-      }
-
-      const data = await response.json();
-      
-      if (data.length === 0) {
-        setErrorMessage('No se encontró la dirección. Intenta ser más específico o usa el mapa directamente.');
+      if (!coordinates) {
+        setErrorMessage(
+          'No se encontró la dirección. Intenta ser más específico o usa el mapa directamente.'
+        );
         return;
       }
 
-      const location = data[0];
-      const lat = parseFloat(location.lat);
-      const lng = parseFloat(location.lon);
-
-      // Aplicar difuminación de ±50m (±0.0005°)
-      const fuzzLat = lat + (Math.random() - 0.5) * 0.001;
-      const fuzzLng = lng + (Math.random() - 0.5) * 0.001;
-
-      updateValue('approximateLat', fuzzLat.toFixed(6));
-      updateValue('approximateLng', fuzzLng.toFixed(6));
+      applyCoordinates(coordinates.lat, coordinates.lng, 'address');
       setAddressSearch('');
-      
     } catch (error) {
-      console.error('❌ Error en geocodificación:', error);
+      console.error('Error en geocodificación:', error);
       setErrorMessage('No se pudo encontrar la dirección. Intenta con el mapa.');
     } finally {
       setGeocoding(false);
@@ -945,6 +1090,11 @@ export function PublishPage() {
                 <div className="h-80 rounded-2xl border-4 border-turquoise/30 overflow-hidden shadow-lg ring-4 ring-turquoise/10">
                   <MapContainer center={[23.1136, -82.3666]} zoom={8} className="h-full w-full cursor-crosshair">
                     <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <MapController
+                      latitude={values.approximateLat}
+                      longitude={values.approximateLng}
+                      precision={locationPrecision}
+                    />
                     {values.approximateLat && values.approximateLng && (
                       <Marker position={[parseFloat(values.approximateLat), parseFloat(values.approximateLng)]} />
                     )}
@@ -952,6 +1102,7 @@ export function PublishPage() {
                       onChange={(lat, lng) => {
                         updateValue('approximateLat', lat);
                         updateValue('approximateLng', lng);
+                        setLocationPrecision('manual');
                         setErrorMessage(null);
                       }}
                     />

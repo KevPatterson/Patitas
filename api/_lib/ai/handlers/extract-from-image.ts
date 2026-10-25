@@ -147,7 +147,20 @@ export async function handleExtractFromImage(req: VercelRequest, res: VercelResp
       provider
         .analyzeImage(
           payload.image,
-          'Analiza la foto de una mascota (perdida, encontrada o en adopción). Devuelve SOLO un JSON válido con: species (dog/cat/other), breed, color, size (small/medium/large), sex (male/female/unknown), age (puppy/young/adult/senior/unknown), collar (true/false), plate (true/false), characteristics. Si un dato no se ve, usa null. No inventes.'
+          'Analiza la foto o captura de una mascota (perdida, encontrada, en adopción o abandonada). ' +
+            'Devuelve SOLO un JSON válido, sin markdown, con estas claves: ' +
+            'type (LOST/FOUND/ADOPTION/ABANDONED/SIGHTING), ' +
+            'species (dog/cat/bird/rabbit/rodent/reptile/other), breed, color, ' +
+            'size (small/medium/large), sex (male/female), age (puppy/young/adult/senior), ' +
+            'collar (true/false), plate (true/false), characteristics, pet_name, ' +
+            'title (máximo 70 caracteres), description (lo que dice el aviso), ' +
+            'province (nombre exacto de una provincia de Cuba), ' +
+            'municipality (nombre exacto de un municipio de Cuba), ' +
+            'zone (reparto, barrio o referencia), address (calle y número si aparecen), ' +
+            'event_date (YYYY-MM-DD), event_time (HH:MM), reward, ' +
+            'contact_phone, contact_whatsapp, contact_email. ' +
+            'Transcribe la ubicación y los datos de contacto tal como aparecen en la imagen. ' +
+            'Si un dato no se ve, usa null. No inventes.'
         )
         .catch(collect),
     ]);

@@ -11,6 +11,7 @@ import {
   FACEBOOK_IMPORT_CONSTANTS,
 } from '../../src/lib/validations/facebook-import.js';
 import { getAIProvider } from '../_lib/ai-provider.js';
+import { buildFormExtraction } from '../_lib/ai/form-extraction.js';
 
 /**
  * POST /api/import/facebook-link — importa metadatos Open Graph de un enlace.
@@ -162,8 +163,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Imagen de Open Graph: es contenido controlado por un tercero, así que pasa
   // por el mismo guard y por la verificación de magic bytes.
-  let extractedData: Record<string, unknown> | undefined;
-  let confidence = 0.5;
+  let visionInput: { labels: Array<{ label: string; confidence: number }>; description?: string } | null =
+    null;
 
   if (metadata.image && AI_ENABLED) {
     try {
@@ -176,23 +177,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const provider = getAIProvider();
           const visionResult = await provider.analyzeImage(
             payload.image,
-            'Analiza esta imagen de una mascota. Extrae: especie, raza, color, tamaño, sexo, collar, placa, características visibles. Responde en JSON.'
+            'Analiza esta imagen de una mascota. ' +
+              'Devuelve SOLO un JSON válido con: type (LOST/FOUND/ADOPTION/ABANDONED/SIGHTING), ' +
+              'species (dog/cat/bird/rabbit/rodent/reptile/other), breed, color, ' +
+              'size (small/medium/large), sex (male/female), age (puppy/young/adult/senior), ' +
+              'collar (true/false), plate (true/false), characteristics, ' +
+              'province y municipality (nombres exactos de Cuba), zone, address. ' +
+              'Si un dato no se ve, usa null.'
           );
 
-          if (visionResult.description) {
-            const lowerDesc = visionResult.description.toLowerCase();
-
-            extractedData = {
-              vision_description: visionResult.description,
-              labels: visionResult.labels,
-              objects: visionResult.objects,
-            };
-
-            const petKeywords = ['dog', 'cat', 'perro', 'gato', 'pet', 'mascota', 'animal'];
-            if (petKeywords.some((kw) => lowerDesc.includes(kw))) {
-              confidence = Math.min(0.8, confidence + 0.2);
-            }
-          }
+          visionInput = {
+            labels: visionResult.labels,
+            description: visionResult.description,
+          };
         }
       }
     } catch (error) {
@@ -200,14 +197,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // Los metadatos Open Graph hacen de OCR: el texto del post suele traer la
+  // ubicación, el teléfono y la fecha. La visión aporta lo físico (especie,
+  // color). `buildFormExtraction` unifica ambos y resuelve las coordenadas.
+  const ogText = [metadata.title, metadata.description].filter(Boolean).join('\n');
+  const extracted = buildFormExtraction({
+    ocr: ogText ? { text: ogText, confidence: 0.6 } : null,
+    vision: visionInput,
+  });
+
   return json(res, 200, {
     success: true,
     data: {
       title: metadata.title,
       description: metadata.description,
       image_url: metadata.image,
-      extracted: extractedData,
-      confidence,
+      extracted,
+      confidence: extracted.confidence,
       provider_is_real: aiProviderIsReal(),
     },
   } satisfies FacebookImportResponse);

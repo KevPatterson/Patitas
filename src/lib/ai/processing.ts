@@ -24,7 +24,10 @@ export async function startProcessing(
     throw new Error('No hay sesión activa');
   }
 
-  const response = await fetch('/api/ai/process-publication', {
+  // El router de IA expone las acciones por query string. Antes se llamaba a
+  // `/api/ai/process-publication`, que no existe y devolvía 405 con el cuerpo
+  // vacío; `response.json()` lanzaba "Unexpected end of JSON input".
+  const response = await fetch('/api/ai?action=process-publication', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -33,12 +36,39 @@ export async function startProcessing(
     body: JSON.stringify({ publicationId, tasks }),
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Error al iniciar procesamiento');
+  const raw = await response.text();
+  let payload: unknown;
+
+  try {
+    payload = raw ? JSON.parse(raw) : null;
+  } catch {
+    payload = null;
   }
 
-  return response.json();
+  const errorMessage =
+    payload && typeof payload === 'object' && 'error' in payload
+      ? String((payload as { error?: unknown }).error)
+      : `Error ${response.status} al iniciar el procesamiento`;
+
+  if (!response.ok) {
+    throw new Error(errorMessage);
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('El servidor no devolvió una respuesta válida');
+  }
+
+  const result = payload as {
+    ok?: boolean;
+    error?: string;
+    jobs?: Array<{ id: string; job_type: string }>;
+  };
+
+  if (result.ok === false) {
+    throw new Error(result.error ?? 'No se pudo iniciar el procesamiento');
+  }
+
+  return { ok: true, jobs: result.jobs };
 }
 
 // Obtener estado de procesamiento de una publicación
