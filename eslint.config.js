@@ -6,7 +6,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default tseslint.config(
-  { ignores: ['dist/', 'node_modules/', 'workers/', '.vercel/', '*.config.*', 'public/sw.js', 'scripts/'] },
+  { ignores: ['dist/', 'node_modules/', 'workers/', '.vercel/', '*.config.*', 'public/sw.js', 'scripts/', 'tmp-publications.cjs'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   // react-hooks 7 solo publica configs en formato legacy o con todo el conjunto de
