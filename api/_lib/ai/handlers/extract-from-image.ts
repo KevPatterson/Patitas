@@ -119,23 +119,40 @@ export async function handleExtractFromImage(req: VercelRequest, res: VercelResp
   try {
     const provider = getAIProvider();
 
-    // OCR y Vision en paralelo. Los fallos individuales no tumban la respuesta.
+    const providerErrors: string[] = [];
+
+    // OCR y visión en paralelo. Los fallos individuales no tumban la respuesta.
     const [ocrResult, visionResult] = await Promise.all([
-      provider.extractTextFromImage(payload.image).catch(() => null),
+      provider.extractTextFromImage(payload.image).catch((error: unknown) => {
+        providerErrors.push(error instanceof Error ? error.message : String(error));
+        return null;
+      }),
       provider
         .analyzeImage(
           payload.image,
-          'Analyze this image related to a pet (lost, found, or adoption). Extract: species (dog/cat/other), breed, color, size (small/medium/large), sex if visible, distinctive features (collar, tags, marks), and any visible text like phone numbers, locations, dates. Respond in JSON format.'
+          'Analiza la foto de una mascota (perdida, encontrada o en adopción). Devuelve SOLO un JSON válido con: species (dog/cat/other), breed, color, size (small/medium/large), sex (male/female/unknown), age (puppy/young/adult/senior/unknown), collar (true/false), plate (true/false), characteristics. Si un dato no se ve, usa null. No inventes.'
         )
-        .catch(() => null),
+        .catch((error: unknown) => {
+          providerErrors.push(error instanceof Error ? error.message : String(error));
+          return null;
+        }),
     ]);
 
     if (!ocrResult && !visionResult) {
+      console.error('[ai/extract-from-image] el proveedor falló', providerErrors);
+
+      // Workers AI devuelve 429 cuando se agotan las neuronas gratuitas del día.
+      const quotaExceeded = providerErrors.some((message) =>
+        /429|neurons|rate limit|quota/i.test(message)
+      );
+
       return fail(
         res,
-        502,
+        quotaExceeded ? 503 : 502,
         'INTERNAL',
-        'El proveedor de IA no pudo analizar la imagen. Inténtalo de nuevo más tarde.'
+        quotaExceeded
+          ? 'La IA alcanzó su límite gratuito. Inténtalo más tarde o configura otro proveedor.'
+          : 'El proveedor de IA no pudo analizar la imagen. Inténtalo de nuevo más tarde.'
       );
     }
 

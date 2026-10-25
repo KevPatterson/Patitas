@@ -69,6 +69,7 @@ type CloudflareAIResponse = {
     data?: number[][];
     embedding?: number[];
   };
+  success?: boolean;
   errors?: Array<{ message?: string }>;
 };
 
@@ -588,105 +589,141 @@ function getGoogleVisionProvider(): IAIProvider {
 }
 
 /**
- * Proveedor de Cloudflare AI
+ * Proveedor de Cloudflare Workers AI.
+ *
+ * Capa gratuita: 10.000 neuronas al día y no pide tarjeta. Si se agota, las
+ * peticiones fallan hasta el reinicio diario; no hay cobro automático.
+ *
+ * LLaVA 1.5 ya no aparece en la lista de precios de Workers AI, así que el OCR
+ * y la visión usan el modelo multimodal de Llama 3.2. Para texto se usa la
+ * variante rápida de Llama 3.1, más barata que la 3.0.
  */
+const CLOUDFLARE_VISION_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
+const CLOUDFLARE_TEXT_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8-fast';
+const CLOUDFLARE_TIMEOUT_MS = 45_000;
+
 function getCloudflareProvider(): IAIProvider {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
 
   if (!accountId || !apiToken) {
-    throw new Error('Missing Cloudflare AI credentials: CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN required');
+    throw new Error(
+      'Missing Cloudflare AI credentials: CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN required'
+    );
   }
 
   const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run`;
+
+  /**
+   * Ejecuta un modelo y devuelve su `result`.
+   *
+   * Workers AI puede responder 200 con `success: false`, así que se comprueban
+   * el estado HTTP y la bandera. El detalle del error se recorta para no volcar
+   * respuestas enormes en los logs.
+   */
+  const runModel = async (
+    model: string,
+    body: Record<string, unknown>
+  ): Promise<NonNullable<CloudflareAIResponse['result']>> => {
+    const response = await fetch(`${baseUrl}/${model}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(CLOUDFLARE_TIMEOUT_MS),
+    });
+
+    const raw = await response.text();
+
+    if (!response.ok) {
+      throw new Error(
+        `Cloudflare AI (${model}) respondió ${response.status}: ${raw.slice(0, 300)}`
+      );
+    }
+
+    let data: CloudflareAIResponse;
+    try {
+      data = JSON.parse(raw) as CloudflareAIResponse;
+    } catch {
+      throw new Error(`Cloudflare AI (${model}) devolvió una respuesta que no es JSON`);
+    }
+
+    if (data.success === false) {
+      const detail = (data.errors ?? [])
+        .map((error) => error.message)
+        .filter(Boolean)
+        .join('; ');
+      throw new Error(`Cloudflare AI (${model}) falló: ${detail || 'sin detalle'}`);
+    }
+
+    return data.result ?? {};
+  };
+
+  /** Workers AI espera la imagen como data URL cuando se usa `messages`. */
+  const imageDataUrl = (image: ImagePayload): string =>
+    `data:${image.mimeType};base64,${toBase64(image)}`;
 
   return {
     async extractTextFromImage(image: ImagePayload): Promise<OCRResult> {
       // Los bytes llegan ya descargados y validados por el endpoint: aquí no se
       // hace ningún fetch a una URL controlada por el usuario (hallazgo API-05).
-      const imageBase64 = toBase64(image);
-
-      // Cloudflare AI no tiene OCR directo, usar vision model
-      const response = await fetch(`${baseUrl}/@cf/llava-hf/llava-1.5-7b-hf`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: imageBase64,
-          prompt: 'Extract all visible text from this image. Include phone numbers, addresses, dates, and any other text you can see. Format as plain text.',
-          max_tokens: 512,
-        }),
+      const result = await runModel(CLOUDFLARE_VISION_MODEL, {
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Eres un OCR. Devuelve únicamente el texto visible en la imagen, sin comentarios, sin markdown y sin traducir. Si no hay texto, responde con una cadena vacía.',
+          },
+          {
+            role: 'user',
+            content:
+              'Transcribe literalmente todo el texto de la imagen. Conserva teléfonos, direcciones, fechas, precios y nombres tal como aparecen.',
+          },
+        ],
+        image: imageDataUrl(image),
+        max_tokens: 512,
+        temperature: 0,
       });
 
-      if (!response.ok) {
-        throw new Error(`Cloudflare AI OCR failed: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as CloudflareAIResponse;
-      const extractedText = data.result?.response || '';
-
       return {
-        text: extractedText,
-        confidence: 0.8, // Cloudflare no provee confidence para OCR
+        text: cleanOcrText(result.response ?? ''),
+        confidence: 0.8, // Workers AI no devuelve confianza por palabra
         language: 'es',
       };
     },
 
     async analyzeImage(image: ImagePayload, prompt?: string): Promise<VisionResult> {
-      const imageBase64 = toBase64(image);
+      const analysisPrompt =
+        prompt ||
+        'Analiza la imagen de una mascota. Devuelve SOLO un JSON válido con las claves: species (dog/cat/other), breed, color, size (small/medium/large), sex (male/female/unknown), age (puppy/young/adult/senior/unknown), collar (true/false), plate (true/false), characteristics (texto breve). Si un dato no se ve, usa null. No inventes.';
 
-      const analysisPrompt = prompt || 
-        'Analyze this image of a pet. Identify: species (dog/cat/other), breed if visible, color, size (small/medium/large), age estimation, visible features (collar, tags, distinctive marks). Respond in JSON format with keys: species, breed, color, size, age, features.';
-
-      const response = await fetch(`${baseUrl}/@cf/llava-hf/llava-1.5-7b-hf`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: imageBase64,
-          prompt: analysisPrompt,
-          max_tokens: 512,
-        }),
+      const result = await runModel(CLOUDFLARE_VISION_MODEL, {
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Analizas fotos de mascotas para una plataforma de adopción. Respondes solo con JSON válido, sin markdown.',
+          },
+          { role: 'user', content: analysisPrompt },
+        ],
+        image: imageDataUrl(image),
+        max_tokens: 400,
+        temperature: 0,
       });
 
-      if (!response.ok) {
-        throw new Error(`Cloudflare AI vision failed: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as CloudflareAIResponse;
-      const description = data.result?.response || '';
-
-      // Parsear la respuesta para extraer labels
-      const labels = parseVisionResponse(description);
+      const description = result.response ?? '';
 
       return {
-        labels,
+        labels: parseVisionResponse(description),
         description,
       };
     },
 
     async generateTextEmbedding(text: string): Promise<TextEmbeddingResult> {
-      const response = await fetch(`${baseUrl}/@cf/baai/bge-base-en-v1.5`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Cloudflare AI embedding failed: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as CloudflareAIResponse;
-      const embedding = data.result?.data?.[0] || [];
+      const result = await runModel('@cf/baai/bge-base-en-v1.5', { text });
+      const embedding = result.data?.[0] ?? [];
 
       return {
         embedding,
@@ -695,25 +732,10 @@ function getCloudflareProvider(): IAIProvider {
     },
 
     async generateImageEmbedding(image: ImagePayload): Promise<ImageEmbeddingResult> {
-      const imageBase64 = toBase64(image);
-
-      const response = await fetch(`${baseUrl}/@cf/microsoft/resnet-50`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: imageBase64,
-        }),
+      const result = await runModel('@cf/microsoft/resnet-50', {
+        image: imageDataUrl(image),
       });
-
-      if (!response.ok) {
-        throw new Error(`Cloudflare AI image embedding failed: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as CloudflareAIResponse;
-      const embedding = data.result?.embedding || [];
+      const embedding = result.embedding ?? [];
 
       return {
         embedding,
@@ -722,29 +744,27 @@ function getCloudflareProvider(): IAIProvider {
     },
 
     async moderateContent(text: string, _image?: ImagePayload): Promise<ModerationResult> {
-      // Cloudflare no tiene modelo de moderación específico, usar LLM
-      const response = await fetch(`${baseUrl}/@cf/meta/llama-3-8b-instruct`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: `Analyze this content for moderation. Is it: spam, fraud, offensive, inappropriate, or safe? Content: "${text}". Respond with ONE word: SAFE, SPAM, FRAUD, OFFENSIVE, INAPPROPRIATE, or UNRELATED.`,
-          max_tokens: 10,
-        }),
+      // Workers AI no tiene un modelo de moderación dedicado: se usa el LLM.
+      const result = await runModel(CLOUDFLARE_TEXT_MODEL, {
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Clasificas contenido para una plataforma de mascotas. Responde con UNA sola palabra.',
+          },
+          {
+            role: 'user',
+            content: `¿Este contenido es spam, fraude, ofensivo, inapropiado o seguro? Contenido: "${text}". Responde: SAFE, SPAM, FRAUD, OFFENSIVE, INAPPROPRIATE o UNRELATED.`,
+          },
+        ],
+        max_tokens: 10,
+        temperature: 0,
       });
 
-      if (!response.ok) {
-        throw new Error(`Cloudflare AI moderation failed: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as CloudflareAIResponse;
-      const result = (data.result?.response || 'SAFE').trim().toUpperCase();
-
+      const classificationText = (result.response ?? 'SAFE').trim().toUpperCase();
       const validClassifications = ['SAFE', 'SPAM', 'FRAUD', 'OFFENSIVE', 'INAPPROPRIATE', 'UNRELATED'];
-      const classification = validClassifications.includes(result) 
-        ? result as ModerationResult['classification']
+      const classification = validClassifications.includes(classificationText)
+        ? (classificationText as ModerationResult['classification'])
         : 'UNCERTAIN';
 
       return {
@@ -765,31 +785,26 @@ function getCloudflareProvider(): IAIProvider {
 
 Contenido: "${text}"`;
 
-      const response = await fetch(`${baseUrl}/@cf/meta/llama-3-8b-instruct`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: analysisPrompt,
-          max_tokens: 256,
-          temperature: 0.1,
-        }),
+      const result = await runModel(CLOUDFLARE_TEXT_MODEL, {
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Clasificas avisos de mascotas. Respondes solo con JSON válido, sin markdown.',
+          },
+          { role: 'user', content: analysisPrompt },
+        ],
+        max_tokens: 256,
+        temperature: 0.1,
       });
 
-      if (!response.ok) {
-        throw new Error(`Cloudflare AI text analysis failed: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as CloudflareAIResponse;
-      const result = data.result?.response || '{}';
+      const responseText = result.response ?? '{}';
 
       // Intentar parsear JSON de la respuesta
       let parsed: { type?: string; confidence?: number; resolved?: boolean };
       try {
-        const jsonMatch = result.match(/\{[\s\S]*\}/);
-        parsed = JSON.parse(jsonMatch ? jsonMatch[0] : result);
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        parsed = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
       } catch {
         // Fallback heurístico
         const lowerText = text.toLowerCase();
@@ -812,21 +827,70 @@ Contenido: "${text}"`;
 }
 
 /**
- * Parsear respuesta de vision para extraer labels
+ * Limpia la salida del OCR: quita bloques de markdown, prefijos típicos del
+ * modelo y detecta las respuestas de "no hay texto".
+ */
+function cleanOcrText(value: string): string {
+  const text = value.trim();
+
+  if (!text) return '';
+
+  if (/^(no (se )?(hay|encuentra|visible)|there is no (visible )?text|no text)/i.test(text)) {
+    return '';
+  }
+
+  return text
+    .replace(/^```[a-z]*\n?/i, '')
+    .replace(/```$/g, '')
+    .replace(
+      /^(el texto (visible )?en la imagen es|the text in the image is|texto detectado)\s*:?\s*/i,
+      ''
+    )
+    .trim();
+}
+
+/**
+ * Parsear la respuesta de visión para extraer etiquetas.
+ *
+ * El modelo puede devolver el JSON envuelto en ```json ... ```, así que se
+ * busca el objeto con una expresión regular en vez de hacer `JSON.parse` del
+ * texto completo. Si no hay JSON válido, se cae a palabras clave.
  */
 function parseVisionResponse(description: string): Array<{ label: string; confidence: number }> {
   const labels: Array<{ label: string; confidence: number }> = [];
 
-  // Intentar parsear como JSON
-  try {
-    const parsed = JSON.parse(description);
-    if (parsed.species) labels.push({ label: parsed.species, confidence: 0.9 });
-    if (parsed.breed) labels.push({ label: parsed.breed, confidence: 0.85 });
-    if (parsed.color) labels.push({ label: parsed.color, confidence: 0.9 });
-    if (parsed.size) labels.push({ label: parsed.size, confidence: 0.8 });
-    return labels;
-  } catch {
-    // No es JSON, extraer keywords
+  const add = (label: unknown, confidence: number) => {
+    if (typeof label !== 'string') return;
+
+    const value = label.trim();
+    if (!value || /^(null|unknown|none|n\/a|no visible)$/i.test(value)) return;
+
+    if (labels.some((item) => item.label.toLowerCase() === value.toLowerCase())) return;
+
+    labels.push({ label: value, confidence });
+  };
+
+  // Intentar parsear como JSON (puede venir dentro de un bloque de markdown).
+  const jsonCandidate = description.match(/\{[\s\S]*\}/)?.[0];
+
+  if (jsonCandidate) {
+    try {
+      const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
+
+      add(parsed.species, 0.9);
+      add(parsed.breed, 0.85);
+      add(parsed.color, 0.9);
+      add(parsed.size, 0.8);
+      add(parsed.sex, 0.8);
+      add(parsed.age, 0.7);
+      if (parsed.collar === true) add('collar', 0.8);
+      if (parsed.plate === true) add('plate', 0.8);
+      add(parsed.characteristics, 0.7);
+
+      return labels;
+    } catch {
+      // No es JSON válido: se sigue con las palabras clave.
+    }
   }
 
   // Extraer keywords comunes

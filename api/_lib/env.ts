@@ -59,6 +59,16 @@ export function providerAvailable(): { ok: true } | { ok: false; reason: string 
     return { ok: false, reason: 'El proveedor OPENAI todavía no está implementado.' };
   }
 
+  if (AI_PROVIDER === 'CLOUDFLARE') {
+    if (!process.env.CLOUDFLARE_ACCOUNT_ID || !process.env.CLOUDFLARE_API_TOKEN) {
+      return {
+        ok: false,
+        reason:
+          'El proveedor CLOUDFLARE requiere CLOUDFLARE_ACCOUNT_ID y CLOUDFLARE_API_TOKEN.',
+      };
+    }
+  }
+
   if (AI_PROVIDER === 'GOOGLE_VISION') {
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
 
@@ -122,7 +132,21 @@ export function missingServerConfig(): string[] {
  * `MOCK` devuelve datos inventados y `TESSERACT` requiere una dependencia que
  * no está instalada (hallazgo AI-01). Mientras no haya un proveedor real, la UI
  * no debe presentar sus resultados como reales.
+ *
+ * Para CLOUDFLARE y GOOGLE_VISION se exige además que las credenciales estén
+ * presentes: sin ellas el proveedor no puede analizar nada y la ingesta debe
+ * seguir descartando el post en vez de crear una ficha vacía.
  */
 export function aiProviderIsReal(): boolean {
-  return AI_ENABLED && (AI_PROVIDER === 'CLOUDFLARE' || AI_PROVIDER === 'OPENAI' || AI_PROVIDER === 'GOOGLE_VISION');
+  if (!AI_ENABLED) return false;
+
+  if (AI_PROVIDER === 'CLOUDFLARE') {
+    return Boolean(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN);
+  }
+
+  if (AI_PROVIDER === 'GOOGLE_VISION') {
+    return Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+  }
+
+  return AI_PROVIDER === 'OPENAI';
 }
