@@ -34,73 +34,36 @@ Permite al worker conectarse **sin intervención manual** (sin pedir código por
 
 ## Paso 2: Generar StringSession localmente
 
-### Opción A: Script interactivo (recomendado)
+El script `workers/telegram-collector/generate_session.py` lee **solo variables de
+entorno** (o el `.env` local, ignorado por git). No hay credenciales en el código.
 
-Crea un archivo temporal `gen_session.py`:
+### Opción A: Script del repositorio (recomendado)
 
-```python
-#!/usr/bin/env python3
-"""
-Generador de StringSession para Telethon.
-Ejecuta: python gen_session.py
-"""
-
-import os
-from telethon.sync import TelegramClient
-from telethon.sessions import StringSession
-
-# ¡REEMPLAZA CON TUS VALORES REALES!
-API_ID = 1234567           # Tu api_id (entero)
-API_HASH = "abcdef123456"  # Tu api_hash (string)
-
-def main():
-    print("🔐 Generando StringSession para Patitas Worker")
-    print("=" * 50)
-    print(f"API ID: {API_ID}")
-    print(f"API Hash: {API_HASH[:8]}...")
-    print()
-
-    # Usar StringSession en memoria (no guarda archivo)
-    with TelegramClient(StringSession(), API_ID, API_HASH) as client:
-        # Esto abrirá el navegador o pedirá código en consola
-        client.start()
-
-        # Obtener la sesión como string
-        session_string = client.session.save()
-        print()
-        print("✅ ¡StringSession generada!")
-        print("=" * 50)
-        print(session_string)
-        print("=" * 50)
-        print()
-        print("📋 COPIA ESTA CADENA COMPLETA")
-        print("🔒 Guárdala en GitHub Secrets como TELEGRAM_STRING_SESSION")
-        print()
-        print("⚠️  NUNCA la compartas ni la commits al repo")
-
-        # Verificar que funciona
-        me = client.get_me()
-        print(f"👤 Autorizado como: @{me.username} ({me.first_name})")
-
-if __name__ == "__main__":
-    main()
-```
-
-Ejecuta:
 ```bash
-pip install telethon
-python gen_session.py
+cd workers/telegram-collector
+pip install -r requirements.txt
+
+# TELEGRAM_API_ID y TELEGRAM_API_HASH deben estar en el entorno o en .env
+python generate_session.py
+
+# Opcional: guardar la sesión directamente en el .env local
+python generate_session.py --write-env
+
+# Opcional: validar la sesión existente sin conectarse
+python generate_session.py --check
 ```
 
-### Opción B: One-liner rápido
+Si defines `TELEGRAM_PHONE`, Telethon no pedirá el número por consola. Siempre
+pedirá el código de verificación (y la contraseña 2FA si la cuenta la tiene).
+
+### Opción B: One-liner sin credenciales en el código
 
 ```bash
 python -c "
+import os
 from telethon.sync import TelegramClient
 from telethon.sessions import StringSession
-API_ID = 1234567
-API_HASH = 'abcdef123456'
-with TelegramClient(StringSession(), API_ID, API_HASH) as c:
+with TelegramClient(StringSession(), int(os.environ['TELEGRAM_API_ID']), os.environ['TELEGRAM_API_HASH']) as c:
     c.start()
     print(c.session.save())
 "
@@ -136,25 +99,30 @@ En Vercel Dashboard → tu proyecto → **Settings** → **Environment Variables
 | `INGEST_HMAC_SECRET` | *la misma clave de arriba* | Production, Preview |
 | `INGEST_AUTOPUBLISH` | `false` | Production, Preview |
 | `AUTOPUBLISH_CONFIDENCE_THRESHOLD` | `0.85` | Production, Preview |
+| `INGEST_SYSTEM_PROFILE_ID` | *id de un perfil real* | Production, Preview |
+
+`INGEST_SYSTEM_PROFILE_ID` es el perfil al que se atribuyen las importaciones.
+Si se omite, se usa el primer perfil con rol `ADMIN`.
 
 ---
 
 ## Paso 5: Agregar fuentes en la base de datos
 
-Ejecuta en Supabase SQL Editor:
+Ejecuta en Supabase SQL Editor (usa canales/grupos **públicos y activos**; los
+handles de ejemplo no existen):
 
 ```sql
--- Insertar canal público de Telegram a monitorear
 INSERT INTO public.external_sources (platform, handle_or_url, name, province, is_trusted)
 VALUES
-  ('TELEGRAM', '@mascotas_perdidas_habana', 'Mascotas Perdidas La Habana', 'La Habana', false),
-  ('TELEGRAM', '@adopciones_cuba', 'Adopciones Cuba', null, true),
-  ('TELEGRAM', '@encontradas_matanzas', 'Encontradas Matanzas', 'Matanzas', false)
+  ('TELEGRAM', '@canal_real_1', 'Nombre real del canal', 'La Habana', false),
+  ('TELEGRAM', '@canal_real_2', 'Nombre real del canal', null, true)
 ON CONFLICT (platform, handle_or_url) DO NOTHING;
 ```
 
-- `handle_or_url`: Username del canal/grupo **público** (con `@` o sin)
+- `handle_or_url`: username público real (`@usuario` o `https://t.me/usuario`)
 - `is_trusted`: `true` solo para fuentes verificadas (permite auto-publicación si se habilita)
+- El worker ignora avisos con más de `MAX_POST_AGE_DAYS` días (30 por defecto) y
+  mensajes sin foto (`REQUIRE_IMAGE=true`).
 
 ---
 

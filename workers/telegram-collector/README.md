@@ -19,24 +19,18 @@ Worker en Python que lee canales/grupos públicos de Telegram y envía los posts
 
 ### 2. Generar StringSession
 
-Ejecuta este script **una sola vez** localmente para generar la sesión:
+El script `generate_session.py` lee las credenciales de variables de entorno
+(o del `.env` local). No hay secretos escritos en el código:
 
-```python
-# generate_session.py
-from telethon.sync import TelegramClient
-from telethon.sessions import StringSession
-
-api_id = TU_API_ID
-api_hash = 'TU_API_HASH'
-
-with TelegramClient(StringSession(), api_id, api_hash) as client:
-    print(client.session.save())
+```bash
+cd workers/telegram-collector
+pip install -r requirements.txt
+python generate_session.py            # imprime la sesión
+python generate_session.py --check    # valida la sesión existente
 ```
 
-Ejecuta: `python generate_session.py`
-
 Te pedirá:
-- Tu número de teléfono (formato internacional: +535XXXXXXXX)
+- Tu número de teléfono (o usa `TELEGRAM_PHONE` para evitarlo)
 - Código de verificación que recibirás en Telegram
 - Contraseña 2FA si la tienes configurada
 
@@ -68,12 +62,14 @@ Inserta en la tabla `external_sources`:
 ```sql
 INSERT INTO external_sources (platform, handle_or_url, name, province, is_trusted)
 VALUES 
-  ('TELEGRAM', '@canal_mascotas_cuba', 'Mascotas Perdidas Cuba', 'La Habana', true),
-  ('TELEGRAM', '@perros_perdidos_havana', 'Perros Perdidos La Habana', 'La Habana', false);
+  ('TELEGRAM', '@canal_real_1', 'Nombre real del canal', 'La Habana', true),
+  ('TELEGRAM', '@canal_real_2', 'Nombre real del canal', 'La Habana', false);
 ```
 
-- `handle_or_url`: Puede ser `@username` de canal público o `https://t.me/canal`
-- `is_trusted`: Solo `true` para fuentes muy confiables (permite auto-publicación si se habilita)
+- `handle_or_url`: `@username` real de un canal público o `https://t.me/canal`
+- `is_trusted`: solo `true` para fuentes muy confiables (permite auto-publicación si se habilita)
+- Solo se importan posts de los últimos `MAX_POST_AGE_DAYS` días (30 por defecto)
+  que incluyan al menos una foto (`REQUIRE_IMAGE=true`).
 
 ## Ejecución
 
