@@ -9,6 +9,7 @@ import {
   type IngestExternalPostInput,
 } from '../../src/lib/validations/ingest.js';
 import { getAIProvider } from '../_lib/ai-provider.js';
+import { aiProviderIsReal } from '../_lib/env.js';
 import { canonicalIngestPayload } from '../_lib/ingest-hmac.js';
 import sharp from 'sharp';
 
@@ -687,7 +688,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   
   // Sanitizar texto (defensa prompt injection)
   const sanitizedText = sanitizeExternalText(data.raw_text);
-  
+
+  // Sin un proveedor de IA real, `classifyPost` y `extractStructuredData`
+  // devuelven datos de demostración (con MOCK, todo se clasifica como LOST con
+  // un título genérico). Crear una publicación con eso sería inventar el
+  // contenido, así que el post se registra como no procesable y no entra en la
+  // cola de revisión. Basta con configurar AI_PROVIDER y sus credenciales.
+  const providerIsReal = aiProviderIsReal();
+
   // Insertar external_post en estado PROCESSING
   const { data: externalPost, error: insertError } = await supabaseAdmin
     .from('external_posts')
@@ -699,9 +707,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       raw_text: sanitizedText,
       image_paths: data.image_paths,
       posted_at: data.posted_at,
-      status: 'PROCESSING',
+      status: providerIsReal ? 'PROCESSING' : 'NOT_RELEVANT',
       confidence: 0,
-      extracted: {},
+      extracted: providerIsReal ? {} : { reason: 'ai_provider_not_real' },
     })
     .select('id')
     .single();
@@ -709,6 +717,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (insertError || !externalPost) {
     console.error('Error insertando external_post:', insertError);
     return internalError(res, 'ingest/create-record', insertError);
+  }
+
+  if (!providerIsReal) {
+    console.warn('[ingest] post descartado: AI_PROVIDER no es real', {
+      source_id: data.source_id,
+      external_id: data.external_id,
+    });
+
+    return json(res, 200, {
+      external_post_id: externalPost.id,
+      status: 'NOT_RELEVANT',
+      confidence: 0,
+      message: 'Proveedor de IA no configurado: no se crea publicación con datos simulados',
+    });
   }
   
   try {
