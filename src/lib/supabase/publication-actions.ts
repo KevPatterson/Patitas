@@ -40,7 +40,15 @@ export async function deletePublication(publicationId: string, userId: string) {
     .eq('owner_profile_id', userId);
 
   if (error) {
-    throw error;
+    console.error('[deletePublication] Error:', {
+      publicationId,
+      userId,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    throw new Error(`Error eliminando publicación: ${error.message}`);
   }
 }
 
