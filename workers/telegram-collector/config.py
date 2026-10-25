@@ -19,6 +19,12 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        # En GitHub Actions los secrets opcionales que no están definidos llegan
+        # como cadena vacía. Sin esto, pydantic intentaba convertir "" a int y
+        # el worker moría al importar `config` (antes de conectar a Telegram),
+        # así que el workflow fallaba en cada ejecución. Con `env_ignore_empty`
+        # una variable vacía se ignora y se usa el valor por defecto.
+        env_ignore_empty=True,
     )
 
     # =========================================================================

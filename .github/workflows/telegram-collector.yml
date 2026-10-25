@@ -129,6 +129,9 @@ jobs:
           # Solo avisos recientes: evita importar histórico viejo
           MAX_POST_AGE_DAYS: "30"
           REQUIRE_IMAGE: "true"
+          # Primera lectura de una fuente nueva: no volcar todo el canal en la
+          # cola de revisión de golpe.
+          INITIAL_FETCH_LIMIT: "10"
           LOG_LEVEL: INFO
         run: |
           # tee: deja la salida en worker.log para subirla como artefacto
