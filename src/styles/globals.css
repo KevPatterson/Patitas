@@ -40,6 +40,11 @@
   --color-found: #10b981;
   --color-found-light: #34d399;
   --color-found-dark: #059669;
+
+  /* Danger - Rojo para acciones destructivas (eliminar, rechazar, retirar) */
+  --color-danger: #dc2626;
+  --color-danger-light: #ef4444;
+  --color-danger-dark: #b91c1c;
   
   /* Colores legacy (compatibilidad) */
   --color-mamey: #ff8c42;

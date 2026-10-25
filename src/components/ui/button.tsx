@@ -27,7 +27,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary: 'min-h-11 bg-orange-200 text-[var(--color-orange-900)] shadow-md hover:shadow-lg hover:scale-[1.02] hover:bg-orange-300 active:scale-[0.98]',
   adoption: 'min-h-11 bg-purple text-white shadow-md hover:shadow-lg hover:scale-[1.02] hover:bg-purple-dark active:scale-[0.98]',
   ghost: 'min-h-11 bg-foreground/5 text-foreground border-2 border-foreground/10 hover:bg-foreground/10 hover:border-foreground/20 active:scale-[0.98]',
-  danger: 'min-h-11 bg-lost text-white shadow-md hover:shadow-lg hover:scale-[1.02] hover:bg-lost-dark active:scale-[0.98]',
+  danger: 'min-h-11 bg-danger text-white shadow-md hover:shadow-lg hover:scale-[1.02] hover:bg-danger-dark active:scale-[0.98]',
 };
 
 function LoadingDots() {

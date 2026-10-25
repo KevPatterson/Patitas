@@ -7,10 +7,18 @@ import type { ExternalPost, ExternalSource } from '../../types/index';
 
 const CONFIDENCE_THRESHOLD_AUTO = 0.85;
 
+type ReviewPublication = {
+  publication_images?: Array<{ storage_path: string; is_cover: boolean | null }> | null;
+};
+
+type ReviewItem = ExternalPost & { source?: ExternalSource; publication?: ReviewPublication | null };
+
 export function PendingReviewQueue() {
-  const [items, setItems] = useState<Array<ExternalPost & { source?: ExternalSource }>>([]);
+  const [items, setItems] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  // URLs firmadas de las imágenes de staging (bucket privado `external-imports`)
+  const [stagingUrls, setStagingUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadQueue();
@@ -24,14 +32,36 @@ export function PendingReviewQueue() {
         .from('external_posts')
         .select(`
           *,
-          source:external_sources(*)
+          source:external_sources(*),
+          publication:publications(publication_images(storage_path, is_cover))
         `)
         .eq('status', 'PENDING_REVIEW')
         .order('fetched_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
-      setItems((posts as Array<ExternalPost & { source?: ExternalSource }>) || []);
+
+      const queue = (posts as ReviewItem[]) || [];
+      setItems(queue);
+
+      // Solo se firman las que no tienen copia pública en pet-images: el bucket
+      // `external-imports` es privado y su URL pública devuelve error.
+      const stagingPaths = queue
+        .filter((post) => (post.publication?.publication_images?.length ?? 0) === 0)
+        .flatMap((post) => post.image_paths ?? []);
+
+      if (stagingPaths.length > 0) {
+        const { data: signed } = await supabase.storage
+          .from('external-imports')
+          .createSignedUrls([...new Set(stagingPaths)], 3600);
+        const map: Record<string, string> = {};
+        for (const item of signed ?? []) {
+          if (item.path && item.signedUrl) map[item.path] = item.signedUrl;
+        }
+        setStagingUrls(map);
+      } else {
+        setStagingUrls({});
+      }
     } catch (error) {
       console.error('Error loading pending review queue:', error);
     } finally {
@@ -97,16 +127,38 @@ export function PendingReviewQueue() {
         body: JSON.stringify({ action, id: postId, reason }),
       });
 
-      const result = await response.json();
+      // `npm run dev` (Vite) no sirve las rutas de `api/`: responde el index.html
+      // de la SPA con un 404, y `response.json()` fallaba con un SyntaxError
+      // ("Unexpected end of JSON input") que ocultaba la causa real.
+      const contentType = response.headers.get('content-type') ?? '';
+      const isJson = contentType.includes('application/json');
+
+      if (response.status === 404 && !isJson) {
+        throw new Error(
+          'El endpoint /api/admin/moderation no está disponible en este servidor. ' +
+            'Arranca el proyecto con `vercel dev` (npm run dev no sirve /api/*) o prueba en producción.'
+        );
+      }
+
+      if (!isJson) {
+        throw new Error(`Respuesta inesperada del servidor (HTTP ${response.status}).`);
+      }
+
+      const result = (await response.json()) as { error?: string; message?: string };
 
       if (!response.ok) {
-        throw new Error(result.error || 'Error en la acción');
+        throw new Error(result.error ?? result.message ?? `Error en la acción (HTTP ${response.status})`);
       }
 
       await loadQueue();
     } catch (error) {
       console.error('Error processing decision:', error);
-      alert('Error procesando la decisión');
+      if (error instanceof TypeError) {
+        // Fallo de red: fetch lanza TypeError cuando no hay conexión con el servidor.
+        alert('No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.');
+        return;
+      }
+      alert(error instanceof Error ? error.message : 'Error procesando la decisión');
     } finally {
       setActionLoadingId(null);
     }
@@ -162,7 +214,21 @@ export function PendingReviewQueue() {
       <div className="space-y-4">
         {items.map((post) => {
           const extracted = post.extracted as Record<string, unknown>;
-          const hasImages = post.image_paths.length > 0;
+          // Las imágenes ya copiadas viven en pet-images (bucket público). Las
+          // del staging (external-imports) son privadas: se muestran con la URL
+          // firmada que se obtiene en loadQueue.
+          const publicationImages = post.publication?.publication_images ?? [];
+          const reviewImages = publicationImages.length > 0
+            ? publicationImages.map((image) => ({
+                url: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/pet-images/${image.storage_path}`,
+                key: image.storage_path,
+              }))
+            : (post.image_paths ?? [])
+                .map((path) => ({ url: stagingUrls[path] ?? '', key: path }))
+                .filter((image) => image.url.length > 0);
+          // `hasImages` debe reflejar lo que realmente se puede mostrar, no el
+          // staging en bruto: si no hay portada visible, no se pinta la galería.
+          const hasImages = reviewImages.length > 0;
           const sourceTrusted = post.source?.is_trusted ?? false;
           const canAutoPublish = post.confidence >= CONFIDENCE_THRESHOLD_AUTO && sourceTrusted && hasImages && !!extracted.province;
 
@@ -246,21 +312,21 @@ export function PendingReviewQueue() {
 
                   {hasImages && (
                     <div>
-                      <p className="text-xs text-foreground/50 mb-2">Imágenes ({post.image_paths.length}):</p>
+                      <p className="text-xs text-foreground/50 mb-2">Imágenes ({reviewImages.length}):</p>
                       <div className="grid gap-2 sm:grid-cols-3">
-                        {post.image_paths.slice(0, 6).map((imgPath, idx) => (
-                          <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-foreground/10">
+                        {reviewImages.slice(0, 6).map((image, idx) => (
+                          <div key={image.key} className="relative aspect-square rounded-lg overflow-hidden border border-foreground/10">
                             <img
-                              src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/external-imports/${imgPath}`}
+                              src={image.url}
                               alt={`Imagen ${idx + 1}`}
                               className="w-full h-full object-cover"
                               loading="lazy"
                             />
                           </div>
                         ))}
-                        {post.image_paths.length > 6 && (
+                        {reviewImages.length > 6 && (
                           <div className="relative aspect-square rounded-lg bg-foreground/5 border border-foreground/10 flex items-center justify-center">
-                            <span className="text-xs text-foreground/60">+{post.image_paths.length - 6} más</span>
+                            <span className="text-xs text-foreground/60">+{reviewImages.length - 6} más</span>
                           </div>
                         )}
                       </div>
@@ -336,7 +402,7 @@ export function PendingReviewQueue() {
                     if (reason) handleReject(post.id, reason);
                   }}
                   disabled={actionLoadingId === post.id}
-                  className="h-9 px-4 text-sm gap-2 bg-lost/10 hover:bg-lost/20 text-lost"
+                  className="h-9 px-4 text-sm gap-2"
                 >
                   <XCircle className="size-4" />
                   Rechazar
