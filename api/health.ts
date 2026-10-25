@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from './types/vercel.js';
-import { IS_PRODUCTION } from './_lib/env.js';
+import { AI_ENABLED, AI_PROVIDER, IS_PRODUCTION, providerAvailable } from './_lib/env.js';
 
 /**
  * GET /api/health — health check.
@@ -28,6 +28,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     database: { status: 'ok' },
     storage: { status: 'ok' },
   };
+
+  // IA: se informa del proveedor activo y de si tiene credenciales, nunca de su
+  // valor. La IA es opcional, así que un fallo aquí no degrada el servicio.
+  const ai = providerAvailable();
+  checks.ai = { status: ai.ok && AI_ENABLED ? 'ok' : 'error' };
 
   let overallStatus = 'ok';
 
@@ -68,6 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     service: 'patitas-api',
     timestamp: new Date().toISOString(),
     checks,
+    ai: { provider: AI_PROVIDER, enabled: AI_ENABLED, configured: ai.ok },
     ...(IS_PRODUCTION ? {} : { environment: 'non-production' }),
   });
 }

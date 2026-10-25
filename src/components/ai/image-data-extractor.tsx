@@ -50,6 +50,53 @@ function labelFor(labels: Record<string, string>, value: string | undefined): st
   return labels[value] ?? value;
 }
 
+/** Lee un archivo como data URL (respaldo cuando el canvas no está disponible). */
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Redimensiona y recomprime la imagen antes de enviarla.
+ *
+ * Una foto de teléfono de 4-8 MB viaja como base64 (un 33 % más de tamaño) y
+ * puede superar el límite de cuerpo de las Functions de Vercel. Además, el
+ * modelo de visión factura tokens de imagen: con 1280 px de lado se lee igual
+ * el texto de un cartel gastando muchas menos neuronas.
+ */
+async function fileToDataUrl(file: File): Promise<string> {
+  const MAX_SIDE = 1280;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas no disponible');
+
+    // Fondo blanco: un PNG con transparencia se vería negro al pasar a JPEG.
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, width, height);
+    context.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+
+    return canvas.toDataURL('image/jpeg', 0.85);
+  } catch {
+    // Si el navegador no puede decodificar la imagen, se envía el original.
+    return readAsDataUrl(file);
+  }
+}
+
 type ImageDataExtractorProps = {
   onDataExtracted: (data: ExtractedData) => void;
   disabled?: boolean;
@@ -103,15 +150,8 @@ export function ImageDataExtractor({ onDataExtracted, disabled }: ImageDataExtra
         throw new Error('Inicia sesión para usar el asistente de IA.');
       }
 
-      // Convertir el archivo a base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      const base64Image = await base64Promise;
+      // Convertir el archivo a base64 (redimensionado y recomprimido)
+      const base64Image = await fileToDataUrl(file);
 
       // Enviar la imagen al endpoint
       const response = await fetch('/api/ai?action=extract-from-image', {

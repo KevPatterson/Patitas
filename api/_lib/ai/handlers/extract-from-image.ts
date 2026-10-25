@@ -5,8 +5,8 @@ import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from 
 import { limitAiByUser, limitByIp } from '../../rate-limit-utils.js';
 import { fetchRemoteImage } from '../../url-guard.js';
 import { MAX_IMAGE_BYTES, toImagePayload } from '../../image-guard.js';
-import { aiProviderIsReal, AI_ENABLED, providerAvailable } from '../../env.js';
-import { getAIProvider } from '../../ai-provider.js';
+import { aiProviderIsReal, AI_ENABLED, AI_PROVIDER, providerAvailable } from '../../env.js';
+import { AIProviderError, getAIProvider } from '../../ai-provider.js';
 import { buildFormExtraction } from '../form-extraction.js';
 
 /**
@@ -119,41 +119,55 @@ export async function handleExtractFromImage(req: VercelRequest, res: VercelResp
   try {
     const provider = getAIProvider();
 
-    const providerErrors: string[] = [];
+    /**
+     * Errores de cada llamada. `detail` se queda en el log; `hint` es lo que ve
+     * el usuario. Así un token inválido o una licencia sin aceptar se explican
+     * sin filtrar credenciales ni la respuesta cruda de Cloudflare.
+     */
+    const providerErrors: Array<{ detail: string; hint: string; status: number }> = [];
+
+    const collect = (error: unknown) => {
+      if (error instanceof AIProviderError) {
+        providerErrors.push({ detail: error.message, hint: error.hint, status: error.status });
+        return null;
+      }
+
+      providerErrors.push({
+        detail: error instanceof Error ? error.message : String(error),
+        hint: `El proveedor de IA (${AI_PROVIDER}) no pudo analizar la imagen. Inténtalo de nuevo más tarde.`,
+        status: 502,
+      });
+
+      return null;
+    };
 
     // OCR y visión en paralelo. Los fallos individuales no tumban la respuesta.
     const [ocrResult, visionResult] = await Promise.all([
-      provider.extractTextFromImage(payload.image).catch((error: unknown) => {
-        providerErrors.push(error instanceof Error ? error.message : String(error));
-        return null;
-      }),
+      provider.extractTextFromImage(payload.image).catch(collect),
       provider
         .analyzeImage(
           payload.image,
           'Analiza la foto de una mascota (perdida, encontrada o en adopción). Devuelve SOLO un JSON válido con: species (dog/cat/other), breed, color, size (small/medium/large), sex (male/female/unknown), age (puppy/young/adult/senior/unknown), collar (true/false), plate (true/false), characteristics. Si un dato no se ve, usa null. No inventes.'
         )
-        .catch((error: unknown) => {
-          providerErrors.push(error instanceof Error ? error.message : String(error));
-          return null;
-        }),
+        .catch(collect),
     ]);
 
     if (!ocrResult && !visionResult) {
-      console.error('[ai/extract-from-image] el proveedor falló', providerErrors);
+      console.error('[ai/extract-from-image] el proveedor falló', {
+        provider: AI_PROVIDER,
+        errors: providerErrors,
+      });
 
-      // Workers AI devuelve 429 cuando se agotan las neuronas gratuitas del día.
-      const quotaExceeded = providerErrors.some((message) =>
-        /429|neurons|rate limit|quota/i.test(message)
-      );
+      // Se prioriza cuota, credenciales o licencia sobre un fallo genérico.
+      const primary =
+        providerErrors.find(
+          (error) => error.status === 429 || error.status === 401 || error.status === 403
+        ) ?? providerErrors[0];
 
-      return fail(
-        res,
-        quotaExceeded ? 503 : 502,
-        'INTERNAL',
-        quotaExceeded
-          ? 'La IA alcanzó su límite gratuito. Inténtalo más tarde o configura otro proveedor.'
-          : 'El proveedor de IA no pudo analizar la imagen. Inténtalo de nuevo más tarde.'
-      );
+      const isConfigurationError =
+        primary.status === 429 || primary.status === 401 || primary.status === 403;
+
+      return fail(res, isConfigurationError ? 503 : 502, 'INTERNAL', primary.hint);
     }
 
     const extracted = buildFormExtraction({

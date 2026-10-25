@@ -115,4 +115,61 @@ describe('proveedor Cloudflare', () => {
 
     await expect(provider.extractTextFromImage(image)).rejects.toThrow(/429/);
   });
+
+  it('acepta la respuesta de visión ya parseada como objeto', async () => {
+    // El modelo a veces devuelve `response` como objeto JSON, no como cadena.
+    mockFetch({
+      result: {
+        response: { species: 'dog', color: 'black', size: 'medium', sex: 'female', age: null },
+      },
+      success: true,
+    });
+
+    const provider = getAIProvider();
+    const result = await provider.analyzeImage(image);
+    const labels = result.labels.map((label) => label.label.toLowerCase());
+
+    expect(labels).toContain('dog');
+    expect(labels).toContain('black');
+    expect(labels).toContain('medium');
+    expect(labels).toContain('female');
+    expect(labels).not.toContain('null');
+  });
+
+  it('explica que las credenciales son inválidas cuando responde 401', async () => {
+    mockFetch({ success: false, errors: [] }, 401);
+
+    const provider = getAIProvider();
+
+    await expect(provider.extractTextFromImage(image)).rejects.toMatchObject({
+      name: 'AIProviderError',
+      status: 401,
+      hint: expect.stringMatching(/credenciales/i),
+    });
+  });
+
+  it('explica la cuota agotada cuando responde 429', async () => {
+    mockFetch({ success: false, errors: [{ message: 'rate limit' }] }, 429);
+
+    const provider = getAIProvider();
+
+    await expect(provider.extractTextFromImage(image)).rejects.toMatchObject({
+      status: 429,
+      hint: expect.stringMatching(/límite gratuito/i),
+    });
+  });
+
+  it('explica que falta aceptar la licencia de Meta', async () => {
+    mockFetch({
+      success: false,
+      errors: [{ message: 'you must agree to the license before using this model' }],
+    });
+
+    const provider = getAIProvider();
+
+    await expect(provider.extractTextFromImage(image)).rejects.toMatchObject({
+      status: 403,
+      hint: expect.stringMatching(/licencia de Meta/i),
+    });
+  });
 });

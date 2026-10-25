@@ -62,15 +62,37 @@ type VisionLocalizedObject = {
   boundingPoly?: { normalizedVertices?: Array<{ x?: number | null; y?: number | null }> } | null;
 };
 
+/**
+ * Error de un proveedor de IA con un mensaje apto para mostrarse al usuario.
+ *
+ * `message` lleva el detalle técnico y se queda en los logs; `hint` es el texto
+ * que puede viajar al cliente. Ninguno de los dos incluye credenciales.
+ */
+export class AIProviderError extends Error {
+  readonly hint: string;
+  readonly status: number;
+
+  constructor(message: string, hint: string, status = 502) {
+    super(message);
+    this.name = 'AIProviderError';
+    this.hint = hint;
+    this.status = status;
+  }
+}
+
 /** Respuesta genérica de un modelo de Cloudflare Workers AI. */
 type CloudflareAIResponse = {
   result?: {
-    response?: string;
+    /**
+     * Suele ser texto, pero el modelo puede devolver el JSON ya parseado como
+     * objeto. Se normaliza con `toText` antes de usarlo.
+     */
+    response?: unknown;
     data?: number[][];
     embedding?: number[];
   };
   success?: boolean;
-  errors?: Array<{ message?: string }>;
+  errors?: Array<{ message?: string; code?: number }>;
 };
 
 export type TextEmbeddingResult = {
@@ -348,6 +370,29 @@ function getTesseractProvider(): IAIProvider {
 /**
  * Proveedor de Google Cloud Vision (gratuito hasta 1000 req/mes)
  */
+/**
+ * Traduce un fallo de Google Vision a un mensaje mostrable.
+ *
+ * El error más habitual es tener la API sin facturación: Google responde
+ * `BILLING_DISABLED` o `PERMISSION_DENIED` y el usuario solo veía "falló".
+ */
+function googleVisionError(error: unknown): AIProviderError {
+  const detail = error instanceof Error ? error.message : String(error);
+
+  if (/billing|BILLING_DISABLED|has not been used|not enabled|PERMISSION_DENIED/i.test(detail)) {
+    return new AIProviderError(
+      `Google Vision falló: ${detail}`,
+      'Google Vision requiere facturación habilitada. Actívala o cambia AI_PROVIDER a CLOUDFLARE.',
+      403
+    );
+  }
+
+  return new AIProviderError(
+    `Google Vision falló: ${detail}`,
+    'Google Vision no pudo analizar la imagen. Inténtalo de nuevo más tarde.'
+  );
+}
+
 function getGoogleVisionProvider(): IAIProvider {
   const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
   
@@ -418,7 +463,7 @@ function getGoogleVisionProvider(): IAIProvider {
         };
       } catch (error) {
         console.error('Google Vision OCR error:', error);
-        throw new Error('OCR failed', { cause: error });
+        throw googleVisionError(error);
       }
     },
 
@@ -472,7 +517,7 @@ function getGoogleVisionProvider(): IAIProvider {
         };
       } catch (error) {
         console.error('Google Vision analysis error:', error);
-        throw new Error('Vision analysis failed', { cause: error });
+        throw googleVisionError(error);
       }
     },
 
@@ -618,28 +663,49 @@ function getCloudflareProvider(): IAIProvider {
    * Ejecuta un modelo y devuelve su `result`.
    *
    * Workers AI puede responder 200 con `success: false`, así que se comprueban
-   * el estado HTTP y la bandera. El detalle del error se recorta para no volcar
-   * respuestas enormes en los logs.
+   * el estado HTTP y la bandera. Los fallos se convierten en `AIProviderError`
+   * para que el endpoint pueda mostrar un mensaje útil sin filtrar el detalle
+   * técnico (que solo va al log).
    */
   const runModel = async (
     model: string,
     body: Record<string, unknown>
   ): Promise<NonNullable<CloudflareAIResponse['result']>> => {
-    const response = await fetch(`${baseUrl}/${model}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(CLOUDFLARE_TIMEOUT_MS),
-    });
+    let response: Response;
+
+    try {
+      response = await fetch(`${baseUrl}/${model}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(CLOUDFLARE_TIMEOUT_MS),
+      });
+    } catch (error) {
+      // `AbortSignal.timeout` lanza TimeoutError; un fallo de red llega como TypeError.
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw new AIProviderError(
+          `Cloudflare AI (${model}) agotó el tiempo de espera`,
+          'El análisis tardó demasiado. Prueba con una foto más pequeña.',
+          504
+        );
+      }
+
+      throw new AIProviderError(
+        `Cloudflare AI (${model}) no respondió: ${error instanceof Error ? error.message : String(error)}`,
+        'No se pudo contactar con el proveedor de IA. Inténtalo de nuevo más tarde.'
+      );
+    }
 
     const raw = await response.text();
 
     if (!response.ok) {
-      throw new Error(
-        `Cloudflare AI (${model}) respondió ${response.status}: ${raw.slice(0, 300)}`
+      throw new AIProviderError(
+        `Cloudflare AI (${model}) respondió ${response.status}: ${raw.slice(0, 300)}`,
+        cloudflareHint(response.status, raw),
+        response.status
       );
     }
 
@@ -647,7 +713,10 @@ function getCloudflareProvider(): IAIProvider {
     try {
       data = JSON.parse(raw) as CloudflareAIResponse;
     } catch {
-      throw new Error(`Cloudflare AI (${model}) devolvió una respuesta que no es JSON`);
+      throw new AIProviderError(
+        `Cloudflare AI (${model}) devolvió una respuesta que no es JSON`,
+        'El proveedor de IA devolvió una respuesta inválida. Inténtalo de nuevo más tarde.'
+      );
     }
 
     if (data.success === false) {
@@ -655,7 +724,13 @@ function getCloudflareProvider(): IAIProvider {
         .map((error) => error.message)
         .filter(Boolean)
         .join('; ');
-      throw new Error(`Cloudflare AI (${model}) falló: ${detail || 'sin detalle'}`);
+      const status = /licen[cs]e|agree|acceptable use/i.test(detail) ? 403 : 400;
+
+      throw new AIProviderError(
+        `Cloudflare AI (${model}) falló: ${detail || 'sin detalle'}`,
+        cloudflareHint(status, detail),
+        status
+      );
     }
 
     return data.result ?? {};
@@ -713,7 +788,7 @@ function getCloudflareProvider(): IAIProvider {
         temperature: 0,
       });
 
-      const description = result.response ?? '';
+      const description = toText(result.response);
 
       return {
         labels: parseVisionResponse(description),
@@ -761,7 +836,7 @@ function getCloudflareProvider(): IAIProvider {
         temperature: 0,
       });
 
-      const classificationText = (result.response ?? 'SAFE').trim().toUpperCase();
+      const classificationText = (toText(result.response).trim() || 'SAFE').toUpperCase();
       const validClassifications = ['SAFE', 'SPAM', 'FRAUD', 'OFFENSIVE', 'INAPPROPRIATE', 'UNRELATED'];
       const classification = validClassifications.includes(classificationText)
         ? (classificationText as ModerationResult['classification'])
@@ -798,7 +873,7 @@ Contenido: "${text}"`;
         temperature: 0.1,
       });
 
-      const responseText = result.response ?? '{}';
+      const responseText = toText(result.response) || '{}';
 
       // Intentar parsear JSON de la respuesta
       let parsed: { type?: string; confidence?: number; resolved?: boolean };
@@ -827,11 +902,73 @@ Contenido: "${text}"`;
 }
 
 /**
+ * Traduce un fallo de Workers AI a un mensaje que se puede mostrar al usuario.
+ *
+ * Se revisa primero el texto porque el modelo devuelve la cuota agotada y la
+ * licencia de Meta con estados que no siempre son 429/403.
+ */
+function cloudflareHint(status: number, detail: string): string {
+  if (status === 429 || /neurons|rate limit|quota|too many requests/i.test(detail)) {
+    return 'La IA alcanzó su límite gratuito diario. Inténtalo más tarde.';
+  }
+
+  if (/licen[cs]e|agree|acceptable use/i.test(detail)) {
+    return 'Falta aceptar la licencia de Meta para el modelo de visión. Revisa el paso 3 de .env.example.';
+  }
+
+  if (status === 401 || status === 403) {
+    return 'Cloudflare rechazó las credenciales. Revisa CLOUDFLARE_ACCOUNT_ID y CLOUDFLARE_API_TOKEN en Vercel.';
+  }
+
+  if (status === 404) {
+    return 'El modelo de visión no está disponible en esta cuenta de Cloudflare.';
+  }
+
+  if (status === 413) {
+    return 'La imagen es demasiado grande para el proveedor. Usa una foto más pequeña.';
+  }
+
+  if (status >= 500) {
+    return 'Cloudflare no pudo procesar la imagen en este momento. Inténtalo de nuevo.';
+  }
+
+  return 'Cloudflare rechazó la petición. Revisa la configuración del proveedor.';
+}
+
+/**
+ * Normaliza la respuesta de un modelo a texto.
+ *
+ * El modelo puede devolver una cadena, un objeto JSON ya parseado o `null`.
+ * Antes se asumía cadena y `value.trim()` lanzaba `TypeError` con los objetos,
+ * lo que hacía fallar la visión entera.
+ */
+function toText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+
+    for (const key of ['text', 'response', 'content', 'description']) {
+      if (typeof record[key] === 'string') return record[key];
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return '';
+    }
+  }
+
+  return String(value);
+}
+
+/**
  * Limpia la salida del OCR: quita bloques de markdown, prefijos típicos del
  * modelo y detecta las respuestas de "no hay texto".
  */
-function cleanOcrText(value: string): string {
-  const text = value.trim();
+function cleanOcrText(value: unknown): string {
+  const text = toText(value).trim();
 
   if (!text) return '';
 
@@ -852,11 +989,12 @@ function cleanOcrText(value: string): string {
 /**
  * Parsear la respuesta de visión para extraer etiquetas.
  *
- * El modelo puede devolver el JSON envuelto en ```json ... ```, así que se
- * busca el objeto con una expresión regular en vez de hacer `JSON.parse` del
- * texto completo. Si no hay JSON válido, se cae a palabras clave.
+ * El modelo puede devolver el JSON envuelto en ```json ... ``` o directamente
+ * como objeto, así que se normaliza a texto y se busca el objeto con una
+ * expresión regular. Si no hay JSON válido, se cae a palabras clave.
  */
-function parseVisionResponse(description: string): Array<{ label: string; confidence: number }> {
+function parseVisionResponse(description: unknown): Array<{ label: string; confidence: number }> {
+  const text = toText(description);
   const labels: Array<{ label: string; confidence: number }> = [];
 
   const add = (label: unknown, confidence: number) => {
@@ -871,7 +1009,7 @@ function parseVisionResponse(description: string): Array<{ label: string; confid
   };
 
   // Intentar parsear como JSON (puede venir dentro de un bloque de markdown).
-  const jsonCandidate = description.match(/\{[\s\S]*\}/)?.[0];
+  const jsonCandidate = text.match(/\{[\s\S]*\}/)?.[0];
 
   if (jsonCandidate) {
     try {
@@ -895,7 +1033,7 @@ function parseVisionResponse(description: string): Array<{ label: string; confid
 
   // Extraer keywords comunes
   const keywords = ['dog', 'cat', 'perro', 'gato', 'brown', 'marrón', 'black', 'negro', 'white', 'blanco', 'collar', 'small', 'medium', 'large'];
-  const lowerDesc = description.toLowerCase();
+  const lowerDesc = text.toLowerCase();
 
   for (const keyword of keywords) {
     if (lowerDesc.includes(keyword)) {
