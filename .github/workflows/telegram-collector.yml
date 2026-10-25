@@ -126,6 +126,9 @@ jobs:
           # Opcionales (tienen defaults)
           MAX_IMAGE_SIZE_BYTES: ${{ secrets.MAX_IMAGE_SIZE_BYTES }}
           MAX_CONSECUTIVE_ERRORS: ${{ secrets.MAX_CONSECUTIVE_ERRORS }}
+          # Solo avisos recientes: evita importar histórico viejo
+          MAX_POST_AGE_DAYS: "30"
+          REQUIRE_IMAGE: "true"
           LOG_LEVEL: INFO
         run: |
           # tee: deja la salida en worker.log para subirla como artefacto

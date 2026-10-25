@@ -67,6 +67,16 @@ class Settings(BaseSettings):
     # Máximo de imágenes por mensaje/álbum
     max_images_per_message: int = Field(default=10, ge=1, le=20)
 
+    # Solo se importan posts publicados dentro de esta ventana (días).
+    # Evita llenar la plataforma con avisos viejos al añadir una fuente nueva.
+    max_post_age_days: int = Field(default=30, ge=1, le=365)
+
+    # Descarta mensajes sin foto: toda publicación importada debe tener imagen.
+    require_image: bool = Field(default=True)
+
+    # Mensajes recientes a revisar la primera vez que se procesa una fuente.
+    initial_fetch_limit: int = Field(default=30, ge=1, le=100)
+
     # Tiempo de espera entre requests a Telegram (segundos)
     telegram_request_delay: float = Field(default=0.5, ge=0.1, le=5.0)
 

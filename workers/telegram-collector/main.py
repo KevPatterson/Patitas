@@ -14,7 +14,7 @@ import asyncio
 import json
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -84,17 +84,23 @@ class SourceProcessor:
             messages = await self._fetch_new_messages(entity, last_cursor)
             logger.info("source_messages_fetched", source_id=source_id, count=len(messages))
 
+            # El cursor avanza hasta el mensaje más reciente leído, aunque se
+            # descarte por antigüedad o por no tener foto.
+            new_cursor = last_cursor
+            if messages:
+                max_id = max(m.id for m in messages)
+                if last_cursor is None or max_id > int(last_cursor):
+                    new_cursor = str(max_id)
+
             # Agrupar por grouped_id (álbumes)
             grouped_messages = self._group_by_album(messages)
             logger.debug("source_messages_grouped", source_id=source_id, groups=len(grouped_messages))
 
             # Procesar cada grupo/mensaje
-            new_cursor = last_cursor
-            for group_id, group_messages in grouped_messages.items():
-                # Usar el message_id más alto del grupo como cursor
-                group_max_id = max(m.id for m in group_messages)
-                if last_cursor is None or group_max_id > int(last_cursor):
-                    new_cursor = str(group_max_id)
+            for group_messages in grouped_messages.values():
+                if settings.require_image and not self._group_has_image(group_messages):
+                    self.stats["skipped"] += 1
+                    continue
 
                 await self._process_message_group(source, entity, group_messages, is_trusted)
                 self.stats["processed"] += 1
@@ -151,20 +157,44 @@ class SourceProcessor:
 
     async def _fetch_new_messages(self, entity: Channel | Chat, last_cursor: str | None) -> list[Message]:
         """
-        Obtiene mensajes nuevos desde last_cursor.
+        Obtiene mensajes nuevos y vigentes desde last_cursor.
 
-        Usa iter_messages con min_id para lectura incremental eficiente.
+        - Fuente nueva (sin cursor): lee solo los mensajes más recientes, no el
+          histórico completo del canal.
+        - Fuente existente: lectura incremental con min_id.
+        - En ambos casos descarta lo que supere `max_post_age_days`.
         """
-        messages = []
-        min_id = int(last_cursor) if last_cursor else 0
+        cutoff = datetime.now(timezone.utc) - timedelta(days=settings.max_post_age_days)
+        messages: list[Message] = []
 
-        # Límite razonable por ejecución para evitar timeouts
-        async for message in self.telethon.iter_messages(entity, min_id=min_id, limit=100, reverse=True):
+        if last_cursor is None:
+            iterator = self.telethon.iter_messages(entity, limit=settings.initial_fetch_limit)
+        else:
+            iterator = self.telethon.iter_messages(
+                entity, min_id=int(last_cursor), limit=100, reverse=True
+            )
+
+        async for message in iterator:
             # Solo mensajes con contenido (texto o media)
-            if message.text or message.media:
-                messages.append(message)
+            if not (message.text or message.media):
+                continue
+            posted_at = message.date.replace(tzinfo=timezone.utc)
+            if posted_at < cutoff:
+                continue
+            messages.append(message)
 
         return messages
+
+    def _group_has_image(self, messages: list[Message]) -> bool:
+        """Indica si algún mensaje del grupo trae una imagen utilizable."""
+        for msg in messages:
+            if isinstance(msg.media, MessageMediaPhoto):
+                return True
+            if isinstance(msg.media, MessageMediaDocument):
+                doc = msg.media.document
+                if doc and doc.mime_type and doc.mime_type.startswith("image/"):
+                    return True
+        return False
 
     def _group_by_album(self, messages: list[Message]) -> dict[str | None, list[Message]]:
         """
