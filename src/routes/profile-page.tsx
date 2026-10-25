@@ -70,7 +70,7 @@ export function ProfilePage() {
           .select(`
             id, slug, title, description, type, status, species, breed, color, sex, size, published_at,
             publication_images(storage_path, is_cover),
-            locations!inner(province, municipality, zone, approximate_lat, approximate_lng)
+            locations(province, municipality, zone, approximate_lat, approximate_lng)
           `)
           .eq('owner_profile_id', (profileData as ProfileRow).id)
           .neq('status', 'DELETED')

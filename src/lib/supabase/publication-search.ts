@@ -152,11 +152,11 @@ export async function searchPublications(filters: SearchFilters) {
         const ids = ftsResults.map((r: { id: string }) => r.id);
         const { data: withImages, error: imgError } = await supabase
           .from('publications')
-          .select('id, location:locations!inner(province, municipality, zone, approximate_lat, approximate_lng), publication_images(storage_path, is_cover, alt_text)')
+          .select('id, location:locations(province, municipality, zone, approximate_lat, approximate_lng), publication_images(storage_path, is_cover, alt_text)')
           .in('id', ids);
 
         if (!imgError && withImages) {
-          // Type assertion for location as object (due to !inner)
+          // Type assertion para tratar la ubicación como objeto único (relación 1:1)
           const typedWithImages = withImages as unknown as Array<{
             id: string;
             location: {
@@ -222,9 +222,12 @@ export async function searchPublications(filters: SearchFilters) {
   }
 
   // Búsqueda básica (fallback o sin query de texto)
+  // `!inner` solo cuando se filtra por ubicación: sin filtro el join debe ser LEFT,
+  // porque hay publicaciones reales sin ubicación que deben seguir apareciendo.
+  const locationJoin = filters.province || filters.municipality ? 'locations!inner' : 'locations';
   let query = supabase
     .from('publications')
-    .select('id, slug, title, description, type, status, species, breed, color, sex, size, published_at, location:locations!inner(province, municipality, zone, approximate_lat, approximate_lng), publication_images(storage_path, is_cover, alt_text)')
+    .select(`id, slug, title, description, type, status, species, breed, color, sex, size, published_at, location:${locationJoin}(province, municipality, zone, approximate_lat, approximate_lng), publication_images(storage_path, is_cover, alt_text)`)
     .neq('status', 'DELETED')
     .order('published_at', { ascending: false })
     .range(offset, offset + limit - 1);
@@ -386,7 +389,7 @@ export async function getPublicationBySlug(slug: string) {
       event_time_approx, 
       owner_profile_id,
       owner:profiles!owner_profile_id(username),
-      location:locations!inner(province, municipality, zone, approximate_lat, approximate_lng), 
+      location:locations(province, municipality, zone, approximate_lat, approximate_lng), 
       publication_images(storage_path, is_cover, alt_text)
     `)
     .eq('slug', slug)
@@ -445,7 +448,7 @@ export async function getPublicationById(id: string) {
       import_review_status,
       owner_profile_id,
       owner:profiles!owner_profile_id(username),
-      location:locations!inner(province, municipality, zone, approximate_lat, approximate_lng), 
+      location:locations(province, municipality, zone, approximate_lat, approximate_lng), 
       publication_images(storage_path, is_cover, alt_text)
     `)
     .eq('id', id)
