@@ -609,17 +609,23 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
       // Si la imagen viene de un enlace (Facebook), descargarla y crear File
       if (!file && reviewImage.startsWith('http')) {
         try {
+          console.log('[applyReview] Descargando imagen desde:', reviewImage);
           const response = await fetch(reviewImage);
           if (response.ok) {
             const blob = await response.blob();
             imageFile = new File([blob], 'imported-image.jpg', { type: blob.type || 'image/jpeg' });
+            console.log('[applyReview] Imagen descargada, tamaño:', blob.size, 'tipo:', blob.type);
+          } else {
+            console.warn('[applyReview] Error descargando imagen:', response.status, response.statusText);
           }
-        } catch {
-          // Si falla la descarga, continuar sin imagen
+        } catch (err) {
+          console.error('[applyReview] Error descargando imagen:', err);
         }
       } else if (file) {
         imageFile = file;
       }
+    } else {
+      console.log('[applyReview] No se adjunta imagen:', { reviewHasPet, reviewImage: !!reviewImage, file: !!file });
     }
 
     onApply(review, imageFile);
