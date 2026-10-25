@@ -10,6 +10,7 @@ import {
 } from '../../src/lib/validations/ingest.js';
 import { getAIProvider } from '../_lib/ai-provider.js';
 import { canonicalIngestPayload } from '../_lib/ingest-hmac.js';
+import sharp from 'sharp';
 
 const INGEST_HMAC_SECRET = process.env.INGEST_HMAC_SECRET;
 const INGEST_AUTOPUBLISH = process.env.INGEST_AUTOPUBLISH === 'true';
@@ -17,6 +18,12 @@ const AUTOPUBLISH_CONFIDENCE_THRESHOLD = parseFloat(process.env.AUTOPUBLISH_CONF
 const AUTOPUBLISH_REQUIRE_TRUSTED_SOURCE = process.env.AUTOPUBLISH_REQUIRE_TRUSTED_SOURCE !== 'false';
 const AUTOPUBLISH_REQUIRE_IMAGE = process.env.AUTOPUBLISH_REQUIRE_IMAGE !== 'false';
 const AUTOPUBLISH_REQUIRE_LOCATION = process.env.AUTOPUBLISH_REQUIRE_LOCATION !== 'false';
+
+// El worker sube las fotos a un bucket privado de staging. Para que la
+// publicación las muestre hay que copiarlas a `pet-images` (bucket público)
+// y registrar la fila en `publication_images`.
+const EXTERNAL_STAGING_BUCKET = 'external-imports';
+const PUBLICATION_IMAGES_BUCKET = 'pet-images';
 
 type PublicationType = 'LOST' | 'FOUND' | 'ABANDONED' | 'ADOPTION' | 'SIGHTING';
 type ExternalPostStatus = 'NEW' | 'PROCESSING' | 'NOT_RELEVANT' | 'DUPLICATE' | 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'TAKEN_DOWN';
@@ -386,6 +393,104 @@ function calculateTextSimilarity(a: string, b: string): number {
 }
 
 /**
+ * Copia las fotos del staging privado al bucket público de publicaciones y
+ * registra las filas de `publication_images`.
+ *
+ * `publication_images` exige rutas `<publication_uuid>/<image_uuid>.webp`, así
+ * que no basta con copiar el archivo: hay que re-encodearlo. Además, sharp
+ * descarta EXIF/IPTC/XMP por defecto, lo que evita publicar el GPS que trajeran
+ * las fotos originales de terceros.
+ *
+ * Devuelve cuántas imágenes quedaron asociadas.
+ */
+async function attachPublicationImages(
+  publicationId: string,
+  imagePaths: string[]
+): Promise<number> {
+  let attached = 0;
+
+  for (const [index, rawPath] of imagePaths.entries()) {
+    const sourcePath = rawPath.replace(/^external-imports\//, '').replace(/^\/+/, '');
+    if (!sourcePath) continue;
+
+    const { data: staged, error: downloadError } = await supabaseAdmin.storage
+      .from(EXTERNAL_STAGING_BUCKET)
+      .download(sourcePath);
+
+    if (downloadError || !staged) {
+      console.error('Error descargando imagen importada:', downloadError);
+      continue;
+    }
+
+    let webp: Buffer;
+    try {
+      webp = await sharp(Buffer.from(await staged.arrayBuffer()))
+        .rotate()
+        .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 82, effort: 4 })
+        .toBuffer();
+    } catch (error) {
+      console.error('Error convirtiendo imagen importada:', error);
+      continue;
+    }
+
+    const destinationPath = `${publicationId}/${crypto.randomUUID()}.webp`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(PUBLICATION_IMAGES_BUCKET)
+      .upload(destinationPath, webp, { contentType: 'image/webp', upsert: false });
+
+    if (uploadError) {
+      console.error('Error subiendo imagen importada:', uploadError);
+      continue;
+    }
+
+    const { error: insertError } = await supabaseAdmin.from('publication_images').insert({
+      publication_id: publicationId,
+      storage_path: destinationPath,
+      alt_text: null,
+      is_cover: index === 0,
+      sort_order: index,
+    });
+
+    if (insertError) {
+      console.error('Error registrando imagen importada:', insertError);
+      continue;
+    }
+
+    attached += 1;
+  }
+
+  return attached;
+}
+
+/**
+ * Perfil al que se atribuyen las importaciones.
+ *
+ * `publications.owner_profile_id` es NOT NULL y referencia a `profiles`, pero
+ * el UUID cero usado antes no existe: cada ingesta fallaba con violación de FK.
+ * Se usa `INGEST_SYSTEM_PROFILE_ID` o, en su defecto, el primer ADMIN.
+ */
+async function resolveImportOwner(): Promise<string> {
+  const configured = process.env.INGEST_SYSTEM_PROFILE_ID?.trim();
+  if (configured) return configured;
+
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .eq('role', 'ADMIN')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data?.id) {
+    throw new Error('No hay perfil ADMIN para atribuir la publicación importada');
+  }
+
+  return data.id;
+}
+
+/**
  * Crear publicación en estado PENDING_REVIEW (o PUBLISHED si auto-publish)
  */
 async function createPublication(
@@ -418,7 +523,8 @@ async function createPublication(
     .slice(0, 80);
   
   const slug = `${baseSlug}-${Date.now().toString(36)}`;
-  
+  const ownerProfileId = await resolveImportOwner();
+
   const { data: publication, error } = await supabaseAdmin
     .from('publications')
     .insert({
@@ -443,9 +549,10 @@ async function createPublication(
       contact_whatsapp: extracted.contact_whatsapp ?? null,
       contact_email: extracted.contact_email ?? null,
       microchip: null,
-      province: extracted.province ?? null,
-      municipality: extracted.municipality ?? null,
-      zone: extracted.zone ?? null,
+      // `publications` no tiene columnas de ubicación: la ubicación vive en
+      // `locations` (province/municipality/zone son NOT NULL allí). La ingesta
+      // no crea ubicaciones para no ensuciar el catálogo; los datos extraídos
+      // quedan en `external_posts.extracted` para que el moderador los revise.
       approximate_lat: null, // Se fuzzea automáticamente por trigger
       approximate_lng: null,
       event_date: extracted.event_date ?? null,
@@ -460,7 +567,7 @@ async function createPublication(
       source_platform: platform,
       source_url: sourceUrl,
       import_review_status: reviewStatus,
-      owner_profile_id: '00000000-0000-0000-0000-000000000000', // System user, se actualiza si hay owner real
+      owner_profile_id: ownerProfileId,
     })
     .select('id')
     .single();
@@ -682,6 +789,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       source.is_trusted,
       data.image_paths.length > 0
     );
+
+    // 5.1 Copiar las fotos del staging al bucket público y asociarlas.
+    // Sin esto la publicación importada quedaba sin imágenes.
+    const attachedImages = await attachPublicationImages(publicationId, data.image_paths);
+    if (data.image_paths.length > 0 && attachedImages === 0) {
+      // Evita publicar una ficha sin foto si falló la copia.
+      await supabaseAdmin
+        .from('publications')
+        .update({ status: 'HIDDEN' })
+        .eq('id', publicationId);
+      console.error('[ingest] publicación oculta: no se pudo adjuntar ninguna imagen', {
+        publication_id: publicationId,
+        image_paths: data.image_paths.length,
+      });
+    }
     
     // 6. Actualizar external_post con resultado
     const finalStatus: ExternalPostStatus = pubStatus === 'PUBLISHED' ? 'PUBLISHED' : 'PENDING_REVIEW';
