@@ -186,13 +186,53 @@ export function extractPostText(html: string): string | null {
 }
 
 /**
+ * Decodifica una URL que viene dentro de una cadena JSON.
+ *
+ * Facebook escapa las barras (`https:\/\/...`), el `&` (`\u0026`) y a veces el
+ * `%`. Sin decodificar, la URL no se puede descargar aunque el host sea válido.
+ */
+function decodeJsonUrl(value: string): string {
+  try {
+    const parsed: unknown = JSON.parse(`"${value}"`);
+    if (typeof parsed === 'string') return decodeHtmlEntities(parsed);
+  } catch {
+    // Cadena mal escapada: se aplica una decodificación mínima.
+  }
+
+  return decodeHtmlEntities(value.replace(/\\\//g, '/').replace(/\\u0026/gi, '&'));
+}
+
+/**
+ * Claves de imagen que pertenecen al grupo o al perfil, no al post.
+ *
+ * Los avisos de grupos muestran arriba la portada y el logo del grupo. Si se
+ * toman como imagen del post, el formulario recibe una foto que no es la
+ * mascota.
+ */
+function isGroupOrProfileImageKey(key: string): boolean {
+  return /(?:cover|portada|profile|perfil|avatar|icon|logo|badge|emoji)/i.test(key);
+}
+
+/**
  * Extrae URLs de imágenes del post de Facebook.
  *
  * Busca en el HTML del post (no en Open Graph) para encontrar las imágenes
  * reales adjuntas al post, evitando la imagen genérica del grupo/página.
+ *
+ * Las fotos adjuntas aparecen en el JSON como `"photo_image": {"uri": ...}`.
+ * Esa clave va primero porque es la del adjunto; después se aceptan otras
+ * claves de imagen, salvo las de portada, perfil o avatar.
  */
 export function extractPostImages(html: string): string[] {
   const images: string[] = [];
+
+  /** Añade la URL si es descargable y parece una foto del post. */
+  const pushImage = (raw: string) => {
+    const url = raw.trim();
+    if (url && isLikelyPostImage(url)) {
+      images.push(url);
+    }
+  };
 
   // 1. Buscar en el div del mensaje (data-ad-preview="message")
   const messageDivMatch = html.match(
@@ -205,41 +245,47 @@ export function extractPostImages(html: string): string[] {
     // Buscar tags <img> con src
     const imgMatches = messageHtml.matchAll(/<img[^>]+src\s*=\s*["']([^"']+)["'][^>]*>/gi);
     for (const match of imgMatches) {
-      const url = decodeHtmlEntities(match[1]);
-      if (url && isLikelyPostImage(url)) {
-        images.push(url);
-      }
+      pushImage(decodeHtmlEntities(match[1]));
     }
 
     // Buscar background-image en style
     const bgMatches = messageHtml.matchAll(/background-image\s*:\s*url\(["']?([^"')]+)["']?\)/gi);
     for (const match of bgMatches) {
-      const url = decodeHtmlEntities(match[1]);
-      if (url && isLikelyPostImage(url)) {
-        images.push(url);
-      }
+      pushImage(decodeHtmlEntities(match[1]));
     }
   }
 
-  // 2. Buscar en JSON embebido (attachments/media)
-  const jsonImageMatches = html.matchAll(/"(?:image|photo|media)"\s*:\s*\{\s*"uri"\s*:\s*"([^"]+)"/gi);
+  // 2. Foto adjunta al post: `photo_image` es la clave que usa Facebook para
+  //    el adjunto. Va antes que cualquier imagen del encabezado del grupo.
+  const photoImageMatches = html.matchAll(
+    /"photo_image"\s*:\s*\{\s*"uri"\s*:\s*"((?:[^"\\]|\\.)*)"/gi
+  );
+  for (const match of photoImageMatches) {
+    pushImage(decodeJsonUrl(match[1]));
+  }
+
+  // 3. Otras claves de imagen del JSON embebido (attachments/media), sin las
+  //    que corresponden a portadas, perfiles o avatares.
+  const jsonImageMatches = html.matchAll(
+    /"([a-z0-9_]+)"\s*:\s*\{\s*"uri"\s*:\s*"((?:[^"\\]|\\.)*)"/gi
+  );
   for (const match of jsonImageMatches) {
-    const url = decodeHtmlEntities(match[1]);
-    if (url && isLikelyPostImage(url)) {
-      images.push(url);
-    }
+    const key = match[1];
+
+    if (!/(?:image|photo|media)/i.test(key)) continue;
+    if (isGroupOrProfileImageKey(key)) continue;
+
+    pushImage(decodeJsonUrl(match[2]));
   }
 
-  // 3. Buscar en data-ft o data-store JSON
+  // 4. Buscar en data-ft o data-store JSON
   const dataFtMatches = html.matchAll(/data-ft\s*=\s*["']([^"']+)["']/gi);
   for (const match of dataFtMatches) {
     try {
       const parsed = JSON.parse(decodeHtmlEntities(match[1]));
       const attachedImages = findImagesInObject(parsed);
       for (const url of attachedImages) {
-        if (isLikelyPostImage(url)) {
-          images.push(url);
-        }
+        pushImage(url);
       }
     } catch {
       // Ignorar JSON inválido
@@ -297,6 +343,14 @@ function isLikelyPostImage(url: string): boolean {
       }
     }
 
+    // Las miniaturas de perfil y de grupo suelen venir en el query
+    // (`stp=dst-jpg_s160x160`), no en la ruta. Una imagen de menos de 300 px no
+    // sirve como foto de la publicación.
+    const thumbnail = `${pathname}${u.search}`.match(/[_/]s(\d{1,4})x(\d{1,4})/i);
+    if (thumbnail && Math.max(Number(thumbnail[1]), Number(thumbnail[2])) < 300) {
+      return false;
+    }
+
     // Debe tener extensión de imagen o parámetros de imagen de Facebook
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.heic'];
     const hasImageExt = imageExtensions.some((ext) => pathname.includes(ext));
@@ -310,17 +364,27 @@ function isLikelyPostImage(url: string): boolean {
 
 /**
  * Busca recursivamente URLs de imágenes en un objeto JSON.
+ *
+ * Se descartan las claves de portada, perfil o avatar: en un grupo, esas
+ * imágenes aparecen en el encabezado y no son la foto del aviso. La exclusión
+ * se hereda a los objetos anidados (`cover_photo.photo.image.uri`).
  */
-function findImagesInObject(obj: unknown, found: string[] = []): string[] {
+function findImagesInObject(
+  obj: unknown,
+  found: string[] = [],
+  insideExcludedAsset = false
+): string[] {
   if (!obj || typeof obj !== 'object') return found;
 
   if (Array.isArray(obj)) {
     for (const item of obj) {
-      findImagesInObject(item, found);
+      findImagesInObject(item, found, insideExcludedAsset);
     }
   } else {
     for (const [key, value] of Object.entries(obj)) {
       const lowerKey = key.toLowerCase();
+      const excluded = insideExcludedAsset || isGroupOrProfileImageKey(lowerKey);
+
       if (
         typeof value === 'string' &&
         (lowerKey.includes('image') ||
@@ -329,11 +393,12 @@ function findImagesInObject(obj: unknown, found: string[] = []): string[] {
           lowerKey.includes('src') ||
           lowerKey.includes('uri') ||
           lowerKey.includes('url')) &&
+        !excluded &&
         value.startsWith('http')
       ) {
         found.push(value);
       } else if (value && typeof value === 'object') {
-        findImagesInObject(value, found);
+        findImagesInObject(value, found, excluded);
       }
     }
   }

@@ -182,9 +182,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } satisfies FacebookImportResponse);
   }
 
-  // Priorizar imágenes extraídas del post sobre og:image (que suele ser genérica).
-  // Usar la primera imagen válida del post para análisis de visión.
-  const imageForVision = postImages[0] ?? metadata.image;
+  // Las fotos adjuntas al post van primero y `og:image` queda como último
+  // recurso: en un grupo, `og:image` puede ser la portada del grupo. Se prueban
+  // hasta tres candidatos porque algunas URL firmadas del CDN caducan.
+  const imageCandidates = [
+    ...new Set(
+      [...postImages, metadata.image].filter(
+        (value): value is string => Boolean(value)
+      )
+    ),
+  ].slice(0, 3);
 
   // Imagen para visión y para la revisión: pasa por el guard, se reencodea sin
   // metadatos y se devuelve como data URL. El navegador no puede descargarla
@@ -193,52 +200,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let visionInput: { labels: Array<{ label: string; confidence: number }>; description?: string } | null =
     null;
   let sanitizedImageDataUrl: string | null = null;
+  let imageForPublication: string | null = null;
 
-  if (imageForVision) {
+  for (const candidate of imageCandidates) {
+    let download: Awaited<ReturnType<typeof fetchRemoteImage>>;
+
     try {
-      const download = await fetchRemoteImage(imageForVision, { maxBytes: 8 * 1024 * 1024 });
-
-      if (download.ok) {
-        const rawBytes = new Uint8Array(download.bytes);
-        const sanitized = await sanitizeImage(rawBytes, 'publication', {
-          // La imagen la publicó un tercero: si trae GPS se descarta, pero no se
-          // rechaza la importación porque el usuario no puede corregirla.
-          rejectGps: false,
-        });
-
-        if (sanitized.ok) {
-          sanitizedImageDataUrl = `data:${sanitized.mimeType};base64,${sanitized.bytes.toString('base64')}`;
-        }
-
-        if (AI_ENABLED) {
-          const visionBytes = sanitized.ok ? new Uint8Array(sanitized.bytes) : rawBytes;
-          const payload = toImagePayload(visionBytes, imageForVision);
-
-          if (payload.ok) {
-            const provider = getAIProvider();
-            const visionResult = await provider.analyzeImage(
-              payload.image,
-              'Analiza esta imagen de una mascota. ' +
-                'Devuelve SOLO un JSON válido con: type (LOST/FOUND/ADOPTION/ABANDONED/SIGHTING), ' +
-                'species (dog/cat/bird/rabbit/rodent/reptile/other), ' +
-                'has_pet (true si la mascota aparece en la imagen; false si es solo texto o un cartel sin el animal), ' +
-                'breed, color, ' +
-                'size (small/medium/large), sex (male/female), age (puppy/young/adult/senior), ' +
-                'collar (true/false), plate (true/false), characteristics, ' +
-                'province y municipality (nombres exactos de Cuba), zone, address. ' +
-                'Si un dato no se ve, usa null.'
-            );
-
-            visionInput = {
-              labels: visionResult.labels,
-              description: visionResult.description,
-            };
-          }
-        }
-      }
+      download = await fetchRemoteImage(candidate, { maxBytes: 8 * 1024 * 1024 });
     } catch (error) {
-      console.warn('[facebook-link] visión no disponible para la imagen del post', error);
+      console.warn('[facebook-link] no se pudo descargar la imagen del post', error);
+      continue;
     }
+
+    if (!download.ok) continue;
+
+    const sanitized = await sanitizeImage(new Uint8Array(download.bytes), 'publication', {
+      // La imagen la publicó un tercero: si trae GPS se descarta, pero no se
+      // rechaza la importación porque el usuario no puede corregirla.
+      rejectGps: false,
+    });
+
+    if (!sanitized.ok) continue;
+
+    imageForPublication = candidate;
+    sanitizedImageDataUrl = `data:${sanitized.mimeType};base64,${sanitized.bytes.toString('base64')}`;
+
+    if (AI_ENABLED) {
+      try {
+        const payload = toImagePayload(new Uint8Array(sanitized.bytes), candidate);
+
+        if (payload.ok) {
+          const provider = getAIProvider();
+          const visionResult = await provider.analyzeImage(
+            payload.image,
+            'Analiza esta imagen de una mascota. ' +
+              'Devuelve SOLO un JSON válido con: type (LOST/FOUND/ADOPTION/ABANDONED/SIGHTING), ' +
+              'species (dog/cat/bird/rabbit/rodent/reptile/other), ' +
+              'has_pet (true si la mascota aparece en la imagen; false si es solo texto o un cartel sin el animal), ' +
+              'breed, color, ' +
+              'size (small/medium/large), sex (male/female), age (puppy/young/adult/senior), ' +
+              'collar (true/false), plate (true/false), characteristics, ' +
+              'province y municipality (nombres exactos de Cuba), zone, address. ' +
+              'Si un dato no se ve, usa null.'
+          );
+
+          visionInput = {
+            labels: visionResult.labels,
+            description: visionResult.description,
+          };
+        }
+      } catch (error) {
+        console.warn('[facebook-link] visión no disponible para la imagen del post', error);
+      }
+    }
+
+    break;
   }
 
   // El texto del post hace de OCR: suele traer la ubicación, el teléfono y la
@@ -283,7 +299,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     data: {
       title,
       description,
-      image_url: imageForVision,
+      image_url: imageForPublication,
       image_data_url: sanitizedImageDataUrl,
       extracted,
       confidence: extracted.confidence,

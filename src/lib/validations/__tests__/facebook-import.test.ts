@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest'; 
 import { 
   facebookLinkImportSchema, 
   extractOpenGraphMetadata,
   extractPostText,
+  extractPostImages,
   isFacebookBoilerplate,
   FACEBOOK_IMPORT_CONSTANTS 
 } from '../facebook-import';
@@ -227,6 +228,49 @@ describe('Facebook Import Validation', () => {
 
     it('devuelve null si no hay mensaje', () => {
       expect(extractPostText('<html><head></head></html>')).toBeNull();
+    });
+  });
+
+  describe('extractPostImages', () => {
+    it('prioriza la foto adjunta sobre la portada del grupo', () => {
+      const html = `
+        <meta property="og:image" content="https://scontent.xx.fbcdn.net/v/cover.jpg?stp=dst-jpg&amp;oe=AA" />
+        <script type="application/json">{"group":{"cover_photo":{"uri":"https:\\/\\/scontent.xx.fbcdn.net\\/v\\/cover.jpg?stp=dst-jpg&oe=AA"}},"attachments":[{"media":{"photo_image":{"uri":"https:\\/\\/scontent.xx.fbcdn.net\\/v\\/post.jpg?stp=dst-jpg\\u0026oe=CC"}}}]}</script>
+      `;
+
+      const images = extractPostImages(html);
+
+      expect(images[0]).toBe(
+        'https://scontent.xx.fbcdn.net/v/post.jpg?stp=dst-jpg&oe=CC'
+      );
+    });
+
+    it('descarta avatares y fotos de perfil del grupo', () => {
+      const html = `
+        <script type="application/json">{"profile_picture_image":{"uri":"https:\\/\\/scontent.xx.fbcdn.net\\/v\\/perfil.jpg?stp=dst-jpg&oe=AA"}}</script>
+      `;
+
+      expect(extractPostImages(html)).toEqual([]);
+    });
+
+    it('descarta miniaturas demasiado pequeñas', () => {
+      const html = `
+        <script type="application/json">{"image":{"uri":"https:\\/\\/scontent.xx.fbcdn.net\\/v\\/logo.jpg?stp=dst-jpg_s160x160&oe=AA"}}</script>
+      `;
+
+      expect(extractPostImages(html)).toEqual([]);
+    });
+
+    it('extrae imágenes del div del mensaje', () => {
+      const html = `
+        <div data-ad-preview="message">
+          <img src="https://scontent.xx.fbcdn.net/v/foto.jpg?stp=dst-jpg&amp;oe=AA" />
+        </div>
+      `;
+
+      expect(extractPostImages(html)).toEqual([
+        'https://scontent.xx.fbcdn.net/v/foto.jpg?stp=dst-jpg&oe=AA',
+      ]);
     });
   });
 

@@ -199,19 +199,30 @@ function cleanText(value?: string | null): string | undefined {
  *
  * La imagen del enlace ya llega reencodeada (WebP, sin metadatos) y no se
  * descarga desde el navegador: el CDN de Facebook bloquea la petición directa
- * por CORS o con un 403.
+ * por CORS o con un 403. Se decodifica en memoria porque `fetch` de un `data:`
+ * URL no está permitido por la CSP (`connect-src`).
  */
-async function dataUrlToFile(dataUrl: string): Promise<File> {
-  const response = await fetch(dataUrl);
-  if (!response.ok) throw new Error('No se pudo preparar la imagen importada');
+function dataUrlToFile(dataUrl: string): File {
+  const comma = dataUrl.indexOf(',');
+  const header = comma === -1 ? '' : dataUrl.slice(0, comma);
+  const payload = comma === -1 ? '' : dataUrl.slice(comma + 1);
 
-  const blob = await response.blob();
+  if (!header.startsWith('data:') || !/;base64/i.test(header) || !payload) {
+    throw new Error('La imagen importada no tiene un formato válido');
+  }
+
+  const mimeType = header.slice('data:'.length).split(';')[0] || 'image/webp';
+  const binary = window.atob(payload);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
   const extension =
-    blob.type === 'image/png' ? 'png' : blob.type === 'image/jpeg' ? 'jpg' : 'webp';
+    mimeType === 'image/png' ? 'png' : mimeType === 'image/jpeg' ? 'jpg' : 'webp';
 
-  return new File([blob], `imported-image.${extension}`, {
-    type: blob.type || 'image/webp',
-  });
+  return new File([bytes], `imported-image.${extension}`, { type: mimeType });
 }
 
 /**
@@ -584,11 +595,14 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
       setReview(extracted);
       // Se prefiere la copia saneada del servidor; la URL remota solo queda como
       // respaldo visual cuando no se pudo descargar la imagen.
-      setReviewImage(
-        cleanText(data.image_data_url) ?? cleanText(data.image_url) ?? null
-      );
+      const importedImage =
+        cleanText(data.image_data_url) ?? cleanText(data.image_url) ?? null;
+
+      setReviewImage(importedImage);
       setReviewHasPet(extracted.hasPet === true);
-      setUseImage(extracted.hasPet === true);
+      // La imagen del post se ofrece como foto por defecto: el usuario decide si
+      // la usa, aunque la visión no haya podido confirmar la mascota.
+      setUseImage(importedImage !== null);
       setDisclaimer(data.provider_is_real === false ? DEMO_DISCLAIMER : null);
       setLinkOpen(false);
     } catch (err) {
@@ -632,18 +646,18 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
   const applyReview = async () => {
     if (!review) return;
 
-    // La foto solo se adjunta si la visión confirmó que la mascota está en la
-    // imagen y el usuario no desmarcó la casilla. Si era una captura de texto,
-    // el formulario no gana nada con usarla como foto de la publicación.
+    // La foto se adjunta si el usuario no desmarcó la casilla. Para una captura
+    // la casilla viene desmarcada salvo que la visión viera la mascota; para la
+    // imagen de un enlace viene marcada, porque es la foto del post.
     let imageFile: File | undefined;
     let imageError: string | null = null;
 
-    if (reviewHasPet && reviewImage && useImage) {
+    if (reviewImage && useImage) {
       try {
         if (file) {
           imageFile = file;
         } else if (reviewImage.startsWith('data:')) {
-          const candidate = await dataUrlToFile(reviewImage);
+          const candidate = dataUrlToFile(reviewImage);
 
           if (!ALLOWED_IMAGE_TYPES.includes(candidate.type)) {
             throw new Error('La imagen importada no tiene un formato permitido');
@@ -883,29 +897,31 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
                   className="w-full h-40 object-cover"
                 />
               </div>
-              {reviewHasPet && (
-                <div className="space-y-2">
-                  <p className="flex items-start gap-1.5 text-xs font-medium text-found">
-                    <CheckCircle className="size-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-                    La mascota aparece en la foto.
-                  </p>
-                  <label className="flex items-center gap-2 rounded-xl border border-found/30 bg-found/5 px-3 py-2 text-xs font-semibold text-foreground">
-                    <input
-                      type="checkbox"
-                      className="size-4 rounded border-foreground/20"
-                      checked={useImage}
-                      onChange={(event) => setUseImage(event.target.checked)}
-                    />
-                    Usar esta imagen como foto de la publicación
-                  </label>
-                </div>
-              )}
-              {!reviewHasPet && (
+              {reviewHasPet ? (
+                <p className="flex items-start gap-1.5 text-xs font-medium text-found">
+                  <CheckCircle className="size-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                  La mascota aparece en la foto.
+                </p>
+              ) : file ? (
                 <p className="flex items-start gap-1.5 text-xs font-medium text-lost">
                   <AlertCircle className="size-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                   La IA no detectó una mascota en esta imagen. Sube una foto donde se vea el animal o una captura del aviso.
                 </p>
+              ) : (
+                <p className="flex items-start gap-1.5 text-xs font-medium text-orange">
+                  <AlertCircle className="size-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                  No se pudo confirmar que la mascota aparezca en la imagen del post. Revisa la vista previa; si no es la foto correcta, desmárcala y súbela a mano.
+                </p>
               )}
+              <label className="flex items-center gap-2 rounded-xl border border-found/30 bg-found/5 px-3 py-2 text-xs font-semibold text-foreground">
+                <input
+                  type="checkbox"
+                  className="size-4 rounded border-foreground/20"
+                  checked={useImage}
+                  onChange={(event) => setUseImage(event.target.checked)}
+                />
+                Usar esta imagen como foto de la publicación
+              </label>
             </div>
           )}
 
