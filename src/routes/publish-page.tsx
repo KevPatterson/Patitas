@@ -6,7 +6,7 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import 'leaflet/dist/leaflet.css';
-import { Circle, Tag } from 'lucide-react';
+import { Tag } from 'lucide-react';
 import { useAuth } from '../app/auth-context';
 import { Button, LinkButton } from '../components/ui/button';
 import { TextField } from '../components/ui/text-field';
@@ -38,6 +38,32 @@ L.Icon.Default.mergeOptions({
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
 });
+
+/**
+ * Icono de collar para el formulario.
+ *
+ * La `Circle` de Lucide parecía un control sin marcar junto al checkbox. Este
+ * dibujo muestra la banda del collar y la chapa colgante.
+ */
+function CollarIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3.5 6.5c2.6 2.1 14.4 2.1 17 0" />
+      <path d="M3.5 6.5c0 3.8 3.8 6.5 8.5 6.5s8.5-2.7 8.5-6.5" />
+      <path d="M12 13v2.5" />
+      <circle cx="12" cy="18" r="2.2" />
+    </svg>
+  );
+}
 
 type MapPrecision = 'zone' | 'municipality' | 'province' | 'address' | 'manual' | 'none';
 
@@ -1124,7 +1150,7 @@ export function PublishPage() {
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-3 rounded-2xl border-2 border-turquoise/20 bg-turquoise/5 px-4 py-3 text-sm font-semibold text-foreground cursor-pointer transition hover:bg-turquoise/10">
                   <input type="checkbox" className="rounded border-turquoise text-turquoise focus:ring-turquoise" checked={values.collar} onChange={(event) => updateValue('collar', event.target.checked)} />
-                  <Circle className="size-4 text-turquoise" aria-hidden="true" />
+                  <CollarIcon className="size-4 text-turquoise" />
                   Tiene collar
                 </label>
                 <label className="flex items-center gap-3 rounded-2xl border-2 border-purple/20 bg-purple/5 px-4 py-3 text-sm font-semibold text-foreground cursor-pointer transition hover:bg-purple/10">
