@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { geocodeMatchesLocation } from '../location-validation';
+import { canonicalizeGeocodeLocation, geocodeMatchesLocation } from '../location-validation';
 
 const centroHabana = { lat: 23.138, lng: -82.3618 };
 
@@ -71,5 +71,49 @@ describe('geocodeMatchesLocation', () => {
 
   it('no puede validar sin ubicación y no descarta el resultado', () => {
     expect(geocodeMatchesLocation({ lat: 23.1, lng: -82.3 }, {})).toBe(true);
+  });
+
+  it('acepta variantes de la provincia aunque el nombre no coincida literalmente', () => {
+    expect(
+      geocodeMatchesLocation(
+        {
+          lat: 23.1183,
+          lng: -82.3938,
+          displayName: 'Playa, Habana, Cuba',
+          state: 'Habana',
+          municipality: 'Playa',
+        },
+        { province: 'La Habana', municipality: 'Playa' }
+      )
+    ).toBe(true);
+  });
+});
+
+describe('canonicalizeGeocodeLocation', () => {
+  it('traduce provincia y municipio a los nombres del formulario', () => {
+    expect(
+      canonicalizeGeocodeLocation({
+        lat: 23.1183,
+        lng: -82.3938,
+        state: 'Provincia de La Habana',
+        city: 'Plaza de la Revolución',
+      })
+    ).toEqual({ province: 'La Habana', municipality: 'Plaza de la Revolución' });
+  });
+
+  it('deduce la provincia a partir de un municipio único', () => {
+    expect(
+      canonicalizeGeocodeLocation({
+        lat: 21.5219,
+        lng: -77.2653,
+        city: 'Nuevitas',
+      })
+    ).toEqual({ province: 'Camagüey', municipality: 'Nuevitas' });
+  });
+
+  it('no inventa un municipio homónimo sin provincia', () => {
+    expect(
+      canonicalizeGeocodeLocation({ lat: 22.2, lng: -84.1, city: 'San Luis' })
+    ).toEqual({ province: undefined, municipality: undefined });
   });
 });

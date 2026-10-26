@@ -349,13 +349,14 @@ function findImagesInObject(obj: unknown, found: string[] = []): string[] {
  */
 function decodeHtmlEntities(text: string): string {
   return text
-    .replace(/&/gi, '&')
-    .replace(/</gi, '<')
-    .replace(/>/gi, '>')
-    .replace(/"/gi, '"')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
     .replace(/&apos;/gi, "'")
     .replace(/&#0*39;/g, "'")
     .replace(/&nbsp;/gi, ' ')
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    // `&amp;` va al final para no decodificar dos veces (`&amp;lt;` -> `&lt;`).
+    .replace(/&amp;/gi, '&');
 }

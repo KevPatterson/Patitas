@@ -31,7 +31,7 @@ export type ImportedData = {
   address?: string;
   latitude?: number;
   longitude?: number;
-  locationPrecision?: 'municipality' | 'province' | 'none';
+  locationPrecision?: 'zone' | 'municipality' | 'province' | 'none';
   eventDate?: string;
   eventTimeApprox?: string;
   sourceUrl?: string;

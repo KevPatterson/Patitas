@@ -101,6 +101,31 @@ describe('extractStructuredDataFromText', () => {
     expect(extractStructuredDataFromText('Se perdió en Playa').municipality).toBe('Playa');
   });
 
+  it('no confunde "Playa Guardalavaca" con el municipio Playa', () => {
+    const result = extractStructuredDataFromText('Perro encontrado en Playa Guardalavaca');
+
+    expect(result.municipality).toBe('Guardalavaca');
+    expect(result.province).toBe('Holguín');
+    expect(result.zone).toBe('Guardalavaca');
+  });
+
+  it('completa provincia y municipio desde una zona conocida', () => {
+    const result = extractStructuredDataFromText('Perdido en Vedado, lleva collar rojo');
+
+    expect(result.zone).toBe('Vedado');
+    expect(result.province).toBe('La Habana');
+    expect(result.municipality).toBe('Plaza de la Revolución');
+  });
+
+  it('conserva abreviaturas y partes secundarias de la dirección', () => {
+    expect(
+      extractStructuredDataFromText('Calle 23 No. 456, Apto 2. Perro perdido en Vedado').address
+    ).toBe('Calle 23 No. 456, Apto 2');
+    expect(
+      extractStructuredDataFromText('Calle 23 #456. Llama al 55512345').address
+    ).toBe('Calle 23 #456');
+  });
+
   it('no inventa datos con un texto vacío', () => {
     expect(extractStructuredDataFromText('   ')).toEqual({});
   });

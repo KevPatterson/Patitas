@@ -14,7 +14,11 @@ import { TextareaField } from '../components/ui/textarea-field';
 import { CatLoader } from '../components/ui/cat-loader';
 import { PublicationImporter } from '../components/import/publication-importer';
 import { mergeImportedData, type ImportedData } from '../lib/import/merge-imported-data';
-import { geocodeMatchesLocation, type GeocodeCandidate } from '../lib/import/location-validation';
+import {
+  canonicalizeGeocodeLocation,
+  geocodeMatchesLocation,
+  type GeocodeCandidate,
+} from '../lib/import/location-validation';
 import { resolveCubaCoordinates } from '../lib/constants/cuba-locations';
 import { createLocation, createPublication, uploadPublicationImages, createPet, deletePublicationImages } from '../lib/supabase/publications';
 import { isFeatureEnabled } from '../lib/config/feature-flags';
@@ -35,7 +39,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-type MapPrecision = 'municipality' | 'province' | 'address' | 'manual' | 'none';
+type MapPrecision = 'zone' | 'municipality' | 'province' | 'address' | 'manual' | 'none';
 
 /**
  * Recentra el mapa cuando la ubicación cambia por una fuente externa (IA,
@@ -60,7 +64,14 @@ function MapController({
     const lng = Number(longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
-    const zoom = precision === 'address' ? 15 : precision === 'municipality' ? 12 : 9;
+    const zoom =
+      precision === 'address'
+        ? 15
+        : precision === 'zone'
+          ? 14
+          : precision === 'municipality'
+            ? 12
+            : 9;
     map.setView([lat, lng], zoom);
 
     // El contenedor cambia de tamaño al montarse el paso 3; Leaflet necesita
@@ -259,6 +270,7 @@ export function PublishPage() {
     const resolved = resolveCubaCoordinates({
       province: next.province,
       municipality: next.municipality,
+      zone: next.zone,
     });
 
     if (resolved.latitude === undefined || resolved.longitude === undefined) {
@@ -276,7 +288,11 @@ export function PublishPage() {
 
     if (key === 'province') {
       const province = value as string;
-      const resolved = resolveCubaCoordinates({ province, municipality: '' });
+      const resolved = resolveCubaCoordinates({
+        province,
+        municipality: '',
+        zone: values.zone,
+      });
 
       setValues((current) =>
         withLocationCoordinates({ ...current, province, municipality: '' })
@@ -287,7 +303,11 @@ export function PublishPage() {
 
     if (key === 'municipality') {
       const municipality = value as string;
-      const resolved = resolveCubaCoordinates({ province: values.province, municipality });
+      const resolved = resolveCubaCoordinates({
+        province: values.province,
+        municipality,
+        zone: values.zone,
+      });
 
       setValues((current) => withLocationCoordinates({ ...current, municipality }));
       setLocationPrecision(resolved.locationPrecision);
@@ -342,12 +362,22 @@ export function PublishPage() {
     }
   };
 
-  /** Geocodifica una dirección con contexto de Cuba. */
-  const geocodeAddress = async (parts: string[]): Promise<GeocodeCandidate | null> => {
+  /**
+   * Geocodifica una dirección con contexto de Cuba y devuelve varios
+   * candidatos.
+   *
+   * Nominatim puede devolver primero una calle homónima de otra zona; tener más
+   * de un resultado permite elegir el que pasa la validación de provincia y
+   * municipio en lugar de descartar la búsqueda entera.
+   */
+  const geocodeAddressCandidates = async (
+    parts: string[],
+    limit = 3
+  ): Promise<GeocodeCandidate[]> => {
     const query = [...parts.filter((part) => part && part.trim()), 'Cuba'].join(', ');
 
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=cu&addressdetails=1`,
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=${limit}&countrycodes=cu&addressdetails=1`,
       // `Accept-Language` es una cabecera segura para CORS; `User-Agent` no se
       // puede fijar desde el navegador y provocaba que la petición fallara.
       { headers: { 'Accept-Language': 'es' } }
@@ -356,34 +386,44 @@ export function PublishPage() {
     if (!response.ok) throw new Error(`Nominatim respondió ${response.status}`);
 
     const data: unknown = await response.json();
-    if (!Array.isArray(data) || data.length === 0) return null;
+    if (!Array.isArray(data) || data.length === 0) return [];
 
-    const first = data[0] as {
-      lat?: string;
-      lon?: string;
-      display_name?: string;
-      address?: Record<string, string>;
-    };
-    const lat = Number(first.lat);
-    const lng = Number(first.lon);
+    return data
+      .map((item): GeocodeCandidate | null => {
+        const entry = item as {
+          lat?: string;
+          lon?: string;
+          display_name?: string;
+          address?: Record<string, string>;
+        };
+        const lat = Number(entry.lat);
+        const lng = Number(entry.lon);
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
-    // La jerarquía permite comprobar que el resultado pertenece al municipio
-    // extraído antes de mover el marcador.
-    return {
-      lat,
-      lng,
-      displayName: first.display_name,
-      state: first.address?.state,
-      county: first.address?.county,
-      city: first.address?.city,
-      cityDistrict: first.address?.city_district,
-      suburb: first.address?.suburb,
-      town: first.address?.town,
-      village: first.address?.village,
-      municipality: first.address?.municipality,
-    };
+        // La jerarquía permite comprobar que el resultado pertenece al municipio
+        // extraído antes de mover el marcador.
+        return {
+          lat,
+          lng,
+          displayName: entry.display_name,
+          state: entry.address?.state,
+          county: entry.address?.county,
+          city: entry.address?.city,
+          cityDistrict: entry.address?.city_district,
+          suburb: entry.address?.suburb,
+          town: entry.address?.town,
+          village: entry.address?.village,
+          municipality: entry.address?.municipality,
+        };
+      })
+      .filter((candidate): candidate is GeocodeCandidate => candidate !== null);
+  };
+
+  /** Geocodifica una dirección y devuelve el primer resultado válido. */
+  const geocodeAddress = async (parts: string[]): Promise<GeocodeCandidate | null> => {
+    const candidates = await geocodeAddressCandidates(parts, 1);
+    return candidates[0] ?? null;
   };
 
   /** Aplica coordenadas con la difuminación de ±50 m del formulario. */
@@ -396,47 +436,135 @@ export function PublishPage() {
   };
 
   /**
-   * Afina la ubicación municipal con la dirección o la zona que leyó la IA.
+   * Aplica un resultado de geocodificación ya validado.
    *
-   * El resultado de Nominatim solo se aplica si pertenece al municipio y la
-   * provincia que quedaron en el formulario. Si no, se conserva el centro del
-   * municipio: es preferible un punto aproximado correcto a uno exacto en otro
-   * lugar.
+   * Además de mover el marcador, completa provincia y municipio si el aviso solo
+   * traía una zona o una dirección. Se hace en un único `setValues` para no
+   * pisar cambios que el usuario haya hecho mientras respondía Nominatim.
+   */
+  const applyRefinedLocation = (
+    candidate: GeocodeCandidate,
+    precision: 'address' | 'zone',
+    canonical: { province?: string; municipality?: string }
+  ) => {
+    const fuzzed = fuzzedCoordinates(candidate.lat, candidate.lng);
+
+    setValues((current) => {
+      const next = {
+        ...current,
+        approximateLat: fuzzed.lat,
+        approximateLng: fuzzed.lng,
+      };
+
+      if (!next.province && canonical.province) {
+        next.province = canonical.province;
+      }
+
+      if (!next.municipality && canonical.municipality) {
+        const province = next.province;
+        if (!province || province === canonical.province) {
+          next.municipality = canonical.municipality;
+        }
+      }
+
+      return next;
+    });
+
+    setLocationPrecision(precision);
+  };
+
+  /**
+   * Afina la ubicación con la dirección o la zona que leyó la IA.
+   *
+   * Se prueban varias consultas, de la más específica a la más general, y solo
+   * se aplica un resultado que pertenezca a la provincia y el municipio del
+   * formulario. Si la ubicación estaba vacía, el resultado también la completa:
+   * antes, un aviso que solo decía "Vedado" se quedaba sin marcador.
    */
   const refineAiLocation = async (
     data: ImportedData,
     location: { province?: string; municipality?: string }
   ) => {
-    if (!data.address && !data.zone) return;
+    const address = data.address?.trim();
+    const zone = data.zone?.trim();
+    if (!address && !zone) return;
 
-    const expected = resolveCubaCoordinates(location);
-    if (expected.latitude === undefined || expected.longitude === undefined) return;
+    const province = location.province?.trim();
+    const municipality = location.municipality?.trim();
 
-    try {
-      const coordinates = await geocodeAddress([
-        data.address ?? data.zone ?? '',
-        data.zone ?? '',
-        location.municipality ?? '',
-        location.province ?? '',
-      ]);
+    const queries: Array<{ parts: string[]; precision: 'address' | 'zone' }> = [];
 
-      if (!coordinates) return;
-
-      const matches = geocodeMatchesLocation(coordinates, {
-        province: location.province,
-        municipality: location.municipality,
-        expected: { lat: expected.latitude, lng: expected.longitude },
+    if (address) {
+      queries.push({
+        parts: [address, zone ?? '', municipality ?? '', province ?? ''],
+        precision: 'address',
       });
+    }
 
-      if (!matches) {
-        console.warn('Se descartó una geocodificación fuera del municipio:', coordinates);
-        return;
+    if (zone) {
+      queries.push({
+        parts: [zone, municipality ?? '', province ?? ''],
+        precision: 'zone',
+      });
+    }
+
+    if (address && zone) {
+      queries.push({
+        parts: [address, municipality ?? '', province ?? ''],
+        precision: 'address',
+      });
+    }
+
+    // La distancia solo se usa cuando el municipio resolvió a coordenadas
+    // concretas; una provincia entera es demasiado grande para este filtro.
+    const expected = municipality
+      ? resolveCubaCoordinates({ province, municipality })
+      : undefined;
+    const expectedPoint =
+      expected?.locationPrecision === 'municipality' &&
+      expected.latitude !== undefined &&
+      expected.longitude !== undefined
+        ? { lat: expected.latitude, lng: expected.longitude }
+        : undefined;
+
+    const seen = new Set<string>();
+
+    for (const query of queries) {
+      const key = query.parts
+        .map((part) => part.trim().toLowerCase())
+        .filter(Boolean)
+        .join('|');
+
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+
+      try {
+        const candidates = await geocodeAddressCandidates(query.parts, 3);
+
+        for (const candidate of candidates) {
+          const matches = geocodeMatchesLocation(candidate, {
+            province,
+            municipality,
+            expected: expectedPoint,
+          });
+
+          if (!matches) continue;
+
+          applyRefinedLocation(
+            candidate,
+            query.precision,
+            canonicalizeGeocodeLocation(candidate)
+          );
+          return;
+        }
+      } catch (error) {
+        // El marcador del municipio ya está puesto; no se molesta al usuario.
+        console.warn('No se pudo afinar la ubicación extraída por IA:', error);
       }
 
-      applyCoordinates(coordinates.lat, coordinates.lng, 'address');
-    } catch (error) {
-      // El marcador del municipio ya está puesto; no se molesta al usuario.
-      console.warn('No se pudo afinar la ubicación extraída por IA:', error);
+      // Nominatim pide como máximo una petición por segundo. Las consultas son
+      // de respaldo y corren en segundo plano, así que se puede esperar.
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
     }
   };
 
@@ -458,6 +586,7 @@ export function PublishPage() {
     const coordinates = resolveCubaCoordinates({
       province: merged.province,
       municipality: merged.municipality,
+      zone: merged.zone,
     });
 
     const latitude = coordinates.latitude;
@@ -475,8 +604,12 @@ export function PublishPage() {
     const shouldClearCoordinates = locationChanged && !hasCoordinates;
 
     const fuzzed = shouldApplyCoordinates ? fuzzedCoordinates(latitude, longitude) : null;
-    // Solo se afina con la dirección si la zona de la IA se llegó a aplicar.
-    const zoneWasEmpty = !(values.zone ?? '').trim();
+    // Solo se afina si el usuario no había escrito ya una referencia propia y el
+    // marcador actual puede moverse (sin coordenadas, ubicación nueva o limpia).
+    // La dirección importada se guarda en `zone` cuando el formulario no tenía
+    // una; por eso aquí solo hace falta revisar ese campo.
+    const userHadLocationText = Boolean((values.zone ?? '').trim());
+    const canRefineLocation = !hadCoordinates || locationChanged || shouldClearCoordinates;
 
     // Manejar imagen importada: si la visión confirmó que hay mascota (hasPet),
     // la imagen se añade como primera foto (portada) si no hay otras.
@@ -520,7 +653,9 @@ export function PublishPage() {
     }
 
     // El municipio ya está marcado; si hay calle o zona, se afina en segundo plano.
-    if (shouldApplyCoordinates && (data.address || data.zone) && zoneWasEmpty) {
+    // También se intenta cuando no hubo coordenadas: el geocodificador puede
+    // resolver y completar la ubicación que la extracción no supo ubicar.
+    if (canRefineLocation && !userHadLocationText && (data.address || data.zone)) {
       void refineAiLocation(data, {
         province: merged.province,
         municipality: merged.municipality,

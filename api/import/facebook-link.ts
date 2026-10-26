@@ -4,6 +4,7 @@ import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from 
 import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';
 import { assertSafeRemoteUrl, fetchRemoteImage } from '../_lib/url-guard.js';
 import { toImagePayload } from '../_lib/image-guard.js';
+import { sanitizeImage } from '../_lib/image-process.js';
 import { aiProviderIsReal, AI_ENABLED } from '../_lib/env.js';
 import {
   facebookLinkImportSchema,
@@ -40,6 +41,14 @@ type FacebookImportResponse = {
     title: string | null;
     description: string | null;
     image_url: string | null;
+    /**
+     * Copia saneada (WebP, sin metadatos) de la imagen del post.
+     *
+     * Se envía como data URL para que el navegador no tenga que descargarla
+     * desde el CDN de Facebook, que suele bloquear la petición por CORS o con
+     * un 403. Es la imagen que se ofrece como foto de la publicación.
+     */
+    image_data_url?: string | null;
     extracted?: Record<string, unknown>;
     confidence?: number;
     provider_is_real?: boolean;
@@ -177,36 +186,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Usar la primera imagen válida del post para análisis de visión.
   const imageForVision = postImages[0] ?? metadata.image;
 
-  // Imagen para visión: pasa por el guard y verificación de magic bytes.
+  // Imagen para visión y para la revisión: pasa por el guard, se reencodea sin
+  // metadatos y se devuelve como data URL. El navegador no puede descargarla
+  // directamente del CDN de Facebook (CORS/403), así que es el servidor quien la
+  // prepara una sola vez.
   let visionInput: { labels: Array<{ label: string; confidence: number }>; description?: string } | null =
     null;
+  let sanitizedImageDataUrl: string | null = null;
 
-  if (imageForVision && AI_ENABLED) {
+  if (imageForVision) {
     try {
       const download = await fetchRemoteImage(imageForVision, { maxBytes: 8 * 1024 * 1024 });
 
       if (download.ok) {
-        const payload = toImagePayload(new Uint8Array(download.bytes), imageForVision);
+        const rawBytes = new Uint8Array(download.bytes);
+        const sanitized = await sanitizeImage(rawBytes, 'publication', {
+          // La imagen la publicó un tercero: si trae GPS se descarta, pero no se
+          // rechaza la importación porque el usuario no puede corregirla.
+          rejectGps: false,
+        });
 
-        if (payload.ok) {
-          const provider = getAIProvider();
-          const visionResult = await provider.analyzeImage(
-            payload.image,
-            'Analiza esta imagen de una mascota. ' +
-              'Devuelve SOLO un JSON válido con: type (LOST/FOUND/ADOPTION/ABANDONED/SIGHTING), ' +
-              'species (dog/cat/bird/rabbit/rodent/reptile/other), ' +
-              'has_pet (true si la mascota aparece en la imagen; false si es solo texto o un cartel sin el animal), ' +
-              'breed, color, ' +
-              'size (small/medium/large), sex (male/female), age (puppy/young/adult/senior), ' +
-              'collar (true/false), plate (true/false), characteristics, ' +
-              'province y municipality (nombres exactos de Cuba), zone, address. ' +
-              'Si un dato no se ve, usa null.'
-          );
+        if (sanitized.ok) {
+          sanitizedImageDataUrl = `data:${sanitized.mimeType};base64,${sanitized.bytes.toString('base64')}`;
+        }
 
-          visionInput = {
-            labels: visionResult.labels,
-            description: visionResult.description,
-          };
+        if (AI_ENABLED) {
+          const visionBytes = sanitized.ok ? new Uint8Array(sanitized.bytes) : rawBytes;
+          const payload = toImagePayload(visionBytes, imageForVision);
+
+          if (payload.ok) {
+            const provider = getAIProvider();
+            const visionResult = await provider.analyzeImage(
+              payload.image,
+              'Analiza esta imagen de una mascota. ' +
+                'Devuelve SOLO un JSON válido con: type (LOST/FOUND/ADOPTION/ABANDONED/SIGHTING), ' +
+                'species (dog/cat/bird/rabbit/rodent/reptile/other), ' +
+                'has_pet (true si la mascota aparece en la imagen; false si es solo texto o un cartel sin el animal), ' +
+                'breed, color, ' +
+                'size (small/medium/large), sex (male/female), age (puppy/young/adult/senior), ' +
+                'collar (true/false), plate (true/false), characteristics, ' +
+                'province y municipality (nombres exactos de Cuba), zone, address. ' +
+                'Si un dato no se ve, usa null.'
+            );
+
+            visionInput = {
+              labels: visionResult.labels,
+              description: visionResult.description,
+            };
+          }
         }
       }
     } catch (error) {
@@ -225,18 +252,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   });
 
   // Sin ningún campo real, es mejor decírselo al usuario que abrir una revisión
-  // vacía: el camino fiable en ese caso es la captura de pantalla.
+  // vacía: el camino fiable en ese caso es la captura de pantalla. Un `false`
+  // (por ejemplo `hasPet: false`) no aporta nada editable, así que no cuenta;
+  // un `hasPet: true` sí, porque la imagen sirve como foto de la publicación.
   const ignoredKeys = new Set([
     'confidence',
     'hasTextOverlay',
-    'hasPet',
     'locationPrecision',
     'ocrText',
     'latitude',
     'longitude',
   ]);
   const hasExtractedFields = Object.entries(extracted).some(
-    ([key, value]) => !ignoredKeys.has(key) && value !== undefined && value !== ''
+    ([key, value]) =>
+      !ignoredKeys.has(key) && value !== undefined && value !== '' && value !== false
   );
 
   if (!hasExtractedFields) {
@@ -255,6 +284,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       title,
       description,
       image_url: imageForVision,
+      image_data_url: sanitizedImageDataUrl,
       extracted,
       confidence: extracted.confidence,
       provider_is_real: aiProviderIsReal(),

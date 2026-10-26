@@ -43,6 +43,17 @@ const QUALITY_STEPS = [82, 74, 66, 58, 50] as const;
 
 export type SanitizeVariant = 'publication' | 'avatar';
 
+export type SanitizeOptions = {
+  /**
+   * Rechaza la imagen si trae GPS (comportamiento de las subidas del usuario).
+   *
+   * Las imágenes que se importan de terceros (por ejemplo, el `og:image` de
+   * Facebook) no las subió el usuario y no puede corregirlas: en ese caso se
+   * reencodean igualmente y el GPS se descarta con el resto de metadatos.
+   */
+  rejectGps?: boolean;
+};
+
 export type SanitizeResult =
   | {
       ok: true;
@@ -102,10 +113,12 @@ function targetFor(variant: SanitizeVariant): { side: number; bytes: number } {
  */
 export async function sanitizeImage(
   bytes: Uint8Array,
-  variant: SanitizeVariant
+  variant: SanitizeVariant,
+  options: SanitizeOptions = {}
 ): Promise<SanitizeResult> {
   const limit = maxInputBytes(variant);
   const target = targetFor(variant);
+  const rejectGps = options.rejectGps ?? true;
 
   // 1. Tipo real por contenido.
   const detected = detectImage(bytes, limit);
@@ -120,7 +133,7 @@ export async function sanitizeImage(
 
   // 2. GPS: se rechaza la subida, no se "limpia" en silencio. Así el usuario se
   // entera de que su foto llevaba su ubicación.
-  if (containsGpsMetadata(bytes)) {
+  if (rejectGps && containsGpsMetadata(bytes)) {
     return {
       ok: false,
       code: 'GPS_METADATA',

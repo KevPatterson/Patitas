@@ -54,7 +54,7 @@ type RawExtracted = {
   address?: string;
   latitude?: number;
   longitude?: number;
-  locationPrecision?: 'municipality' | 'province' | 'none';
+  locationPrecision?: 'zone' | 'municipality' | 'province' | 'none';
   event_date?: string;
   eventDate?: string;
   event_time?: string;
@@ -89,6 +89,7 @@ type LinkResponse = {
     title?: string | null;
     description?: string | null;
     image_url?: string | null;
+    image_data_url?: string | null;
     extracted?: RawExtracted;
     provider_is_real?: boolean;
   };
@@ -194,17 +195,37 @@ function cleanText(value?: string | null): string | undefined {
 }
 
 /**
+ * Convierte el data URL saneado que devuelve el servidor en un `File`.
+ *
+ * La imagen del enlace ya llega reencodeada (WebP, sin metadatos) y no se
+ * descarga desde el navegador: el CDN de Facebook bloquea la petición directa
+ * por CORS o con un 403.
+ */
+async function dataUrlToFile(dataUrl: string): Promise<File> {
+  const response = await fetch(dataUrl);
+  if (!response.ok) throw new Error('No se pudo preparar la imagen importada');
+
+  const blob = await response.blob();
+  const extension =
+    blob.type === 'image/png' ? 'png' : blob.type === 'image/jpeg' ? 'jpg' : 'webp';
+
+  return new File([blob], `imported-image.${extension}`, {
+    type: blob.type || 'image/webp',
+  });
+}
+
+/**
  * Indica si la extracción aportó algún dato editable.
  *
  * `confidence`, `ocrText` y las coordenadas no cuentan: una revisión vacía solo
- * confunde, así que es mejor pedir otra imagen.
+ * confunde, así que es mejor pedir otra imagen. `hasPet` sí cuenta: una foto
+ * donde se ve la mascota es útil aunque el texto no aporte ningún campo.
  */
 function hasMeaningfulData(data: ImportedData): boolean {
   const ignored = new Set([
     'confidence',
     'sourceUrl',
     'ocrText',
-    'hasPet',
     'locationPrecision',
     'latitude',
     'longitude',
@@ -383,8 +404,9 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
   const [review, setReview] = useState<ImportedData | null>(null);
   const [reviewImage, setReviewImage] = useState<string | null>(null);
   // La visión confirmó que la mascota sale en la imagen: se ofrecerá también
-  // como foto de la publicación.
+  // como foto de la publicación, salvo que el usuario desmarque la casilla.
   const [reviewHasPet, setReviewHasPet] = useState(false);
+  const [useImage, setUseImage] = useState(true);
   const [disclaimer, setDisclaimer] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
 
@@ -407,6 +429,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
       setReview(null);
       setReviewImage(null);
       setReviewHasPet(false);
+      setUseImage(true);
       setDisclaimer(null);
       setError(null);
       setApplied(false);
@@ -437,6 +460,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
     setReview(null);
     setReviewImage(null);
     setReviewHasPet(false);
+    setUseImage(true);
     setDisclaimer(null);
     setError(null);
     setApplied(false);
@@ -485,6 +509,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
       setReview(extracted);
       setReviewImage(preview);
       setReviewHasPet(extracted.hasPet === true);
+      setUseImage(extracted.hasPet === true);
       setDisclaimer(result.provider_is_real ? null : result.disclaimer ?? DEMO_DISCLAIMER);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al analizar la imagen');
@@ -557,8 +582,13 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
         setFile(null);
       }
       setReview(extracted);
-      setReviewImage(cleanText(data.image_url) ?? null);
+      // Se prefiere la copia saneada del servidor; la URL remota solo queda como
+      // respaldo visual cuando no se pudo descargar la imagen.
+      setReviewImage(
+        cleanText(data.image_data_url) ?? cleanText(data.image_url) ?? null
+      );
       setReviewHasPet(extracted.hasPet === true);
+      setUseImage(extracted.hasPet === true);
       setDisclaimer(data.provider_is_real === false ? DEMO_DISCLAIMER : null);
       setLinkOpen(false);
     } catch (err) {
@@ -594,6 +624,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
     setReview(null);
     setReviewImage(null);
     setReviewHasPet(false);
+    setUseImage(true);
     setDisclaimer(null);
     setApplied(false);
   };
@@ -601,42 +632,41 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
   const applyReview = async () => {
     if (!review) return;
 
-    // La foto solo se adjunta cuando la visión confirmó que la mascota está en
-    // la imagen. Si era una captura de texto, el formulario no gana nada con
-    // usarla como foto de la publicación.
+    // La foto solo se adjunta si la visión confirmó que la mascota está en la
+    // imagen y el usuario no desmarcó la casilla. Si era una captura de texto,
+    // el formulario no gana nada con usarla como foto de la publicación.
     let imageFile: File | undefined;
     let imageError: string | null = null;
-    
-    if (reviewHasPet && reviewImage) {
-      // Si la imagen viene de un enlace (Facebook), descargarla y crear File
-      if (!file && reviewImage.startsWith('http')) {
-        try {
-          console.log('[applyReview] Descargando imagen desde:', reviewImage);
-          const response = await fetch(reviewImage);
-          if (response.ok) {
-            const blob = await response.blob();
-            imageFile = new File([blob], 'imported-image.jpg', { type: blob.type || 'image/jpeg' });
-            console.log('[applyReview] Imagen descargada, tamaño:', blob.size, 'tipo:', blob.type);
-          } else if (response.status === 403) {
-            // Facebook CDN bloquea acceso directo: usar proxy o avisar al usuario
-            imageError = 'No se pudo descargar la imagen (403). Facebook bloquea el acceso directo. Sube una captura de pantalla o la foto directamente.';
-            console.warn('[applyReview] Error 403 descargando imagen de Facebook CDN');
-          } else {
-            console.warn('[applyReview] Error descargando imagen:', response.status, response.statusText);
+
+    if (reviewHasPet && reviewImage && useImage) {
+      try {
+        if (file) {
+          imageFile = file;
+        } else if (reviewImage.startsWith('data:')) {
+          const candidate = await dataUrlToFile(reviewImage);
+
+          if (!ALLOWED_IMAGE_TYPES.includes(candidate.type)) {
+            throw new Error('La imagen importada no tiene un formato permitido');
           }
-        } catch (err) {
-          console.error('[applyReview] Error descargando imagen:', err);
-          imageError = 'Error de red al descargar la imagen. Sube la foto manualmente.';
+
+          if (candidate.size > MAX_IMAGE_BYTES) {
+            throw new Error('La imagen importada excede 8 MB');
+          }
+
+          imageFile = candidate;
+        } else if (reviewImage.startsWith('http')) {
+          // Ya no se descarga desde el navegador: el CDN de Facebook bloquea la
+          // petición y la imagen llegaría sin sanear. El endpoint devuelve una
+          // copia en data URL cuando puede descargarla.
+          imageError =
+            'No se pudo preparar la imagen del enlace. Sube la foto o una captura directamente.';
         }
-      } else if (file) {
-        imageFile = file;
+      } catch (err) {
+        imageError =
+          err instanceof Error
+            ? err.message
+            : 'No se pudo preparar la imagen importada. Sube la foto manualmente.';
       }
-    } else if (reviewImage && !reviewHasPet) {
-      // Hay imagen pero la IA no detectó mascota
-      imageError = 'La IA no detectó una mascota en la imagen. Sube una foto donde se vea el animal o una captura de pantalla del aviso.';
-      console.log('[applyReview] No se adjunta imagen - IA no detectó mascota:', { reviewHasPet, reviewImage: !!reviewImage });
-    } else {
-      console.log('[applyReview] No se adjunta imagen:', { reviewHasPet, reviewImage: !!reviewImage, file: !!file });
     }
 
     if (imageError) {
@@ -854,10 +884,21 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
                 />
               </div>
               {reviewHasPet && (
-                <p className="flex items-start gap-1.5 text-xs font-medium text-found">
-                  <CheckCircle className="size-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-                  La mascota aparece en la foto: se añadirá también como imagen de la publicación.
-                </p>
+                <div className="space-y-2">
+                  <p className="flex items-start gap-1.5 text-xs font-medium text-found">
+                    <CheckCircle className="size-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                    La mascota aparece en la foto.
+                  </p>
+                  <label className="flex items-center gap-2 rounded-xl border border-found/30 bg-found/5 px-3 py-2 text-xs font-semibold text-foreground">
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-foreground/20"
+                      checked={useImage}
+                      onChange={(event) => setUseImage(event.target.checked)}
+                    />
+                    Usar esta imagen como foto de la publicación
+                  </label>
+                </div>
               )}
               {!reviewHasPet && (
                 <p className="flex items-start gap-1.5 text-xs font-medium text-lost">
@@ -1002,7 +1043,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
         <ul className="list-disc space-y-1 pl-4">
           <li>La IA lee el cartel, la foto o el texto del post y solo aporta datos reales.</li>
           <li>Si un dato no aparece, queda vacío para que lo completes tú.</li>
-          <li>Si la mascota aparece en la foto, se usa también como imagen de la publicación.</li>
+          <li>Si la mascota aparece en la foto, puedes usarla como imagen de la publicación.</li>
           <li>Al aplicar, se respeta lo que ya habías escrito en el formulario.</li>
         </ul>
       </div>

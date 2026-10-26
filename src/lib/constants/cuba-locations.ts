@@ -209,7 +209,7 @@ export const MUNICIPALITY_COORDINATES: Record<string, Coordinates> = {
   "Isla de la Juventud|La Fe": { lat: 21.7418, lng: -82.7559 },
 };
 
-export type LocationPrecision = 'municipality' | 'province' | 'none';
+export type LocationPrecision = 'zone' | 'municipality' | 'province' | 'none';
 
 /** Normaliza un nombre para comparar sin tildes ni mayúsculas. */
 export function normalizeLocationName(value: string): string {
@@ -219,6 +219,81 @@ export function normalizeLocationName(value: string): string {
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Alias de provincias que usan el geocodificador o los propios avisos.
+ * `Habana` a secas es la forma habitual de nombrar la provincia.
+ */
+const PROVINCE_NAME_ALIASES: Record<string, string> = {
+  habana: 'La Habana',
+  'ciudad de la habana': 'La Habana',
+  'la habana': 'La Habana',
+  'isla de pinos': 'Isla de la Juventud',
+  'victoria de las tunas': 'Las Tunas',
+};
+
+/**
+ * Devuelve la provincia canónica si `value` es (o contiene) su nombre.
+ *
+ * Nominatim devuelve el estado como "La Habana", "Provincia de La Habana" o
+ * incluso "Habana"; sin esta normalización, el resultado se descartaba y el
+ * marcador se quedaba en el centro del municipio.
+ */
+export function findProvinceName(value?: string): string | undefined {
+  const target = normalizeLocationName(value ?? '');
+  if (!target) return undefined;
+
+  const alias = PROVINCE_NAME_ALIASES[target];
+  if (alias) return alias;
+
+  const provinces = Object.keys(PROVINCE_COORDINATES);
+
+  for (const province of provinces) {
+    if (normalizeLocationName(province) === target) return province;
+  }
+
+  // "Provincia de Pinar del Río", "La Habana, Cuba", etc. Se exige que el
+  // nombre aparezca como palabra completa para no confundir calles.
+  for (const province of provinces) {
+    const normalized = normalizeLocationName(province);
+    const pattern = new RegExp(`(?:^|[^a-z0-9])${normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^a-z0-9])`);
+
+    if (pattern.test(target)) return province;
+  }
+
+  return undefined;
+}
+
+/**
+ * Devuelve el municipio canónico a partir del nombre que da Nominatim.
+ *
+ * Si se conoce la provincia, la búsqueda se limita a ella. Sin provincia solo
+ * se resuelve cuando el nombre es único: hay municipios homónimos y elegir uno
+ * al azar pondría el marcador en otra provincia.
+ */
+export function findMunicipalityName(province?: string, value?: string): string | undefined {
+  const raw = (value ?? '').split(',')[0] ?? '';
+  const target = normalizeLocationName(raw).replace(/^municipio (?:de )?/, '');
+  if (!target) return undefined;
+
+  const provinceName = findProvinceName(province);
+  const matches: string[] = [];
+
+  for (const key of Object.keys(MUNICIPALITY_COORDINATES)) {
+    const separator = key.indexOf('|');
+    const entryProvince = key.slice(0, separator);
+    const municipality = key.slice(separator + 1);
+
+    if (provinceName && entryProvince !== provinceName) continue;
+    if (normalizeLocationName(municipality) === target) {
+      matches.push(municipality);
+    }
+  }
+
+  if (matches.length === 0) return undefined;
+  if (provinceName) return matches[0];
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 /**
@@ -268,8 +343,37 @@ export function findMunicipalityCoordinates(
 export function resolveCubaCoordinates(input: {
   province?: string;
   municipality?: string;
+  /** Reparto, barrio o referencia leída por la IA. */
+  zone?: string;
 }): { latitude?: number; longitude?: number; locationPrecision: LocationPrecision } {
   const municipality = findMunicipalityCoordinates(input.province, input.municipality);
+  const effectiveProvince = municipality?.province ?? input.province;
+  const effectiveMunicipality = municipality?.municipality ?? input.municipality;
+
+  // Una zona conocida (Vedado, Miramar, Varadero) es más precisa que el centro
+  // del municipio. Solo se usa si no contradice la ubicación elegida: así,
+  // cambiar el municipio no deja el marcador en una zona del municipio anterior.
+  const zone = input.zone
+    ? findCubaZone(input.zone, {
+        province: effectiveProvince,
+        municipality: effectiveMunicipality,
+      })
+    : undefined;
+
+  if (
+    zone &&
+    zoneMatchesContext(zone, {
+      province: effectiveProvince,
+      municipality: effectiveMunicipality,
+    }) &&
+    !sameZoneName(zone.name, effectiveMunicipality)
+  ) {
+    return {
+      latitude: zone.lat,
+      longitude: zone.lng,
+      locationPrecision: 'zone',
+    };
+  }
 
   if (municipality) {
     return {
@@ -310,4 +414,192 @@ export function distanceKm(a: Coordinates, b: Coordinates): number {
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
 
   return 2 * earthRadiusKm * Math.asin(Math.sqrt(haversine));
+}
+
+// ---------------------------------------------------------------------------
+// Zonas, repartos y puntos de referencia
+// ---------------------------------------------------------------------------
+
+/**
+ * Zonas, repartos y puntos de referencia frecuentes en los avisos de mascotas.
+ *
+ * El municipio solo alcanza para poner el marcador en el centro del término
+ * municipal. Cuando el aviso dice "Vedado", "cerca del malecón" o "Playa
+ * Guardalavaca", esa referencia es más útil que el centro del municipio. Estas
+ * coordenadas son aproximadas y sirven solo como punto de partida: el cliente
+ * intenta afinar con el geocodificador y valida que el resultado siga dentro de
+ * la provincia y el municipio.
+ *
+ * Se evitan las zonas cuyo nombre coincide con el de un municipio (Centro
+ * Habana, Marianao, etc.): en esos casos la precisión municipal ya es correcta y
+ * duplicarlas solo confundiría.
+ */
+export type CubaZone = {
+  name: string;
+  province: string;
+  municipality: string;
+  lat: number;
+  lng: number;
+  aliases?: string[];
+};
+
+export type CubaZoneContext = {
+  province?: string;
+  municipality?: string;
+};
+
+export const CUBA_ZONES: CubaZone[] = [
+  // La Habana
+  { name: 'Vedado', province: 'La Habana', municipality: 'Plaza de la Revolución', lat: 23.1367, lng: -82.3833, aliases: ['el vedado'] },
+  { name: 'Nuevo Vedado', province: 'La Habana', municipality: 'Plaza de la Revolución', lat: 23.1167, lng: -82.4000 },
+  { name: 'La Rampa', province: 'La Habana', municipality: 'Plaza de la Revolución', lat: 23.1400, lng: -82.3833 },
+  { name: 'Coppelia', province: 'La Habana', municipality: 'Plaza de la Revolución', lat: 23.1400, lng: -82.3833 },
+  { name: 'Hotel Nacional', province: 'La Habana', municipality: 'Plaza de la Revolución', lat: 23.1422, lng: -82.3833 },
+  { name: 'Universidad de La Habana', province: 'La Habana', municipality: 'Plaza de la Revolución', lat: 23.1367, lng: -82.3833, aliases: ['universidad de la habana'] },
+  { name: 'José Martí', province: 'La Habana', municipality: 'Plaza de la Revolución', lat: 23.1222, lng: -82.3864, aliases: ['memorial jose marti'] },
+  { name: 'Cementerio de Colón', province: 'La Habana', municipality: 'Plaza de la Revolución', lat: 23.1250, lng: -82.3833, aliases: ['cementerio de colon'] },
+  { name: 'Fábrica de Arte Cubano', province: 'La Habana', municipality: 'Plaza de la Revolución', lat: 23.1333, lng: -82.4000, aliases: ['fabrica de arte cubano', 'fac'] },
+  { name: 'Miramar', province: 'La Habana', municipality: 'Playa', lat: 23.1136, lng: -82.4236 },
+  { name: 'Buenavista', province: 'La Habana', municipality: 'Playa', lat: 23.1167, lng: -82.4333 },
+  { name: 'Cubanacán', province: 'La Habana', municipality: 'Playa', lat: 23.1000, lng: -82.4333, aliases: ['cubanacan'] },
+  { name: 'Kohly', province: 'La Habana', municipality: 'Playa', lat: 23.1167, lng: -82.4167 },
+  { name: 'Santa Fe', province: 'La Habana', municipality: 'Playa', lat: 23.0833, lng: -82.4667 },
+  { name: 'Jaimanitas', province: 'La Habana', municipality: 'Playa', lat: 23.1000, lng: -82.4833 },
+  { name: 'Siboney', province: 'La Habana', municipality: 'Playa', lat: 23.0833, lng: -82.4667 },
+  { name: 'Malecón', province: 'La Habana', municipality: 'Centro Habana', lat: 23.1417, lng: -82.3667, aliases: ['el malecon'] },
+  { name: 'Prado', province: 'La Habana', municipality: 'Centro Habana', lat: 23.1386, lng: -82.3650 },
+  { name: 'Callejón de Hamel', province: 'La Habana', municipality: 'Centro Habana', lat: 23.1333, lng: -82.3667, aliases: ['callejon de hamel'] },
+  { name: 'Parque Central', province: 'La Habana', municipality: 'Habana Vieja', lat: 23.1386, lng: -82.3589 },
+  { name: 'Capitolio', province: 'La Habana', municipality: 'Habana Vieja', lat: 23.1352, lng: -82.3597 },
+  { name: 'Plaza Vieja', province: 'La Habana', municipality: 'Habana Vieja', lat: 23.1355, lng: -82.3500 },
+  { name: 'Catedral de La Habana', province: 'La Habana', municipality: 'Habana Vieja', lat: 23.1400, lng: -82.3500, aliases: ['catedral'] },
+  { name: 'Castillo del Morro', province: 'La Habana', municipality: 'Habana del Este', lat: 23.1500, lng: -82.3500, aliases: ['el morro'] },
+  { name: 'La Cabaña', province: 'La Habana', municipality: 'Habana del Este', lat: 23.1450, lng: -82.3500, aliases: ['la cabana'] },
+  { name: 'Alamar', province: 'La Habana', municipality: 'Habana del Este', lat: 23.1500, lng: -82.3000 },
+  { name: 'Cojímar', province: 'La Habana', municipality: 'Habana del Este', lat: 23.1667, lng: -82.3000, aliases: ['cojimar'] },
+  { name: 'Guanabo', province: 'La Habana', municipality: 'Habana del Este', lat: 23.1667, lng: -82.2833 },
+  { name: 'Santa María del Mar', province: 'La Habana', municipality: 'Habana del Este', lat: 23.1667, lng: -82.2833, aliases: ['santa maria del mar'] },
+  { name: 'Playas del Este', province: 'La Habana', municipality: 'Habana del Este', lat: 23.1667, lng: -82.2833, aliases: ['playa del este'] },
+  { name: 'Santos Suárez', province: 'La Habana', municipality: 'Diez de Octubre', lat: 23.0925, lng: -82.3679, aliases: ['santos suarez'] },
+  { name: 'Luyanó', province: 'La Habana', municipality: 'Diez de Octubre', lat: 23.1089, lng: -82.3737, aliases: ['luyano'] },
+  { name: 'Víbora', province: 'La Habana', municipality: 'Diez de Octubre', lat: 23.0983, lng: -82.3711, aliases: ['la vibora', 'vibora'] },
+  { name: 'Lawton', province: 'La Habana', municipality: 'Diez de Octubre', lat: 23.0936, lng: -82.3633 },
+
+  // Matanzas
+  { name: 'Varadero', province: 'Matanzas', municipality: 'Cárdenas', lat: 23.1667, lng: -81.2500 },
+  { name: 'Playa Girón', province: 'Matanzas', municipality: 'Ciénaga de Zapata', lat: 22.0667, lng: -81.0333, aliases: ['playa giron'] },
+  { name: 'Playa Larga', province: 'Matanzas', municipality: 'Ciénaga de Zapata', lat: 22.2833, lng: -81.1667 },
+
+  // Ciego de Ávila
+  { name: 'Cayo Coco', province: 'Ciego de Ávila', municipality: 'Morón', lat: 22.5167, lng: -78.3833 },
+  { name: 'Cayo Guillermo', province: 'Ciego de Ávila', municipality: 'Morón', lat: 22.5833, lng: -78.6333 },
+
+  // Oriente
+  { name: 'Guardalavaca', province: 'Holguín', municipality: 'Guardalavaca', lat: 21.1210, lng: -75.8340, aliases: ['playa guardalavaca'] },
+
+  // Occidente
+  { name: 'Soroa', province: 'Artemisa', municipality: 'Candelaria', lat: 22.8000, lng: -82.9833 },
+  { name: 'Las Terrazas', province: 'Artemisa', municipality: 'Candelaria', lat: 22.8500, lng: -82.9333 },
+];
+
+/** Normaliza para comparar sin tildes, mayúsculas ni puntuación. */
+function normalizeZoneName(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+type ZoneAliasEntry = {
+  zone: CubaZone;
+  alias: string;
+};
+
+const ZONE_ALIAS_INDEX: ZoneAliasEntry[] = CUBA_ZONES.flatMap((zone) =>
+  [zone.name, ...(zone.aliases ?? [])].map((alias) => ({
+    zone,
+    alias: normalizeZoneName(alias),
+  }))
+).filter((entry) => entry.alias.length >= 4);
+
+/**
+ * Busca una zona conocida dentro de un texto libre.
+ *
+ * Gana la coincidencia más larga (para que "Nuevo Vedado" no se quede en
+ * "Vedado") y, si hay contexto de provincia o municipio, se prioriza la zona
+ * que coincide con él. Si no aparece ninguna zona conocida devuelve `undefined`
+ * y el llamador puede intentar con el geocodificador.
+ */
+export function findCubaZone(
+  text: string,
+  context: CubaZoneContext = {}
+): CubaZone | undefined {
+  const normalized = normalizeZoneName(text);
+  if (!normalized) return undefined;
+
+  const padded = ` ${normalized} `;
+  const province = normalizeZoneName(context.province ?? '');
+  const municipality = normalizeZoneName(context.municipality ?? '');
+
+  let best: { zone: CubaZone; score: number; index: number } | undefined;
+
+  for (const entry of ZONE_ALIAS_INDEX) {
+    const index = padded.indexOf(` ${entry.alias} `);
+    if (index === -1) continue;
+
+    let score = entry.alias.length;
+
+    if (province) {
+      score += normalizeZoneName(entry.zone.province) === province ? 30 : -10;
+    }
+
+    if (municipality) {
+      score += normalizeZoneName(entry.zone.municipality) === municipality ? 30 : -15;
+    }
+
+    if (
+      !best ||
+      score > best.score ||
+      (score === best.score && index < best.index)
+    ) {
+      best = { zone: entry.zone, score, index };
+    }
+  }
+
+  return best?.zone;
+}
+
+/**
+ * Indica si el texto empieza por el nombre de una zona conocida.
+ *
+ * Sirve para no leer el municipio "Playa" dentro de "Playa Guardalavaca" o
+ * "Playa del Este": ahí la primera palabra forma parte de un topónimo más largo.
+ */
+export function isKnownZonePhrase(value: string): boolean {
+  const normalized = normalizeZoneName(value);
+  if (!normalized) return false;
+
+  return ZONE_ALIAS_INDEX.some(
+    (entry) =>
+      entry.alias === normalized || entry.alias.startsWith(`${normalized} `)
+  );
+}
+
+/** Indica si una zona coincide con la provincia y el municipio indicados. */
+export function zoneMatchesContext(zone: CubaZone, context: CubaZoneContext): boolean {
+  const province = normalizeZoneName(context.province ?? '');
+  const municipality = normalizeZoneName(context.municipality ?? '');
+
+  if (province && normalizeZoneName(zone.province) !== province) return false;
+  if (municipality && normalizeZoneName(zone.municipality) !== municipality) return false;
+
+  return true;
+}
+
+/** Compara dos nombres de zona sin tildes ni mayúsculas. */
+export function sameZoneName(a?: string, b?: string): boolean {
+  return normalizeZoneName(a ?? '') === normalizeZoneName(b ?? '');
 }

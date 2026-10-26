@@ -1,5 +1,8 @@
 import {
   distanceKm,
+  findMunicipalityCoordinates,
+  findMunicipalityName,
+  findProvinceName,
   normalizeLocationName,
   type Coordinates,
 } from '../constants/cuba-locations';
@@ -27,6 +30,56 @@ export type GeocodeCandidate = Coordinates & {
 };
 
 /**
+ * Traduce la jerarquía de Nominatim a los nombres canónicos del formulario.
+ *
+ * El geocodificador devuelve el estado y el condado con variantes ("Provincia
+ * de La Habana", "Habana"), y a veces el municipio solo aparece en `city` o
+ * `town`. Canonicalizarlo permite rellenar provincia y municipio cuando el aviso
+ * solo traía una zona o una dirección.
+ */
+export function canonicalizeGeocodeLocation(candidate: GeocodeCandidate): {
+  province?: string;
+  municipality?: string;
+} {
+  let province =
+    findProvinceName(candidate.state) ??
+    findProvinceName(candidate.county) ??
+    findProvinceName(candidate.displayName);
+
+  const municipalityValues = [
+    candidate.municipality,
+    candidate.county,
+    candidate.city,
+    candidate.town,
+    candidate.cityDistrict,
+    candidate.suburb,
+    candidate.village,
+  ].filter((value): value is string => Boolean(value));
+
+  let municipality: string | undefined;
+
+  for (const value of municipalityValues) {
+    municipality = findMunicipalityName(province, value);
+    if (municipality) break;
+  }
+
+  // Si la provincia no se pudo identificar, se intenta con el nombre único.
+  if (!municipality) {
+    for (const value of municipalityValues) {
+      municipality = findMunicipalityName(undefined, value);
+      if (municipality) break;
+    }
+  }
+
+  // Una provincia deducible del municipio permite completar ambos campos.
+  if (municipality && !province) {
+    province = findMunicipalityCoordinates(undefined, municipality)?.province;
+  }
+
+  return { province, municipality };
+}
+
+/**
  * Indica si un resultado de Nominatim pertenece a la ubicación esperada.
  *
  * Sin esta validación, una calle con el mismo nombre en otra provincia podía
@@ -46,6 +99,7 @@ export function geocodeMatchesLocation(
 
   if (!municipality && !province) return true;
 
+  const canonical = canonicalizeGeocodeLocation(candidate);
   const haystack = [
     candidate.displayName,
     candidate.state,
@@ -61,8 +115,14 @@ export function geocodeMatchesLocation(
     .map(normalizeLocationName)
     .join(' | ');
 
-  if (municipality && !haystack.includes(municipality)) return false;
-  if (province && !haystack.includes(province)) return false;
+  const municipalityMatches = municipality
+    ? haystack.includes(municipality) ||
+      normalizeLocationName(canonical.municipality ?? '') === municipality
+    : true;
+  const provinceMatches = province
+    ? haystack.includes(province) ||
+      normalizeLocationName(canonical.province ?? '') === province
+    : true;
 
-  return true;
+  return municipalityMatches && provinceMatches;
 }

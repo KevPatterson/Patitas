@@ -18,8 +18,11 @@
  */
 
 import {
+  findCubaZone,
+  isKnownZonePhrase,
   MUNICIPALITY_COORDINATES,
   PROVINCE_COORDINATES,
+  zoneMatchesContext,
   type Coordinates,
 } from '../../../src/lib/constants/cuba-locations.js';
 
@@ -29,7 +32,7 @@ export type FormSex = 'male' | 'female';
 export type FormAge = 'puppy' | 'young' | 'adult' | 'senior';
 export type FormContactMode = 'INTERNAL' | 'PHONE' | 'WHATSAPP' | 'EMAIL';
 export type FormPublicationType = 'LOST' | 'FOUND' | 'ABANDONED' | 'ADOPTION' | 'SIGHTING';
-export type LocationPrecision = 'municipality' | 'province' | 'none';
+export type LocationPrecision = 'zone' | 'municipality' | 'province' | 'none';
 
 export type FormExtraction = {
   // Datos del animal
@@ -445,6 +448,13 @@ export function findMunicipality(
       const ambiguous = AMBIGUOUS_MUNICIPALITIES.has(key);
       const multiword = key.includes(' ');
 
+      // "Playa Guardalavaca" o "Playa del Este" no son el municipio Playa: la
+      // primera palabra forma parte de un topónimo más largo. Sin esta guarda,
+      // el marcador caía en La Habana en lugar de en Holguín.
+      const after = normalized.slice(index + key.length).trimStart();
+      const firstWords = after.split(/\s+/).filter(Boolean).slice(0, 3).join(' ');
+      if (ambiguous && firstWords && isKnownZonePhrase(`${key} ${firstWords}`)) continue;
+
       // Un homónimo sin provincia es irresoluble: mejor omitirlo.
       if (!provinceMatch && !unique) continue;
 
@@ -705,6 +715,12 @@ function cleanReference(value: string): string | undefined {
 
 /** Busca un reparto, barrio o referencia ("cerca del malecón"). */
 export function findZone(text: string): string | undefined {
+  // Primero se buscan zonas conocidas: "Vedado" o "cerca del malecón" no llevan
+  // la palabra "reparto" y antes se perdían, dejando el marcador en el centro
+  // del municipio.
+  const known = findCubaZone(text);
+  if (known) return known.name;
+
   const keyword = text.match(
     /\b(?:reparto|barrio|consejo popular|zona|urbanizaci[oó]n|comunidad|asentamiento|residencial)\s+([^\n\r,;.|•]{2,60})/i
   );
@@ -728,15 +744,50 @@ export function findZone(text: string): string | undefined {
   return undefined;
 }
 
-/** Busca una dirección con calle y número. */
+/**
+ * Partes que pueden seguir a un punto dentro de una dirección.
+ *
+ * "Calle 23 No. 456. Apto 2" es una sola dirección: cortar en el punto dejaría
+ * "Calle 23 No" y el geocodificador no encontraría nada.
+ */
+const ADDRESS_CONTINUATION =
+  /^(?:apto|apartamento|edificio|edif|rpto|reparto|entre|esquina|interior|altos|bajos|casa|solar|km)\b/i;
+
+/**
+ * Recorta la dirección cuando empieza otra frase.
+ *
+ * Los puntos de las abreviaturas ("No. 456") y los de una parte secundaria de la
+ * dirección no cierran la captura; un punto seguido de una frase con mayúscula
+ * sí ("Calle 23 #456. Perro perdido ...").
+ */
+function trimAddressSentence(value: string): string {
+  const parts = value.split(/\.\s+/);
+  let result = parts[0] ?? '';
+
+  for (const part of parts.slice(1)) {
+    const startsSentence = /^[A-ZÁÉÍÓÚÑ]/.test(part);
+    if (startsSentence && !ADDRESS_CONTINUATION.test(part)) break;
+
+    result += `. ${part}`;
+  }
+
+  return result;
+}
+
+/**
+ * Busca una dirección con calle y número.
+ *
+ * `cleanReference` recorta teléfonos y datos de contacto; `trimAddressSentence`
+ * evita que la captura se trague la frase siguiente.
+ */
 export function findAddress(text: string): string | undefined {
   const match = text.match(
-    /\b((?:calle|avenida|ave\.?|carretera|calzada|callej[oó]n|pasaje|autopista|v[ií]a|ruta|km)\b[^\n\r|•;]{2,100})/i
+    /\b((?:calle|avenida|ave\.?|carretera|calzada|callej[oó]n|pasaje|autopista|v[ií]a|ruta|km)\s+[^\n\r|•;]{2,100})/i
   );
 
   if (!match?.[1]) return undefined;
 
-  const address = cleanReference(match[1]);
+  const address = cleanReference(trimAddressSentence(match[1]));
   return address && address.length >= 4 ? address : undefined;
 }
 
@@ -1072,7 +1123,21 @@ export function extractStructuredDataFromText(text: string): Partial<FormExtract
   }
 
   const zone = findZone(text);
-  if (zone) result.zone = zone;
+  if (zone) {
+    result.zone = zone;
+
+    // Una zona conocida también identifica su municipio y provincia. Así un
+    // aviso que solo dice "Vedado" o "Varadero" no se queda sin coordenadas.
+    const zoneInfo = findCubaZone(zone, {
+      province: result.province,
+      municipality: result.municipality,
+    });
+
+    if (zoneInfo) {
+      if (!result.province) result.province = zoneInfo.province;
+      if (!result.municipality) result.municipality = zoneInfo.municipality;
+    }
+  }
 
   const address = findAddress(text);
   if (address) result.address = address;
@@ -1265,6 +1330,7 @@ function composeDescription(
 export function resolveCoordinates(input: {
   province?: string;
   municipality?: string;
+  zone?: string;
 }): { latitude?: number; longitude?: number; locationPrecision: LocationPrecision } {
   let province = input.province;
   let municipality = input.municipality;
@@ -1275,6 +1341,24 @@ export function resolveCoordinates(input: {
       province = match.province;
       municipality = match.municipality;
     }
+  }
+
+  // La zona es más específica que el municipio, pero solo se acepta si no
+  // contradice la provincia ni el municipio ya resueltos.
+  const zone = input.zone
+    ? findCubaZone(input.zone, { province, municipality })
+    : undefined;
+
+  if (
+    zone &&
+    zoneMatchesContext(zone, { province, municipality }) &&
+    (!municipality || normalizeText(zone.name) !== normalizeText(municipality))
+  ) {
+    return {
+      latitude: zone.lat,
+      longitude: zone.lng,
+      locationPrecision: 'zone',
+    };
   }
 
   if (province && municipality) {
@@ -1382,6 +1466,20 @@ export function buildFormExtraction(input: {
     } else {
       // El `<select>` solo acepta municipios canónicos: mejor omitirlo.
       delete result.municipality;
+    }
+  }
+
+  // La zona puede completar la ubicación cuando el aviso solo trae un reparto o
+  // una referencia. No se sobrescribe lo que ya venga del texto o de la visión.
+  if (result.zone) {
+    const zoneInfo = findCubaZone(result.zone, {
+      province: result.province,
+      municipality: result.municipality,
+    });
+
+    if (zoneInfo) {
+      if (!result.province) result.province = zoneInfo.province;
+      if (!result.municipality) result.municipality = zoneInfo.municipality;
     }
   }
 
