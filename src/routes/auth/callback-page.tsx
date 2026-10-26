@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PawPrint } from 'lucide-react';
 import { supabase } from '../../lib/supabase/client';
+import { getPostLoginDestination } from '../../lib/supabase/profiles';
 import { CatLoader } from '../../components/ui/cat-loader';
 import { safeInternalPath } from '../../lib/utils/safe-url';
 
@@ -41,7 +42,7 @@ export function CallbackPage() {
       return;
     }
 
-    const finish = () => {
+    const finish = async () => {
       if (cancelled || finished) return;
       finished = true;
 
@@ -49,15 +50,27 @@ export function CallbackPage() {
       // o `next=https://evil.com` serían open redirect, así que cualquier cosa que
       // no sea una ruta relativa simple cae al inicio.
       const storedNext = window.sessionStorage.getItem('patitas:auth-next');
+      const storedExplicit =
+        window.sessionStorage.getItem('patitas:auth-next-explicit') === '1';
       window.sessionStorage.removeItem('patitas:auth-next');
-      const next = safeInternalPath(searchParams.get('next') ?? storedNext);
+      window.sessionStorage.removeItem('patitas:auth-next-explicit');
 
-      navigate(next, { replace: true });
+      const queryNext = searchParams.get('next');
+      const hasExplicitNext = Boolean(queryNext) || storedExplicit;
+
+      // Sin destino explícito, admin y moderador entran directo al panel.
+      const destination = hasExplicitNext
+        ? safeInternalPath(queryNext ?? storedNext)
+        : await getPostLoginDestination();
+
+      if (!cancelled) {
+        navigate(destination, { replace: true });
+      }
     };
 
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
-        finish();
+        void finish();
       }
     });
 
@@ -66,7 +79,7 @@ export function CallbackPage() {
     void supabase.auth
       .getSession()
       .then(({ data: sessionData }) => {
-        if (sessionData.session) finish();
+        if (sessionData.session) void finish();
       })
       .catch((e) => {
         if (!cancelled) {

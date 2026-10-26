@@ -9,6 +9,7 @@ import { TextField } from '../../components/ui/text-field';
 import { loginSchema, type LoginInput } from '../../lib/validations/auth';
 import { signInWithPassword, signInWithGoogle } from '../../lib/supabase/auth';
 import { loginErrorMessage } from '../../lib/auth/error-messages';
+import { getPostLoginDestination } from '../../lib/supabase/profiles';
 import { setPageMeta } from '../../lib/seo/page-meta';
 import { safeInternalPath } from '../../lib/utils/safe-url';
 import { useEffect } from 'react';
@@ -18,7 +19,8 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
   // Destino posterior al login: solo rutas internas (evita open redirect).
-  const next = safeInternalPath(searchParams.get('next'));
+  const requestedNext = searchParams.get('next');
+  const next = safeInternalPath(requestedNext);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
   useEffect(() => {
@@ -33,7 +35,9 @@ export function LoginPage() {
     setServerError(null);
     try {
       await signInWithPassword(values.email, values.password);
-      navigate(next, { replace: true });
+      // Sin un destino explícito, el rol decide: admin/moderador va al panel.
+      const destination = requestedNext ? next : await getPostLoginDestination();
+      navigate(destination, { replace: true });
     } catch (error) {
       // Mensaje genérico: no se distingue "no existe" de "contraseña incorrecta"
       // ni de "correo sin confirmar" (evita enumeración de cuentas).
@@ -45,8 +49,14 @@ export function LoginPage() {
     setServerError(null);
     try {
       // El redirect de OAuth no admite query en la allowlist de Supabase: el
-      // destino se guarda y /auth/callback lo recupera.
+      // destino se guarda y /auth/callback lo recupera. Se marca aparte si el
+      // usuario lo pidió explícitamente, porque sin `next` el callback debe
+      // aplicar la redirección por rol.
       window.sessionStorage.setItem('patitas:auth-next', next);
+      window.sessionStorage.setItem(
+        'patitas:auth-next-explicit',
+        requestedNext ? '1' : '0'
+      );
       await signInWithGoogle();
     } catch (error) {
       setServerError(loginErrorMessage(error));

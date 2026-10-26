@@ -114,6 +114,50 @@ export async function ensureProfile(username: string, fullName?: string | null) 
   }
 }
 
+export type ProfileRole = 'USER' | 'MODERATOR' | 'ADMIN';
+
+/**
+ * Lee el rol del perfil desde la sesión actual.
+ *
+ * El rol no viene en el JWT: se consulta en `profiles`, que está protegido por
+ * RLS. Cualquier fallo se trata como usuario normal para no bloquear el login.
+ */
+export async function getProfileRole(userId?: string): Promise<ProfileRole | null> {
+  let id = userId;
+
+  if (!id) {
+    const { data } = await supabase.auth.getUser();
+    id = data.user?.id;
+  }
+
+  if (!id) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('getProfileRole: no se pudo leer el rol.', error);
+    return null;
+  }
+
+  const role = data?.role;
+
+  return role === 'ADMIN' || role === 'MODERATOR' || role === 'USER' ? role : null;
+}
+
+/**
+ * Destino posterior al login cuando no hay un `next` explícito.
+ *
+ * Administradores y moderadores entran directo al panel; el resto, al inicio.
+ */
+export async function getPostLoginDestination(): Promise<string> {
+  const role = await getProfileRole();
+  return role === 'ADMIN' || role === 'MODERATOR' ? '/admin' : '/';
+}
+
 export async function getProfileAvatarUrl(userId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from('profiles')
