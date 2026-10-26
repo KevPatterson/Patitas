@@ -148,8 +148,9 @@ export function SiteShell({ children }: SiteShellProps) {
       setLoggingOut(false);
     }
   };
-  const username = (user?.user_metadata?.username as string | undefined) ?? null;
-  const profileHref = username ? `/perfil/${username}` : '/dashboard';
+  // El botón del header lleva al panel de gestión (privado). El perfil público
+  // se abre desde ahí con "Ver mi perfil público" o desde una publicación.
+  const panelHref = '/dashboard';
 
   useEffect(() => {
     if (!user?.id) {
@@ -266,7 +267,7 @@ export function SiteShell({ children }: SiteShellProps) {
                   {/* Desktop */}
                   <div className="hidden items-center gap-1 lg:flex">
                     <Link
-                      to={profileHref}
+                      to={panelHref}
                       className="inline-flex items-center gap-2 rounded-full border-2 border-foreground bg-surface px-3.5 py-2 text-sm font-semibold text-foreground transition-all duration-base hover:bg-highlight active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
                     >
                       <div className="flex size-[30px] items-center justify-center rounded-full border-2 border-foreground bg-app/50 overflow-hidden">
@@ -280,7 +281,7 @@ export function SiteShell({ children }: SiteShellProps) {
                           <User className="size-4 text-foreground" aria-hidden="true" />
                         )}
                       </div>
-                      <span>Perfil</span>
+                      <span>Mi panel</span>
                     </Link>
                     
                     {/* Salir */}
@@ -303,9 +304,9 @@ export function SiteShell({ children }: SiteShellProps) {
                       badge={unreadCount}
                     />
                     <Link
-                      to={profileHref}
+                      to={panelHref}
                       className="flex items-center justify-center rounded-full border-2 border-foreground bg-surface p-2 transition-all duration-base hover:bg-highlight active:scale-95 focus-visible:outline-3 focus-visible:outline-offset-[3px] focus-visible:outline-orange"
-                      aria-label="Perfil"
+                      aria-label="Mi panel"
                     >
                       <div className="flex size-[30px] items-center justify-center rounded-full border-2 border-foreground bg-app/50 overflow-hidden">
                         {avatarUrl ? (

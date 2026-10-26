@@ -20,6 +20,10 @@ const labels: Record<string, string> = {
   ACTIVE: 'Activa',
   resuelta: 'Resuelta',
   RESOLVED: 'Resuelta',
+  // Estados internos que el dueño puede ver en su panel.
+  HIDDEN: 'Oculta',
+  EXPIRED: 'Expirada',
+  DELETED: 'Eliminada',
 };
 
 const toneByStatus: Record<string, string> = {

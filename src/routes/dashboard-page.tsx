@@ -185,7 +185,7 @@ export function DashboardPage() {
     { id: 'resumen', label: 'Resumen', icon: <TrendingUp className="size-4" /> },
     { id: 'publicaciones', label: 'Mis publicaciones', icon: <FileText className="size-4" /> },
     { id: 'adopciones', label: 'Adopciones', icon: <HeartHandshake className="size-4" /> },
-    { id: 'perfil', label: 'Perfil', icon: <UserIcon className="size-4" /> },
+    { id: 'perfil', label: 'Cuenta', icon: <UserIcon className="size-4" /> },
   ];
 
   return (
@@ -200,7 +200,7 @@ export function DashboardPage() {
               <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Tu espacio</span>
             </div>
             <h1 className="font-display text-4xl font-extrabold text-foreground">Panel de control</h1>
-            <p className="text-foreground/60 mt-1">Gestiona tus publicaciones y tu perfil</p>
+            <p className="text-foreground/60 mt-1">Gestiona tus publicaciones y tu cuenta</p>
           </div>
           <Link to="/publicar">
             <Button variant="primary" className="gap-2 shadow-lg">
@@ -346,7 +346,7 @@ export function DashboardPage() {
                 onDelete={handleAvatarDelete}
               />
               <div className="text-center">
-                <h2 className="font-display text-2xl font-extrabold text-foreground">Tu perfil</h2>
+                <h2 className="font-display text-2xl font-extrabold text-foreground">Tu cuenta</h2>
                 <p className="text-sm text-foreground/60">Información de tu cuenta</p>
               </div>
             </div>

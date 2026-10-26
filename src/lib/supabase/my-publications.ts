@@ -52,6 +52,9 @@ export async function getMyPublications(): Promise<MyPublication[]> {
     `
     )
     .eq('owner_profile_id', user.id)
+    // Las eliminadas (soft delete) siguen existiendo para RLS del dueño, pero no
+    // deben reaparecer en el panel al recargar.
+    .neq('status', 'DELETED')
     .order('published_at', { ascending: false });
 
   if (error) {
