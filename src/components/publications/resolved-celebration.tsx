@@ -1,10 +1,16 @@
 import { Heart, Home, PawPrint, PartyPopper } from 'lucide-react';
+import { getResolvedCelebrationCopy } from '../../lib/utils/resolved-message';
 
 type ResolvedCelebrationProps = {
-  petName: string;
+  title?: string | null;
+  type?: string | null;
+  species?: string | null;
+  sex?: string | null;
 };
 
-export function ResolvedCelebration({ petName }: ResolvedCelebrationProps) {
+export function ResolvedCelebration({ title, type, species, sex }: ResolvedCelebrationProps) {
+  const copy = getResolvedCelebrationCopy({ title, type, species, sex });
+
   return (
     <div className="relative overflow-hidden rounded-3xl border-2 border-found/30 bg-linear-to-br from-found/10 via-app to-found/20 p-8 text-center shadow-sm">
       <div className="absolute inset-0 -z-10 bg-found/10 blur-2xl" />
@@ -18,14 +24,14 @@ export function ResolvedCelebration({ petName }: ResolvedCelebrationProps) {
           className="font-display text-3xl font-extrabold text-found"
           style={{ fontFamily: '"Baloo 2", cursive' }}
         >
-          ¡{petName} está de vuelta en casa!
+          {copy.title}
         </h2>
 
         <p
           className="mx-auto max-w-xl text-base leading-7 text-foreground/80"
           style={{ fontFamily: 'Figtree, sans-serif' }}
         >
-          Gracias a todas las personas que ayudaron a compartir este caso. Juntos hacemos que las mascotas regresen con sus familias.
+          {copy.subtitle}
         </p>
 
         <div className="flex items-center justify-center gap-3 text-orange">

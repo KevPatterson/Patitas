@@ -348,7 +348,12 @@ export function PublicationPage() {
         <div className="space-y-6">
           {/* Celebración si está resuelta */}
           {publication.status === 'RESOLVED' ? (
-            <ResolvedCelebration petName={publication.title.split(' ')[0]} />
+            <ResolvedCelebration
+              title={publication.title}
+              type={publication.type}
+              species={publication.species}
+              sex={publication.sex}
+            />
           ) : null}
 
           <article className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
