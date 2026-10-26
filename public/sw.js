@@ -1,5 +1,7 @@
-const CACHE_NAME = 'patitas-v1';
-const RUNTIME_CACHE = 'patitas-runtime-v1';
+// v2: invalida las cachés de la v1 para que los despliegues nuevos no sigan
+// sirviendo bundles antiguos cuando la red falla (ERR_NAME_NOT_RESOLVED).
+const CACHE_NAME = 'patitas-v2';
+const RUNTIME_CACHE = 'patitas-runtime-v2';
 
 // Recursos esenciales para cachear durante la instalación
 const PRECACHE_URLS = [
