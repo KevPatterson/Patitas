@@ -48,11 +48,14 @@ export function DashboardPage() {
 
     try {
       const data = await getMyPublications();
-      setPublications(data);
+      // Defensa extra: aunque la consulta ya excluye DELETED, un bundle viejo o
+      // una respuesta inesperada no debe pintar publicaciones eliminadas.
+      const visible = data.filter((p) => p.status !== 'DELETED');
+      setPublications(visible);
       setStats({
-        active: data.filter((p) => p.status === 'ACTIVE').length,
-        resolved: data.filter((p) => p.status === 'RESOLVED').length,
-        total: data.length,
+        active: visible.filter((p) => p.status === 'ACTIVE').length,
+        resolved: visible.filter((p) => p.status === 'RESOLVED').length,
+        total: visible.length,
       });
     } catch (error) {
       console.error('Error loading publications:', error);
@@ -277,50 +280,59 @@ export function DashboardPage() {
           ) : (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {publications.map((pub) => (
-                <div key={pub.id} className="relative">
-                  <PublicationCard
-                    publication={{
-                      id: pub.id,
-                      slug: pub.slug,
-                      title: pub.title,
-                      description: pub.description,
-                      type: pub.type,
-                      status: pub.status,
-                      species: pub.species,
-                      breed: pub.breed,
-                      color: pub.color,
-                      sex: pub.sex,
-                      size: pub.size,
-                      publishedAt: pub.published_at,
-                      province: pub.province ?? null,
-                      municipality: pub.municipality ?? null,
-                      zone: pub.zone ?? null,
-                      approximateLat: pub.approximateLat ?? null,
-                      approximateLng: pub.approximateLng ?? null,
-                      coverImageUrl: pub.coverImageUrl,
-                    }}
-                  />
-                  <div className="absolute top-3 right-3 flex gap-2 z-10">
-                    {pub.status !== 'RESOLVED' && (
+                <div key={pub.id} className="flex h-full flex-col gap-2">
+                  <div className="flex-1">
+                    <PublicationCard
+                      publication={{
+                        id: pub.id,
+                        slug: pub.slug,
+                        title: pub.title,
+                        description: pub.description,
+                        type: pub.type,
+                        status: pub.status,
+                        species: pub.species,
+                        breed: pub.breed,
+                        color: pub.color,
+                        sex: pub.sex,
+                        size: pub.size,
+                        publishedAt: pub.published_at,
+                        province: pub.province ?? null,
+                        municipality: pub.municipality ?? null,
+                        zone: pub.zone ?? null,
+                        approximateLat: pub.approximateLat ?? null,
+                        approximateLng: pub.approximateLng ?? null,
+                        coverImageUrl: pub.coverImageUrl,
+                      }}
+                    />
+                  </div>
+                  {/* Acciones fuera de la tarjeta: dentro se solapaban con los
+                      badges de tipo y estado. */}
+                  <div className="mt-auto flex items-center justify-end gap-2 rounded-2xl border-2 border-foreground/10 bg-surface px-3 py-2 shadow-sm">
+                    {pub.status === 'ACTIVE' && (
                       <Button
                         variant="ghost"
+                        size="sm"
                         onClick={() => handleResolve(pub.id)}
                         disabled={actionLoading === pub.id}
-                        aria-label="Marcar como resuelto"
-                        className="p-2 min-h-9 px-3 bg-surface/90 hover:bg-found/10 border border-foreground/10"
+                        aria-label="Marcar como resuelta"
                       >
-                        <CheckCircle className="size-4 text-found" />
+                        <CheckCircle className="size-4 text-found" aria-hidden="true" />
+                        Marcar resuelta
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleDelete(pub.id)}
-                      disabled={actionLoading === pub.id}
-                      className="p-2 min-h-9 px-3 bg-surface/90 hover:bg-lost/10 border border-foreground/10"
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 className="size-4 text-lost" />
-                    </Button>
+                    {pub.status !== 'DELETED' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(pub.id)}
+                        disabled={actionLoading === pub.id}
+                        className="hover:border-lost/40 hover:bg-lost/10"
+                        aria-label="Eliminar publicación"
+                      >
+                        <Trash2 className="size-4 text-lost" aria-hidden="true" />
+                        Eliminar
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
