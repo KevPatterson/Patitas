@@ -74,7 +74,7 @@ export async function handleCreateMatch(req: VercelRequest, res: VercelResponse)
 
   const { data: publications, error: pubError } = await supabaseAdmin
     .from('publications')
-    .select('id, owner_profile_id, type')
+    .select('id, owner_profile_id, type, slug')
     .in('id', [pubAId, pubBId])
     .is('deleted_at', null);
 
@@ -165,8 +165,15 @@ export async function handleCreateMatch(req: VercelRequest, res: VercelResponse)
   }
 
   // Notificación a los dueños, solo si la coincidencia es fuerte y son distintos.
-  const ownerAId = publications.find((p: { id: string; owner_profile_id: string | null }) => p.id === pubAId)?.owner_profile_id ?? null;
-  const ownerBId = publications.find((p: { id: string; owner_profile_id: string | null }) => p.id === pubBId)?.owner_profile_id ?? null;
+  // El enlace usa el slug porque /p/:slug es la ruta pública; con el uuid daba 404.
+  const pubA = publications.find(
+    (p: { id: string; owner_profile_id: string | null; slug: string }) => p.id === pubAId
+  );
+  const pubB = publications.find(
+    (p: { id: string; owner_profile_id: string | null; slug: string }) => p.id === pubBId
+  );
+  const ownerAId = pubA?.owner_profile_id ?? null;
+  const ownerBId = pubB?.owner_profile_id ?? null;
 
   let notified = false;
 
@@ -184,7 +191,7 @@ export async function handleCreateMatch(req: VercelRequest, res: VercelResponse)
         type: 'MATCH',
         title: '¡Posible coincidencia!',
         body,
-        link: `/p/${pubAId}`,
+        link: pubA ? `/p/${pubA.slug}` : '/notificaciones',
         is_read: false,
       },
       {
@@ -192,7 +199,7 @@ export async function handleCreateMatch(req: VercelRequest, res: VercelResponse)
         type: 'MATCH',
         title: '¡Posible coincidencia!',
         body,
-        link: `/p/${pubBId}`,
+        link: pubB ? `/p/${pubB.slug}` : '/notificaciones',
         is_read: false,
       },
     ]);
