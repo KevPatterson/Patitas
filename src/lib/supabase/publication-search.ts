@@ -12,7 +12,9 @@ type PublicationRow = {
   color: string | null;
   sex: string | null;
   size: string | null;
+  age_approx: string | null;
   published_at: string;
+  resolved_at: string | null;
   contact_mode?: 'INTERNAL' | 'PHONE' | 'WHATSAPP' | 'EMAIL';
   contact_phone?: string | null;
   contact_whatsapp?: string | null;
@@ -62,7 +64,9 @@ export type PublicationSummary = {
   color: string | null;
   sex: string | null;
   size: string | null;
+  ageApprox: string | null;
   publishedAt: string;
+  resolvedAt: string | null;
   province: string | null;
   municipality: string | null;
   zone: string | null;
@@ -72,14 +76,16 @@ export type PublicationSummary = {
   distance?: number; // Distancia calculada en km (opcional)
 };
 
-type SearchFilters = {
+export type SearchFilters = {
   query?: string;
   type?: PublicationRow['type'] | 'ALL';
   species?: string;
   sex?: string;
   size?: string;
+  age?: string;
   province?: string;
   municipality?: string;
+  zone?: string;
   status?: PublicationRow['status'] | 'ALL';
   since?: string;
   until?: string;
@@ -106,7 +112,9 @@ function mapPublication(row: any): PublicationSummary {
     color: row.color,
     sex: row.sex,
     size: row.size,
+    ageApprox: row.age_approx ?? null,
     publishedAt: row.published_at,
+    resolvedAt: row.resolved_at ?? null,
     province: location?.province ?? null,
     municipality: location?.municipality ?? null,
     zone: location?.zone ?? null,
@@ -129,10 +137,16 @@ export async function searchPublications(filters: SearchFilters) {
         filter_species: filters.species || null,
         filter_sex: filters.sex || null,
         filter_size: filters.size || null,
-        filter_status: filters.status && filters.status !== 'ALL' ? filters.status : 'ACTIVE',
+        // `null` en status significa "todos": el filtro SQL solo se aplica cuando
+        // llega un valor. Antes, elegir "Todos" con texto forzaba ACTIVE y ocultaba
+        // los casos resueltos.
+        filter_status: filters.status === 'ALL' ? null : filters.status || 'ACTIVE',
         filter_province: filters.province || null,
         filter_municipality: filters.municipality || null,
+        filter_age: filters.age || null,
+        filter_zone: filters.zone || null,
         since_date: filters.since || null,
+        until_date: filters.until || null,
         result_limit: limit,
         result_offset: offset,
       });
@@ -175,7 +189,9 @@ export async function searchPublications(filters: SearchFilters) {
             sex: string | null;
             size: string | null;
             color: string;
+            age_approx: string | null;
             published_at: string;
+            resolved_at: string | null;
           }) => {
             const withImg = typedWithImages.find((w) => w.id === fts.id);
             
@@ -194,7 +210,9 @@ export async function searchPublications(filters: SearchFilters) {
               color: fts.color,
               sex: fts.sex,
               size: fts.size,
+              ageApprox: fts.age_approx ?? null,
               publishedAt: fts.published_at,
+              resolvedAt: fts.resolved_at ?? null,
               province: withImg?.location?.province ?? null,
               municipality: withImg?.location?.municipality ?? null,
               zone: withImg?.location?.zone ?? null,
@@ -214,10 +232,11 @@ export async function searchPublications(filters: SearchFilters) {
   // Búsqueda básica (fallback o sin query de texto)
   // `!inner` solo cuando se filtra por ubicación: sin filtro el join debe ser LEFT,
   // porque hay publicaciones reales sin ubicación que deben seguir apareciendo.
-  const locationJoin = filters.province || filters.municipality ? 'locations!inner' : 'locations';
+  const locationJoin =
+    filters.province || filters.municipality || filters.zone ? 'locations!inner' : 'locations';
   let query = supabase
     .from('publications')
-    .select(`id, slug, title, description, type, status, species, breed, color, sex, size, published_at, location:${locationJoin}(province, municipality, zone, approximate_lat, approximate_lng), publication_images(storage_path, is_cover, alt_text)`)
+    .select(`id, slug, title, description, type, status, species, breed, color, sex, size, age_approx, published_at, resolved_at, location:${locationJoin}(province, municipality, zone, approximate_lat, approximate_lng), publication_images(storage_path, is_cover, alt_text)`)
     .neq('status', 'DELETED')
     .order('published_at', { ascending: false })
     .range(offset, offset + limit - 1);
@@ -250,12 +269,24 @@ export async function searchPublications(filters: SearchFilters) {
     query = query.eq('size', filters.size);
   }
 
+  if (filters.age) {
+    query = query.eq('age_approx', filters.age);
+  }
+
+  if (filters.zone) {
+    query = query.ilike('location.zone', `%${filters.zone.trim()}%`);
+  }
+
   if (filters.since) {
     query = query.gte('published_at', filters.since);
   }
 
   if (filters.until) {
-    query = query.lte('published_at', filters.until);
+    // `until` es una fecha inclusiva: se compara contra el inicio del día
+    // siguiente para incluir todo el día elegido.
+    const untilExclusive = new Date(`${filters.until}T00:00:00Z`);
+    untilExclusive.setUTCDate(untilExclusive.getUTCDate() + 1);
+    query = query.lt('published_at', untilExclusive.toISOString());
   }
 
   if (filters.query) {
@@ -323,12 +354,22 @@ export async function countPublications(filters: SearchFilters): Promise<number>
     query = query.eq('size', filters.size);
   }
 
+  if (filters.age) {
+    query = query.eq('age_approx', filters.age);
+  }
+
+  if (filters.zone) {
+    query = query.ilike('location.zone', `%${filters.zone.trim()}%`);
+  }
+
   if (filters.since) {
     query = query.gte('published_at', filters.since);
   }
 
   if (filters.until) {
-    query = query.lte('published_at', filters.until);
+    const untilExclusive = new Date(`${filters.until}T00:00:00Z`);
+    untilExclusive.setUTCDate(untilExclusive.getUTCDate() + 1);
+    query = query.lt('published_at', untilExclusive.toISOString());
   }
 
   if (filters.query) {
@@ -356,6 +397,30 @@ export async function countPublications(filters: SearchFilters): Promise<number>
   return count ?? 0;
 }
 
+/**
+ * Finales felices para la portada.
+ *
+ * Se apoya en el estado `RESOLVED`, que ya es visible para cualquiera según la
+ * política RLS de `publications`. El orden usa `resolved_at` (cuándo terminó la
+ * historia) y cae a `published_at` para filas antiguas sin esa fecha.
+ */
+export async function getSuccessStories(limit = 6): Promise<PublicationSummary[]> {
+  const { data, error } = await supabase
+    .from('publications')
+    .select(`id, slug, title, description, type, status, species, breed, color, sex, size, age_approx, published_at, resolved_at, location:locations(province, municipality, zone, approximate_lat, approximate_lng), publication_images(storage_path, is_cover, alt_text)`)
+    .eq('status', 'RESOLVED')
+    .is('deleted_at', null)
+    .order('resolved_at', { ascending: false, nullsFirst: false })
+    .order('published_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(mapPublication);
+}
+
 export async function getPublicationBySlug(slug: string) {
   const { data, error } = await supabase
     .from('publications')
@@ -374,6 +439,7 @@ export async function getPublicationBySlug(slug: string) {
       age_approx,
       characteristics,
       published_at, 
+      resolved_at,
       reward, 
       event_date, 
       event_time_approx, 
@@ -429,6 +495,7 @@ export async function getPublicationById(id: string) {
       age_approx,
       characteristics,
       published_at, 
+      resolved_at,
       reward, 
       event_date, 
       event_time_approx, 

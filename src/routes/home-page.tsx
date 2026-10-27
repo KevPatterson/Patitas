@@ -8,13 +8,20 @@ import { EmptyState } from '../components/ui/empty-state';
 import { ScrollReveal } from '../components/ui/scroll-reveal';
 import { setPageMeta } from '../lib/seo/page-meta';
 import { SITE_NAME, SITE_DESCRIPTION } from '../lib/config/site';
-import { searchPublications, countPublications, type PublicationSummary } from '../lib/supabase/publication-search';
+import {
+  searchPublications,
+  countPublications,
+  getSuccessStories,
+  type PublicationSummary,
+} from '../lib/supabase/publication-search';
 import { MapPreview } from '../components/home/map-preview';
+import { SuccessStoriesSection } from '../components/home/success-stories-section';
 
 export function HomePage() {
   const [allCases, setAllCases] = useState<PublicationSummary[]>([]);
   const [recentCases, setRecentCases] = useState<PublicationSummary[]>([]);
   const [adoptionCases, setAdoptionCases] = useState<PublicationSummary[]>([]);
+  const [successStories, setSuccessStories] = useState<PublicationSummary[]>([]);
   const [stats, setStats] = useState({ LOST: 0, FOUND: 0, ADOPTION: 0, ADOPTED: 0, total: 0 });
   const [nearbyCount, setNearbyCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -190,11 +197,12 @@ export function HomePage() {
           countPublications({ type: 'ADOPTION', status: 'ACTIVE' }),
           countPublications({ type: 'ADOPTION', status: 'RESOLVED' }),
           countPublications({ status: 'ACTIVE' }),
+          getSuccessStories(6),
         ]);
 
         if (!active) return;
 
-        const [recent, adoptions, lostCount, foundCount, adoptionCount, adoptedCount, totalCount] = results;
+        const [recent, adoptions, lostCount, foundCount, adoptionCount, adoptedCount, totalCount, success] = results;
 
         for (const result of results) {
           if (result.status === 'rejected') {
@@ -207,6 +215,9 @@ export function HomePage() {
         }
         if (adoptions.status === 'fulfilled') {
           setAdoptionCases(adoptions.value);
+        }
+        if (success.status === 'fulfilled') {
+          setSuccessStories(success.value);
         }
 
         setStats((prev) => ({
@@ -547,6 +558,9 @@ export function HomePage() {
           </div>
         </section>
       </ScrollReveal>
+
+      {/* 💚 FINALES FELICES — reencuentros y adopciones resueltas */}
+      <SuccessStoriesSection stories={successStories} loading={loading} />
 
       {/* 🗺️ EXPLORA EN EL MAPA */}
       <ScrollReveal animation="fade-in-left">

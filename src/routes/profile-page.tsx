@@ -68,7 +68,7 @@ export function ProfilePage() {
           supabase
             .from('publications')
             .select(`
-              id, slug, title, description, type, status, species, breed, color, sex, size, published_at,
+              id, slug, title, description, type, status, species, breed, color, sex, size, age_approx, published_at, resolved_at,
               publication_images(storage_path, is_cover),
               locations(province, municipality, zone, approximate_lat, approximate_lng)
             `)
@@ -119,7 +119,9 @@ export function ProfilePage() {
           color: string | null;
           sex: string | null;
           size: string | null;
+          age_approx: string | null;
           published_at: string;
+          resolved_at: string | null;
           publication_images: Array<{ storage_path: string; is_cover: boolean | null }>;
           locations: Array<{ province: string; municipality: string; zone: string | null; approximate_lat: number | null; approximate_lng: number | null }>;
         }>).map((row) => {
@@ -140,7 +142,9 @@ export function ProfilePage() {
             color: row.color,
             sex: row.sex,
             size: row.size,
+            ageApprox: row.age_approx,
             publishedAt: row.published_at,
+            resolvedAt: row.resolved_at,
             province: loc?.province ?? null,
             municipality: loc?.municipality ?? null,
             zone: loc?.zone ?? null,

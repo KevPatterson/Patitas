@@ -3,7 +3,7 @@ import { PawPrint, MapPin, Calendar } from 'lucide-react';
 import type { PublicationSummary } from '../../lib/supabase/publication-search';
 import { StatusBadge } from '../ui/status-badge';
 import { Logo } from '../Logo';
-import { SPECIES_LABELS } from '../../lib/constants/labels';
+import { AGE_LABELS, SIZE_LABELS, SPECIES_LABELS } from '../../lib/constants/labels';
 
 type PublicationCardProps = {
   publication: PublicationSummary;
@@ -106,6 +106,16 @@ export function PublicationCard({ publication, distance }: PublicationCardProps)
           {publication.breed && (
             <span className="inline-flex items-center rounded-lg bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground">
               {publication.breed}
+            </span>
+          )}
+          {publication.size && (
+            <span className="inline-flex items-center rounded-lg bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground">
+              {SIZE_LABELS[publication.size] ?? publication.size}
+            </span>
+          )}
+          {publication.ageApprox && (
+            <span className="inline-flex items-center rounded-lg bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground">
+              {AGE_LABELS[publication.ageApprox] ?? publication.ageApprox}
             </span>
           )}
         </div>

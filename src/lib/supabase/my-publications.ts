@@ -13,6 +13,7 @@ export type MyPublication = {
   color: string | null;
   sex: string | null;
   size: string | null;
+  age_approx: string | null;
   published_at: string;
   resolved_at: string | null;
   coverImageUrl: string | null;
@@ -45,6 +46,7 @@ export async function getMyPublications(): Promise<MyPublication[]> {
       color,
       sex,
       size,
+      age_approx,
       published_at,
       resolved_at,
       publication_images(storage_path, is_cover, alt_text),
@@ -82,6 +84,7 @@ export async function getMyPublications(): Promise<MyPublication[]> {
         color: pub.color,
         sex: pub.sex,
         size: pub.size,
+        age_approx: pub.age_approx,
         published_at: pub.published_at,
         resolved_at: pub.resolved_at,
         province: location?.province ?? null,
