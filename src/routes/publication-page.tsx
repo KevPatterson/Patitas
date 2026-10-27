@@ -807,8 +807,8 @@ export function PublicationPage() {
 
             {/* Modal de retirada (takedown) */}
             {showTakedownModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                  <div className="w-full max-w-md bg-surface rounded-3xl border-2 border-foreground/10 shadow-2xl p-6">
+                <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 bg-black/50 backdrop-blur-sm">
+                  <div className="my-auto w-full max-w-md bg-surface rounded-3xl border-2 border-foreground/10 shadow-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
                         <Shield className="size-6 text-lost" />

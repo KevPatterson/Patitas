@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Share2, X, Link2, MessageCircle, Send, Check, ImageDown } from 'lucide-react';
 import { Button } from '../ui/button';
 import { PosterModal } from './poster-modal';
@@ -30,7 +30,27 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
   const [showPoster, setShowPoster] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
+  const [panelLeft, setPanelLeft] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // El panel se alinea al borde derecho del botón, pero sin salirse del
+  // viewport: en móvil el contenedor es estrecho y el panel quedaría cortado.
+  const positionPanel = useCallback(() => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const margin = 8;
+    // `clientWidth` descuenta la barra de desplazamiento, a diferencia de `innerWidth`.
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const panelWidth = Math.min(256, viewportWidth - margin * 2);
+    const viewportLeft = Math.min(
+      Math.max(rect.right - panelWidth, margin),
+      viewportWidth - panelWidth - margin
+    );
+
+    // `left` es relativo al contenedor, no al viewport.
+    setPanelLeft(viewportLeft - rect.left);
+  }, []);
 
   const shareData = buildPublicationShareData(publication);
 
@@ -143,14 +163,18 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
       }
     };
 
+    // Al girar el móvil o cambiar el tamaño de la ventana, el panel debe
+    // recalcular su posición para seguir dentro de la pantalla.
+    window.addEventListener('resize', positionPanel);
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      window.removeEventListener('resize', positionPanel);
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showMenu]);
+  }, [showMenu, positionPanel]);
 
   return (
     <div ref={containerRef} className={['relative', className].filter(Boolean).join(' ')}>
@@ -159,12 +183,14 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
         variant="secondary"
         onClick={() => {
           const next = !showMenu;
-          setShowMenu(next);
 
           if (next) {
+            positionPanel();
             setCopied(false);
             setCopyError(false);
           }
+
+          setShowMenu(next);
         }}
         className="w-full"
         aria-expanded={showMenu}
@@ -184,7 +210,8 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
       {showMenu ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-10 mt-3 w-64 space-y-2 rounded-2xl border-2 border-found/30 bg-surface p-4 shadow-lg"
+          style={panelLeft === null ? undefined : { left: panelLeft }}
+          className="absolute top-full z-10 mt-3 max-h-[70dvh] w-64 max-w-[calc(100vw-2rem)] space-y-2 overflow-y-auto rounded-2xl border-2 border-found/30 bg-surface p-4 shadow-lg"
         >
           <button type="button" role="menuitem" onClick={openPoster} className={itemClasses}>
             <ImageDown className="size-4 text-orange" aria-hidden="true" />

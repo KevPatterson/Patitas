@@ -919,8 +919,8 @@ export function ConversationPage() {
 
       {/* Modal de bloqueo */}
       {blockConfirm ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border-2 border-foreground/10 bg-surface p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
+          <div className="my-auto w-full max-w-md rounded-3xl border-2 border-foreground/10 bg-surface p-6 shadow-2xl">
             <h2 className="font-display text-xl font-extrabold text-foreground">
               ¿Bloquear a @{otherProfile?.username ?? 'este usuario'}?
             </h2>
@@ -952,8 +952,8 @@ export function ConversationPage() {
 
       {/* Modal de reporte */}
       {reportTarget ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border-2 border-foreground/10 bg-surface p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
+          <div className="my-auto w-full max-w-md rounded-3xl border-2 border-foreground/10 bg-surface p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-display text-xl font-extrabold text-foreground">

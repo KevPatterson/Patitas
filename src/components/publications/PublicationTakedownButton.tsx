@@ -91,8 +91,8 @@ export function PublicationTakedownButton({
       </Button>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-surface rounded-3xl border-2 border-foreground/10 shadow-2xl p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 bg-black/50 backdrop-blur-sm">
+          <div className="my-auto w-full max-w-md bg-surface rounded-3xl border-2 border-foreground/10 shadow-2xl p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="font-display text-lg font-bold text-foreground">Solicitar retirada</h3>
