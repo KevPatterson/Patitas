@@ -6,10 +6,12 @@ type ResolvedCelebrationProps = {
   type?: string | null;
   species?: string | null;
   sex?: string | null;
+  /** Indica si quien ve la publicación es su dueño. */
+  isOwner?: boolean;
 };
 
-export function ResolvedCelebration({ title, type, species, sex }: ResolvedCelebrationProps) {
-  const copy = getResolvedCelebrationCopy({ title, type, species, sex });
+export function ResolvedCelebration({ title, type, species, sex, isOwner }: ResolvedCelebrationProps) {
+  const copy = getResolvedCelebrationCopy({ title, type, species, sex, isOwner });
 
   return (
     <div className="relative overflow-hidden rounded-3xl border-2 border-found/30 bg-linear-to-br from-found/10 via-app to-found/20 p-8 text-center shadow-sm">

@@ -51,7 +51,7 @@ export function ImageAnalyzerButton({ imageUrl, onDataExtracted, disabled }: Ima
         throw new Error('Debes iniciar sesión para usar esta función');
       }
 
-      const response = await fetch('/api/ai/extract-from-image', {
+      const response = await fetch('/api/ai?action=extract-from-image', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

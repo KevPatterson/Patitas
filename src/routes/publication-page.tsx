@@ -64,6 +64,9 @@ export function PublicationPage() {
   const [takedownMessage, setTakedownMessage] = useState<string | null>(null);
   const [startingChat, setStartingChat] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  // Fuerza a recargar el estado de IA tras un análisis nuevo (el badge se
+  // suscribe a Realtime, pero puede no estar habilitado en el proyecto).
+  const [aiStatusKey, setAiStatusKey] = useState(0);
   const loadSightings = async () => {
     if (!publication) return;
     const data = await getSightings(publication.id);
@@ -361,6 +364,7 @@ export function PublicationPage() {
               type={publication.type}
               species={publication.species}
               sex={publication.sex}
+              isOwner={Boolean(isOwner)}
             />
           ) : null}
 
@@ -505,13 +509,18 @@ export function PublicationPage() {
               {/* Botón de procesamiento IA (solo para el dueño) */}
               {isOwner && publication.id && (
                 <div className="rounded-xl border-2 border-purple/20 bg-surface p-4 shadow-sm">
-                  {isFeatureEnabled('ai') && <ProcessButton publicationId={publication.id} />}
+                  {isFeatureEnabled('ai') && (
+                    <ProcessButton
+                      publicationId={publication.id}
+                      onProcessingStarted={() => setAiStatusKey((key) => key + 1)}
+                    />
+                  )}
                 </div>
               )}
 
               {/* Estado de procesamiento de IA */}
               {isFeatureEnabled('ai') && publication.id && (
-                <ProcessingStatusBadge publicationId={publication.id} />
+                <ProcessingStatusBadge key={aiStatusKey} publicationId={publication.id} />
               )}
 
               {/* Alerta de duplicados — solo para el dueño: el endpoint

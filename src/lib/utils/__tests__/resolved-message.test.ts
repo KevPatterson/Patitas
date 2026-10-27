@@ -76,4 +76,38 @@ describe('getResolvedCelebrationCopy', () => {
       getResolvedCelebrationCopy({ type: 'adoption', species: 'CAT', sex: 'female' }).title
     ).toBe('¡Tu gata encontró una casa!');
   });
+
+  it('usa el demostrativo cuando quien lee no es el dueño', () => {
+    expect(
+      getResolvedCelebrationCopy({ type: 'ABANDONED', species: 'dog', isOwner: false }).title
+    ).toBe('¡Este perro encontró un hogar!');
+    expect(
+      getResolvedCelebrationCopy({
+        type: 'LOST',
+        species: 'dog',
+        sex: 'female',
+        isOwner: false,
+      }).title
+    ).toBe('¡Esta perra volvió a casa!');
+    // «ave» es femenino aunque el aviso sea de un macho.
+    expect(
+      getResolvedCelebrationCopy({
+        type: 'SIGHTING',
+        species: 'bird',
+        sex: 'male',
+        isOwner: false,
+      }).title
+    ).toBe('¡Esta ave está a salvo!');
+  });
+
+  it('mantiene el mismo nombre para el dueño y para los visitantes', () => {
+    const base = { title: 'Toby perdido en Playa', type: 'LOST' } as const;
+
+    expect(getResolvedCelebrationCopy({ ...base, isOwner: true }).title).toBe(
+      '¡Toby volvió a casa!'
+    );
+    expect(getResolvedCelebrationCopy({ ...base, isOwner: false }).title).toBe(
+      '¡Toby volvió a casa!'
+    );
+  });
 });

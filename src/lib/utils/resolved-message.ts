@@ -28,7 +28,9 @@ const RESOLVED_SUBTITLES: Record<PublicationType, string> = {
     'Gracias a todas las personas que compartieron el aviso. Los datos del avistamiento ayudaron a resolver el caso.',
 };
 
-/** Sustantivo de la especie en masculino y femenino. */
+/**
+ * Sustantivo de la especie en masculino y femenino.
+ */
 const SPECIES_NOUNS: Record<string, { male: string; female: string }> = {
   dog: { male: 'perro', female: 'perra' },
   cat: { male: 'gato', female: 'gata' },
@@ -41,14 +43,30 @@ const SPECIES_NOUNS: Record<string, { male: string; female: string }> = {
 
 const DEFAULT_SPECIES_NOUN = { male: 'mascota', female: 'mascota' };
 
+/**
+ * Sustantivos femeninos que no terminan en «a». «ave» es femenino aunque el
+ * aviso sea de un macho, así que el demostrativo debe concordar con la palabra
+ * y no con el sexo del animal.
+ */
+const FEMININE_NOUNS = new Set(['ave']);
+
 function isPublicationType(value: string): value is PublicationType {
   return Object.prototype.hasOwnProperty.call(RESOLVED_OUTCOMES, value);
 }
 
+function speciesNounData(species?: string | null) {
+  return SPECIES_NOUNS[(species ?? '').toLowerCase()] ?? DEFAULT_SPECIES_NOUN;
+}
+
 /** Devuelve el sustantivo de la especie concordando con el sexo del aviso. */
 export function getSpeciesNoun(species?: string | null, sex?: string | null): string {
-  const nouns = SPECIES_NOUNS[(species ?? '').toLowerCase()] ?? DEFAULT_SPECIES_NOUN;
+  const nouns = speciesNounData(species);
   return sex === 'female' ? nouns.female : nouns.male;
+}
+
+/** Demostrativo que concuerda con el sustantivo («este perro», «esta ave»). */
+function getDemonstrative(noun: string): string {
+  return FEMININE_NOUNS.has(noun) || noun.endsWith('a') ? 'esta' : 'este';
 }
 
 export type ResolvedCelebrationCopy = {
@@ -60,19 +78,27 @@ export type ResolvedCelebrationCopy = {
  * Compone el mensaje de una publicación resuelta a partir del tipo de caso.
  *
  * El sujeto es el nombre de la mascota si el título lo permite; si no, se usa
- * la especie («Tu perra volvió a casa»). Tomar la primera palabra del título
- * producía «¡Perra está de vuelta en casa!» sin nombre ni concordancia.
+ * la especie. El posesivo «tu» solo es correcto para quien publicó el aviso:
+ * un visitante lee «Este perro encontró un hogar», nunca «Tu perro». Tomar la
+ * primera palabra del título producía «¡Perra está de vuelta en casa!» sin
+ * nombre ni concordancia.
  */
 export function getResolvedCelebrationCopy(input: {
   title?: string | null;
   type?: string | null;
   species?: string | null;
   sex?: string | null;
+  /** Quien lee el mensaje es el dueño de la publicación. */
+  isOwner?: boolean;
 }): ResolvedCelebrationCopy {
+  const isOwner = input.isOwner ?? true;
   const name = getPetNameFromTitle(input.title);
   const type = (input.type ?? '').toUpperCase();
   const knownType = isPublicationType(type) ? type : 'LOST';
-  const subject = name ?? `tu ${getSpeciesNoun(input.species, input.sex)}`;
+  const noun = getSpeciesNoun(input.species, input.sex);
+
+  const subject = name ?? (isOwner ? `tu ${noun}` : `${getDemonstrative(noun)} ${noun}`);
+
   const outcome = RESOLVED_OUTCOMES[knownType];
 
   return {

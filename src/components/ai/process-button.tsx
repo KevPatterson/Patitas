@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { startProcessing } from '../../lib/ai/processing';
 
@@ -8,23 +8,31 @@ type ProcessButtonProps = {
   onProcessingStarted?: () => void;
 };
 
+type ProcessResult = {
+  completed: number;
+  failed: number;
+};
+
 export function ProcessButton({ publicationId, onProcessingStarted }: ProcessButtonProps) {
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [result, setResult] = useState<ProcessResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleProcess() {
     setLoading(true);
     setError(null);
-    setSuccess(false);
+    setResult(null);
 
     try {
-      await startProcessing(publicationId, ['embedding_text', 'moderation']);
-      setSuccess(true);
-      onProcessingStarted?.();
+      const outcome = await startProcessing(publicationId, ['embedding_text', 'moderation']);
 
-      // Ocultar mensaje de éxito después de 3 segundos
-      setTimeout(() => setSuccess(false), 3000);
+      const jobs = outcome.jobs ?? [];
+      const completed =
+        outcome.completed ?? jobs.filter((job) => job.status === 'COMPLETED').length;
+      const failed = outcome.failed ?? jobs.filter((job) => job.status !== 'COMPLETED').length;
+
+      setResult({ completed, failed });
+      onProcessingStarted?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al procesar');
     } finally {
@@ -32,12 +40,42 @@ export function ProcessButton({ publicationId, onProcessingStarted }: ProcessBut
     }
   }
 
-  if (success) {
+  function reset() {
+    setResult(null);
+    setError(null);
+  }
+
+  if (result) {
+    const allGood = result.failed === 0 && result.completed > 0;
+
     return (
-      <div className="rounded-xl border-2 border-found/20 bg-found/5 p-4 text-center">
-        <p className="text-sm font-medium text-found">
-          ✅ Procesamiento iniciado. Los resultados aparecerán pronto.
+      <div
+        className={`space-y-3 rounded-xl border-2 p-4 text-center ${
+          allGood ? 'border-found/20 bg-found/5' : 'border-orange/30 bg-orange/5'
+        }`}
+      >
+        <p
+          className={`flex items-center justify-center gap-2 text-sm font-medium ${
+            allGood ? 'text-found' : 'text-orange-dark'
+          }`}
+        >
+          {allGood ? (
+            <CheckCircle2 className="size-4" aria-hidden="true" />
+          ) : (
+            <AlertTriangle className="size-4" aria-hidden="true" />
+          )}
+          {allGood
+            ? `Análisis completado (${result.completed} ${
+                result.completed === 1 ? 'tarea' : 'tareas'
+              }). Los resultados ya están disponibles.`
+            : `El análisis terminó con ${result.failed} ${
+                result.failed === 1 ? 'error' : 'errores'
+              }. Revisa el estado de abajo.`}
         </p>
+
+        <Button variant="secondary" onClick={reset} className="w-full">
+          Analizar de nuevo
+        </Button>
       </div>
     );
   }
@@ -70,7 +108,8 @@ export function ProcessButton({ publicationId, onProcessingStarted }: ProcessBut
       )}
 
       <p className="text-xs text-foreground/60 leading-relaxed">
-        💡 La IA analizará esta publicación para detectar duplicados, extraer información y buscar coincidencias.
+        La IA analizará esta publicación para detectar duplicados, extraer información y buscar
+        coincidencias. El análisis se ejecuta al momento.
       </p>
     </div>
   );

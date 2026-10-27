@@ -11,13 +11,24 @@ export type ProcessingStatus = {
   overall: 'pending' | 'processing' | 'completed' | 'partial' | 'failed';
 };
 
+export type ProcessingJobResult = {
+  id: string;
+  job_type: string;
+  status?: string;
+  error?: string;
+};
+
 /**
- * Iniciar procesamiento de IA para una publicación
+ * Iniciar procesamiento de IA para una publicación.
+ *
+ * El servidor ejecuta los trabajos en la misma petición: sin worker ni cron en
+ * el proyecto, encolarlos solo dejaba al usuario esperando un estado que nunca
+ * cambiaba.
  */
 export async function startProcessing(
   publicationId: string,
   tasks?: AIJobType[]
-): Promise<{ ok: boolean; jobs?: Array<{ id: string; job_type: string }> }> {
+): Promise<{ ok: boolean; jobs?: ProcessingJobResult[]; completed?: number; failed?: number }> {
   const { data: session } = await supabase.auth.getSession();
 
   if (!session.session) {
@@ -61,22 +72,33 @@ export async function startProcessing(
   const result = payload as {
     ok?: boolean;
     error?: string;
-    jobs?: Array<{ id: string; job_type: string }>;
+    jobs?: ProcessingJobResult[];
+    completed?: number;
+    failed?: number;
   };
 
   if (result.ok === false) {
     throw new Error(result.error ?? 'No se pudo iniciar el procesamiento');
   }
 
-  return { ok: true, jobs: result.jobs };
+  return {
+    ok: true,
+    jobs: result.jobs,
+    completed: result.completed,
+    failed: result.failed,
+  };
 }
 
 // Obtener estado de procesamiento de una publicación
 export async function getProcessingStatus(publicationId: string): Promise<ProcessingStatus> {
   const { data: jobs } = await supabase
     .from('ai_processing_jobs')
-    .select('job_type, status')
-    .eq('publication_id', publicationId);
+    .select('job_type, status, created_at')
+    .eq('publication_id', publicationId)
+    // Los trabajos cancelados (por ejemplo, duplicados de clics anteriores) no
+    // representan el estado actual y no deben bloquear el «completado».
+    .neq('status', 'CANCELLED')
+    .order('created_at', { ascending: true });
 
   if (!jobs || jobs.length === 0) {
     return {
@@ -96,37 +118,54 @@ export async function getProcessingStatus(publicationId: string): Promise<Proces
     overall: 'pending',
   };
 
+  // Solo se cuentan los tipos de trabajo que existen realmente: exigir los
+  // cuatro hacía que un análisis de embeddings + moderación nunca llegara a
+  // «completado» y el badge quedara oculto para siempre.
+  const typesWithJobs = new Set<'ocr' | 'vision' | 'embedding' | 'moderation'>();
+
   for (const job of jobs) {
     const type = job.job_type;
     const status = job.status.toLowerCase() as 'pending' | 'processing' | 'completed' | 'failed';
-    
-    if (type === 'ocr') statusMap.ocr = status;
-    else if (type === 'vision') statusMap.vision = status;
-    else if (type === 'embedding_text' || type === 'embedding_image') {
+
+    if (type === 'ocr') {
+      statusMap.ocr = status;
+      typesWithJobs.add('ocr');
+    } else if (type === 'vision') {
+      statusMap.vision = status;
+      typesWithJobs.add('vision');
+    } else if (type === 'embedding_text' || type === 'embedding_image') {
       if (statusMap.embedding === 'pending' || status === 'completed') {
         statusMap.embedding = status;
       }
+      typesWithJobs.add('embedding');
+    } else if (type === 'moderation') {
+      statusMap.moderation = status;
+      typesWithJobs.add('moderation');
     }
-    else if (type === 'moderation') statusMap.moderation = status;
   }
 
-  // Calcular estado general
-  const statuses = [statusMap.ocr, statusMap.vision, statusMap.embedding, statusMap.moderation];
-  let overall: ProcessingStatus['overall'] = 'pending';
-
-  if (statuses.every(s => s === 'completed')) {
-    overall = 'completed';
-  } else if (statuses.some(s => s === 'processing')) {
-    overall = 'processing';
-  } else if (statuses.some(s => s === 'completed') && statuses.some(s => s === 'failed')) {
-    overall = 'partial';
-  } else if (statuses.every(s => s === 'failed')) {
-    overall = 'failed';
-  }
-
-  statusMap.overall = overall;
+  const presentStatuses = [...typesWithJobs].map((type) => statusMap[type]);
+  statusMap.overall = resolveOverallStatus(presentStatuses);
 
   return statusMap;
+}
+
+/**
+ * Estado general a partir de los trabajos que existen.
+ *
+ * No se exigen los cuatro tipos: un análisis de embeddings + moderación debe
+ * poder llegar a «completado».
+ */
+function resolveOverallStatus(
+  statuses: Array<ProcessingStatus['ocr']>
+): ProcessingStatus['overall'] {
+  if (statuses.length === 0) return 'pending';
+  if (statuses.every((status) => status === 'completed')) return 'completed';
+  if (statuses.every((status) => status === 'failed')) return 'failed';
+  if (statuses.some((status) => status === 'completed') && statuses.some((status) => status === 'failed')) {
+    return 'partial';
+  }
+  return 'processing';
 }
 
 /**
