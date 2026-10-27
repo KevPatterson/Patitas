@@ -213,7 +213,7 @@ export function PosterModal({ publication, open, onClose }: PosterModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-foreground/10 text-foreground/60 transition-colors hover:border-foreground/20 hover:bg-foreground/5 hover:text-foreground"
+            className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-foreground/10 text-foreground/60 transition-colors hover:border-foreground/20 hover:bg-foreground/5 hover:text-foreground"
             aria-label="Cerrar la vista previa del cartel"
           >
             <X className="size-5" aria-hidden="true" />

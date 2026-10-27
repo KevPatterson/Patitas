@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Share2, X, Link2, MessageCircle, Send, Check, ImageDown } from 'lucide-react';
 import { Button } from '../ui/button';
 import { PosterModal } from './poster-modal';
@@ -23,12 +23,14 @@ type ShareMenuProps = {
 };
 
 const itemClasses =
-  'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-found/10';
+  'flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-found/10';
 
 export function ShareMenu({ publication, className }: ShareMenuProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showPoster, setShowPoster] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const shareData = buildPublicationShareData(publication);
 
@@ -89,21 +91,35 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
     ]
   );
 
-  const handleWebShare = async () => {
-    const success = await shareViaWebAPI(shareData);
-    if (success) {
-      setShowMenu(false);
-    }
-  };
-
   const handleCopy = async () => {
+    setCopyError(false);
+
     try {
       await copyToClipboard(shareData.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Error al copiar
+      setCopied(false);
+      setCopyError(true);
     }
+  };
+
+  const handleWebShare = async () => {
+    const result = await shareViaWebAPI(shareData);
+
+    if (result === 'shared' || result === 'cancelled') {
+      setShowMenu(false);
+      return;
+    }
+
+    // En escritorio algunos navegadores exponen `navigator.share` pero no abren
+    // nada. Copiar el enlace garantiza que la opción siempre haga algo.
+    await handleCopy();
+  };
+
+  const handleChannelShare = (share: () => void) => {
+    share();
+    setShowMenu(false);
   };
 
   const openPoster = () => {
@@ -111,12 +127,45 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
     setShowPoster(true);
   };
 
+  // Cerrar al hacer clic fuera del menú, no solo con el botón «Cerrar».
+  useEffect(() => {
+    if (!showMenu) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showMenu]);
+
   return (
-    <div className={['relative', className].filter(Boolean).join(' ')}>
+    <div ref={containerRef} className={['relative', className].filter(Boolean).join(' ')}>
       <Button
         type="button"
         variant="secondary"
-        onClick={() => setShowMenu(!showMenu)}
+        onClick={() => {
+          const next = !showMenu;
+          setShowMenu(next);
+
+          if (next) {
+            setCopied(false);
+            setCopyError(false);
+          }
+        }}
         className="w-full"
         aria-expanded={showMenu}
         aria-haspopup="menu"
@@ -156,7 +205,7 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
           <button
             type="button"
             role="menuitem"
-            onClick={() => shareViaWhatsApp(shareData.text, shareData.url)}
+            onClick={() => handleChannelShare(() => shareViaWhatsApp(shareData.text, shareData.url))}
             className={itemClasses}
           >
             <MessageCircle className="size-4" aria-hidden="true" />
@@ -165,7 +214,7 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
           <button
             type="button"
             role="menuitem"
-            onClick={() => shareViaTelegram(shareData.text, shareData.url)}
+            onClick={() => handleChannelShare(() => shareViaTelegram(shareData.text, shareData.url))}
             className={itemClasses}
           >
             <Send className="size-4" aria-hidden="true" />
@@ -174,7 +223,7 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
           <button
             type="button"
             role="menuitem"
-            onClick={() => shareViaFacebook(shareData.url)}
+            onClick={() => handleChannelShare(() => shareViaFacebook(shareData.url))}
             className={itemClasses}
           >
             <Share2 className="size-4" aria-hidden="true" />
@@ -186,7 +235,7 @@ export function ShareMenu({ publication, className }: ShareMenuProps) {
             ) : (
               <Link2 className="size-4" aria-hidden="true" />
             )}
-            <span>{copied ? 'Copiado' : 'Copiar enlace'}</span>
+            <span>{copied ? 'Copiado' : copyError ? 'No se pudo copiar' : 'Copiar enlace'}</span>
           </button>
         </div>
       ) : null}

@@ -14,7 +14,7 @@ type ButtonProps = CommonProps & ButtonHTMLAttributes<HTMLButtonElement>;
 type LinkButtonProps = CommonProps & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'loading'> & { href: string };
 
 const baseClasses =
-  'inline-flex items-center justify-center gap-2 rounded-xl text-sm font-extrabold transition-all duration-base ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden whitespace-nowrap';
+  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-extrabold transition-all duration-base ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden whitespace-nowrap';
 
 const sizeClasses: Record<ButtonSize, string> = {
   sm: 'min-h-9 px-3 gap-1.5',

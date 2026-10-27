@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildPosterDisplayUrl,
   buildPosterFacts,
   buildPosterFilename,
   buildPosterLocation,
@@ -27,6 +28,22 @@ describe('cartel de publicación', () => {
     expect(buildPosterFilename('Perdido en La Habana')).toBe('patitas-Perdido-en-La-Habana.png');
     expect(buildPosterFilename('Añejo')).toBe('patitas-Anejo.png');
     expect(buildPosterFilename('  ')).toBe('patitas-caso.png');
+  });
+
+  it('recorta la URL visible para que no invada la tarjeta del QR', () => {
+    expect(buildPosterDisplayUrl('https://patitas.cu/p/toby')).toBe('patitas.cu/p/toby');
+
+    const longUrl =
+      'https://patitass.vercel.app/p/perro-mestizo-marron-con-collar-azul-perdido-en-centro-habana';
+    const display = buildPosterDisplayUrl(longUrl, 40);
+
+    expect(display).toHaveLength(40);
+    expect(display.startsWith('patitass.vercel.app/p/')).toBe(true);
+    expect(display.endsWith('…')).toBe(true);
+    // El QR conserva la URL completa: lo recortado es solo el texto.
+    expect(buildPosterUrl('perro-mestizo', 'https://patitass.vercel.app')).toContain(
+      '/p/perro-mestizo'
+    );
   });
 
   it('compone la ubicación sin huecos ni comas sueltas', () => {

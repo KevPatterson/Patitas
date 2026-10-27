@@ -96,6 +96,20 @@ export function buildPosterUrl(slug: string, baseUrl: string = SITE_URL): string
   return `${baseUrl.replace(/\/$/, '')}/p/${encodeURIComponent(slug)}`;
 }
 
+/**
+ * URL corta para pintar en el cartel.
+ *
+ * El QR lleva la URL completa; el texto solo acompaña, así que se recorta para
+ * que nunca se meta debajo de la tarjeta del QR (los slugs pueden ser largos).
+ */
+export function buildPosterDisplayUrl(url: string, maxChars = 58): string {
+  const display = url.replace(/^https?:\/\//, '');
+
+  if (display.length <= maxChars) return display;
+
+  return `${display.slice(0, Math.max(1, maxChars - 1)).trimEnd()}…`;
+}
+
 export function buildPosterFilename(slug: string): string {
   const safeSlug = slug
     .normalize('NFD')
@@ -163,17 +177,27 @@ function drawPaw(
   ctx.scale(scale, scale);
   ctx.fillStyle = color;
 
-  // Almohadilla principal
+  // Almohadilla en forma de gota: replica el pin de ubicación del logo.
   ctx.beginPath();
-  ctx.ellipse(0, 18, 30, 26, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(0, 46);
+  ctx.bezierCurveTo(0, 46, -27, 26, -27, 8);
+  ctx.bezierCurveTo(-27, -5, -15, -13, 0, -13);
+  ctx.bezierCurveTo(15, -13, 27, -5, 27, 8);
+  ctx.bezierCurveTo(27, 26, 0, 46, 0, 46);
+  ctx.closePath();
 
-  // Cuatro dedos
+  // Hueco central del logo: el detalle que evoca la ubicación. Se rellena en
+  // modo par-impar para que quede vacío y deje ver el fondo.
+  ctx.moveTo(8, 9);
+  ctx.arc(0, 9, 8, 0, Math.PI * 2, true);
+  ctx.fill('evenodd');
+
+  // Cuatro dedos, pegados a la almohadilla como en el logo.
   const toes: Array<[number, number, number, number]> = [
-    [-34, -14, 11, 15],
-    [-13, -32, 11, 16],
-    [13, -32, 11, 16],
-    [34, -14, 11, 15],
+    [-34, -10, 11, 15],
+    [-13, -28, 11, 16],
+    [13, -28, 11, 16],
+    [34, -10, 11, 15],
   ];
 
   for (const [x, y, rx, ry] of toes) {
@@ -239,6 +263,28 @@ function fitLines(
 
   visible[maxLines - 1] = `${last.trimEnd()}…`;
   return visible;
+}
+
+/**
+ * Recorta una sola línea hasta que quepa.
+ *
+ * `fitLines` no parte palabras: una URL sin espacios se devolvía entera y
+ * terminaba debajo de la tarjeta del QR. Aquí se acorta por caracteres.
+ */
+function fitSingleLine(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+
+  let visible = text;
+
+  while (visible.length > 1 && ctx.measureText(`${visible}…`).width > maxWidth) {
+    visible = visible.slice(0, -1);
+  }
+
+  return `${visible.trimEnd()}…`;
 }
 
 function drawFactChips(
@@ -368,19 +414,63 @@ function drawCoverImage(
   );
 }
 
+/**
+ * Genera el QR con la identidad de Patitas: módulos en tinta, tarjeta blanca y
+ * una huella naranja en el centro.
+ *
+ * Los módulos se pintan rectos a propósito: con el redondeo y la separación que
+ * se probaron antes, el código dejaba de leerse a este tamaño. La corrección de
+ * errores se sube a «H» para que la huella central no impida la lectura.
+ */
 async function createQrCanvas(url: string, size: number): Promise<HTMLCanvasElement> {
   const qrModule = await import('qrcode');
+  const qr = qrModule.create(url, { errorCorrectionLevel: 'H' });
   const canvas = document.createElement('canvas');
+  const pixelRatio = 3;
 
-  await qrModule.toCanvas(canvas, url, {
-    width: size,
-    margin: 1,
-    errorCorrectionLevel: 'M',
-    color: {
-      dark: INK,
-      light: '#ffffff',
-    },
-  });
+  canvas.width = Math.round(size * pixelRatio);
+  canvas.height = Math.round(size * pixelRatio);
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('El navegador no soporta Canvas 2D.');
+  }
+
+  ctx.scale(pixelRatio, pixelRatio);
+  ctx.clearRect(0, 0, size, size);
+
+  const margin = size * 0.06;
+  const modules = qr.modules.size;
+  const cell = (size - margin * 2) / modules;
+
+  ctx.fillStyle = INK;
+
+  for (let row = 0; row < modules; row += 1) {
+    for (let col = 0; col < modules; col += 1) {
+      if (!qr.modules.get(row, col)) continue;
+
+      ctx.fillRect(margin + col * cell, margin + row * cell, cell, cell);
+    }
+  }
+
+  // Huella central sobre un disco blanco: refuerza la marca sin tapar los
+  // patrones de localización de las esquinas.
+  const center = size / 2;
+  const badgeRadius = size * 0.09;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(center, center, badgeRadius + 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#ffd9bb';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(center, center, badgeRadius + 3, 0, Math.PI * 2);
+  ctx.stroke();
+
+  drawPaw(ctx, center, center - 1, badgeRadius / 54, ORANGE_DARK);
 
   return canvas;
 }
@@ -523,18 +613,18 @@ export async function renderPublicationPoster(publication: PosterPublication): P
   if (publication.description) {
     ctx.fillStyle = 'rgba(26, 13, 5, 0.72)';
     ctx.font = '400 26px "Figtree", sans-serif';
-    const descriptionLines = fitLines(ctx, publication.description, 700, 2);
+    const descriptionLines = fitLines(ctx, publication.description, 680, 2);
     descriptionLines.forEach((line, index) => {
       ctx.fillText(line, 64, 1136 + index * 34);
     });
   }
 
-  // Separador de la zona inferior.
+  // Separador de la zona inferior: termina antes de la tarjeta del QR.
   ctx.strokeStyle = '#ffd9bb';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(64, 1198);
-  ctx.lineTo(1016, 1198);
+  ctx.lineTo(748, 1198);
   ctx.stroke();
 
   // Llamada a la acción.
@@ -545,44 +635,57 @@ export async function renderPublicationPoster(publication: PosterPublication): P
 
   ctx.fillStyle = MUTED;
   ctx.font = '600 22px "Figtree", sans-serif';
-  const displayUrl = posterUrl.replace(/^https?:\/\//, '');
-  const urlLine = fitLines(ctx, displayUrl, 700, 1)[0] ?? '';
+  const displayUrl = buildPosterDisplayUrl(posterUrl);
+  const urlLine = fitSingleLine(ctx, displayUrl, 680);
   ctx.fillText(urlLine, 64, 1342);
 
   ctx.fillStyle = 'rgba(26, 13, 5, 0.5)';
   ctx.font = '600 18px "Figtree", sans-serif';
-  const headlineLine = fitLines(ctx, getPosterHeadline(publication.type), 700, 1)[0] ?? '';
+  const headlineLine = fitSingleLine(ctx, getPosterHeadline(publication.type), 680);
   ctx.fillText(headlineLine, 64, 1380);
 
   // Tarjeta del QR.
-  const qrCardX = 812;
-  const qrCardY = 1210;
-  const qrCardSize = 204;
-  const qrSize = 172;
+  const qrCardX = 772;
+  const qrCardY = 1168;
+  const qrCardSize = 248;
+  const qrPadding = 14;
+  const qrSize = 196;
 
   ctx.save();
   ctx.shadowColor = 'rgba(26, 13, 5, 0.16)';
   ctx.shadowBlur = 24;
   ctx.shadowOffsetY = 10;
   ctx.fillStyle = '#ffffff';
-  roundedRect(ctx, qrCardX, qrCardY, qrCardSize, qrCardSize, 26);
+  roundedRect(ctx, qrCardX, qrCardY, qrCardSize, qrCardSize, 28);
   ctx.fill();
   ctx.restore();
 
+  ctx.strokeStyle = '#ffd9bb';
+  ctx.lineWidth = 3;
+  roundedRect(ctx, qrCardX, qrCardY, qrCardSize, qrCardSize, 28);
+  ctx.stroke();
+
+  const qrX = qrCardX + (qrCardSize - qrSize) / 2;
+  const qrY = qrCardY + qrPadding;
+
   try {
     const qrCanvas = await createQrCanvas(posterUrl, qrSize);
-    const qrX = qrCardX + (qrCardSize - qrSize) / 2;
-    const qrY = qrCardY + (qrCardSize - qrSize) / 2;
     ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
   } catch {
     // Sin QR el cartel sigue siendo útil: al menos conserva la URL escrita.
     ctx.fillStyle = MUTED;
     ctx.font = '600 20px "Figtree", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Escanea en', qrCardX + qrCardSize / 2, qrCardY + 96);
-    ctx.fillText('Patitas', qrCardX + qrCardSize / 2, qrCardY + 126);
+    ctx.fillText('Escanea en', qrCardX + qrCardSize / 2, qrY + 76);
+    ctx.fillText('Patitas', qrCardX + qrCardSize / 2, qrY + 106);
     ctx.textAlign = 'left';
   }
+
+  ctx.fillStyle = ORANGE_DARK;
+  ctx.font = '600 16px "Figtree", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Escanea para ayudar', qrCardX + qrCardSize / 2, qrCardY + 228);
+  ctx.textAlign = 'left';
 
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, 'image/png');

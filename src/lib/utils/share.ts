@@ -8,16 +8,29 @@ export function canUseWebShare(): boolean {
   return typeof navigator !== 'undefined' && 'share' in navigator;
 }
 
-export async function shareViaWebAPI(data: ShareData): Promise<boolean> {
+export type WebShareResult = 'shared' | 'cancelled' | 'unsupported' | 'failed';
+
+/**
+ * Abre el diálogo nativo de compartir.
+ *
+ * Se distingue entre cancelar (no es un error), no soportado y fallo real: en
+ * escritorio hay navegadores que exponen `navigator.share` pero no abren nada,
+ * y la UI necesita saber cuándo ofrecer una alternativa.
+ */
+export async function shareViaWebAPI(data: ShareData): Promise<WebShareResult> {
   if (!canUseWebShare()) {
-    return false;
+    return 'unsupported';
   }
 
   try {
     await navigator.share(data);
-    return true;
-  } catch {
-    return false;
+    return 'shared';
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return 'cancelled';
+    }
+
+    return 'failed';
   }
 }
 
