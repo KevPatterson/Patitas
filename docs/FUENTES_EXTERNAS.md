@@ -324,14 +324,14 @@ confidence = 0.30*classification + 0.30*extracción + 0.15*fuente_trusted
 
 ### Flujo
 1. Usuario hace clic → Modal con motivos (COPYRIGHT, PRIVACY, INACCURATE, OTHER)
-2. POST `/api/takedown` (rate limit: 5/hora/IP, sin auth obligatorio)
+2. POST `/api/publications?action=takedown` (rate limit: 10/hora/IP y 5/hora/usuario, requiere sesión)
 3. **Inmediato**: Publicación → `status = 'HIDDEN'` (oculta)
 4. Crea `takedown_request` con `status = 'PENDING'`
 5. Moderador revisa en `/admin` → **Aprobar** (→ `DELETED`) o **Rechazar** (→ restaura)
 
 ### Rate Limiting
-- 5 solicitudes/hora por IP
-- Endpoint público (no requiere auth)
+- 10 solicitudes/hora por IP y 5/hora por usuario
+- Requiere JWT: sin sesión no se crea la solicitud (hallazgo API-04)
 - Logs en `audit_logs`
 
 ---

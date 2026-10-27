@@ -4,7 +4,13 @@ Esta carpeta contiene las serverless functions desplegadas en Vercel.
 
 ## Estructura Consolidada
 
-Para optimizar el uso de recursos y mantenerse dentro del límite de Vercel (12 funciones), las funciones han sido consolidadas en endpoints unificados:
+El plan Hobby de Vercel permite **12 Serverless Functions por deployment**. Para
+mantenerse por debajo, los endpoints se agrupan en routers con `?action=` o
+`?resource=`, y la lógica compartida vive en `api/_lib/` (Vercel ignora las rutas
+con prefijo `_`, igual que `api/_types/`).
+
+`src/lib/__tests__/api-functions.test.ts` cuenta las funciones con la misma regla
+que Vercel y falla si se superan las 12.
 
 ### 1. `/api/ai` - Funciones de Inteligencia Artificial
 
@@ -41,6 +47,7 @@ Endpoint unificado para operaciones relacionadas con publicaciones.
 **Actions disponibles:**
 - `create` - Validar creación de publicación (rate limiting)
 - `validate-upload` - Validar subida de imágenes
+- `takedown` - Solicitud de retirada de contenido
 
 **Ejemplo:**
 ```typescript
@@ -58,29 +65,50 @@ const response = await fetch('/api/publications?action=validate-upload', {
 });
 ```
 
-### 3. `/api/admin/moderation` - Moderación
+### 3. `/api/uploads` - Subida de Imágenes
 
-Endpoint para acciones de moderación (sin cambios).
+Único camino de escritura en Storage: valida por magic bytes, quita EXIF y aplica
+cuota.
 
-**Uso:** `POST /api/admin/moderation`
+**Uso:** `POST /api/uploads?action=<publication-image|avatar|delete-image>`
 
-**Actions disponibles:**
-- `resolve-report` - Resolver un reporte
-- `hide-publication` - Ocultar una publicación
-- `restore-publication` - Restaurar una publicación
-- `set-role` - Cambiar el rol de un usuario
+### 4. `/api/admin` - Administración
 
-### 4. `/api/health` - Health Check
+Router de las tareas de moderación y verificación de perfiles.
 
-Endpoint para verificar el estado de la API (sin cambios).
+**Uso:** `/api/admin?resource=<moderation|verifications>`
+
+**Resources disponibles:**
+- `moderation` (POST) - `resolve-report`, `hide-publication`, `restore-publication`, `set-role`
+- `verifications` (GET/POST) - Lista la cola y aprueba o rechaza solicitudes
+
+### 5. `/api/seo` - Respuestas para buscadores y bots
+
+**Uso:** `GET /api/seo?action=<og|sitemap>`
+
+- `og` - HTML con Open Graph y JSON-LD para `/p/:slug` (solo crawlers)
+- `sitemap` - Sitemap dinámico (`/sitemap.xml` se reescribe aquí)
+
+### 6. `/api/import` - Importación desde Facebook
+
+**Uso:** `POST /api/import?action=<link|screenshot>`
+
+- `link` - Metadatos Open Graph de un enlace público
+- `screenshot` - Datos extraídos de una captura de pantalla
+
+### 7. `/api/ingest/external-post` - Ingesta externa
+
+**Uso:** `POST /api/ingest/external-post` con firma HMAC (`INGEST_HMAC_SECRET`).
+Lo consume el worker de Telegram.
+
+### 8. `/api/health` - Health Check
 
 **Uso:** `GET /api/health`
 
 ## Folders
 
-- `api/_lib/` - Utilidades compartidas (rate limiting, supabase admin, etc.)
-- `api/ai/` - Implementaciones específicas de cada acción de IA (importadas dinámicamente)
-- `api/admin/` - Funciones de administración
+- `api/_lib/` - Utilidades compartidas y handlers de los routers
+- `api/_types/` - Tipos mínimos de Vercel (no cuenta como función por el prefijo `_`)
 
 ## Migración desde Endpoints Antiguos
 
@@ -96,6 +124,16 @@ Los siguientes endpoints han sido consolidados:
 | `POST /api/ai/process-job` | `POST /api/ai?action=process-job` |
 | `POST /api/publications/create` | `POST /api/publications?action=create` |
 | `POST /api/uploads/validate` | `POST /api/publications?action=validate-upload` |
+| `POST /api/takedown` | `POST /api/publications?action=takedown` |
+| `POST /api/admin/moderation` | `POST /api/admin?resource=moderation` |
+| `GET/POST /api/admin/verifications` | `GET/POST /api/admin?resource=verifications` |
+| `GET /api/og` | `GET /api/seo?action=og` |
+| `GET /api/sitemap` | `GET /api/seo?action=sitemap` |
+| `POST /api/import/facebook-link` | `POST /api/import?action=link` |
+| `POST /api/import/facebook-screenshot` | `POST /api/import?action=screenshot` |
+
+Los rewrites de `vercel.json` mantienen `/sitemap.xml` y la ruta de bots
+`/p/:slug`, y conservan `/api/og` y `/api/sitemap` como alias.
 
 ## Rate Limits
 
@@ -114,9 +152,13 @@ Cada acción tiene su propio rate limit independiente:
 
 ## Deployment
 
-Total de serverless functions: **4** (muy por debajo del límite de 12)
+Total de serverless functions: **8**
 
 1. `api/ai.ts`
 2. `api/publications.ts`
-3. `api/admin/moderation.ts`
-4. `api/health.ts`
+3. `api/uploads.ts`
+4. `api/admin.ts`
+5. `api/seo.ts`
+6. `api/import.ts`
+7. `api/ingest/external-post.ts`
+8. `api/health.ts`

@@ -1,11 +1,11 @@
-import type { VercelRequest, VercelResponse } from '../_types/vercel.js';
-import { supabaseAdmin } from '../_lib/supabase-admin.js';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http.js';
-import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';
-import { assertSafeRemoteUrl, fetchRemoteImage } from '../_lib/url-guard.js';
-import { toImagePayload } from '../_lib/image-guard.js';
-import { sanitizeImage } from '../_lib/image-process.js';
-import { aiProviderIsReal, AI_ENABLED } from '../_lib/env.js';
+import type { VercelRequest, VercelResponse } from '../../_types/vercel.js';
+import { supabaseAdmin } from '../supabase-admin.js';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../http.js';
+import { limitByIp, limitByUser } from '../rate-limit-utils.js';
+import { assertSafeRemoteUrl, fetchRemoteImage } from '../url-guard.js';
+import { toImagePayload } from '../image-guard.js';
+import { sanitizeImage } from '../image-process.js';
+import { aiProviderIsReal, AI_ENABLED } from '../env.js';
 import {
   facebookLinkImportSchema,
   extractOpenGraphMetadata,
@@ -13,12 +13,12 @@ import {
   extractPostImages,
   isFacebookBoilerplate,
   FACEBOOK_IMPORT_CONSTANTS,
-} from '../../src/lib/validations/facebook-import.js';
-import { getAIProvider } from '../_lib/ai-provider.js';
-import { buildFormExtraction } from '../_lib/ai/form-extraction.js';
+} from '../../../src/lib/validations/facebook-import.js';
+import { getAIProvider } from '../ai-provider.js';
+import { buildFormExtraction } from '../ai/form-extraction.js';
 
 /**
- * POST /api/import/facebook-link — importa metadatos Open Graph de un enlace.
+ * POST /api/import?action=link — importa metadatos Open Graph de un enlace.
  *
  * Ya tenía dos buenas defensas: `redirect: 'manual'` y límite de tamaño de la
  * respuesta. Faltaban dos agujeros del hallazgo API-05:

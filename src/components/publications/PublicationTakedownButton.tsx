@@ -39,7 +39,7 @@ export function PublicationTakedownButton({
 
     try {
       const token = localStorage.getItem('sb-access-token') ?? '';
-      const response = await fetch('/api/takedown', {
+      const response = await fetch('/api/publications?action=takedown', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

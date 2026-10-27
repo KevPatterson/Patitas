@@ -117,7 +117,7 @@ Patitas centraliza en un único lugar lo que hoy se dispersa en estados de Whats
 - **`llms.txt`** con el resumen del sitio, datos clave, páginas principales y reglas de citación para ChatGPT, Claude, DeepSeek, Perplexity y otros asistentes.
 - **`llms-full.txt`** con la descripción ampliada y todas las respuestas de las preguntas frecuentes.
 - **`robots.txt`** con permisos explícitos para los rastreadores de IA (`GPTBot`, `OAI-SearchBot`, `ClaudeBot`, `PerplexityBot`, `DeepSeekBot`, `CCBot`...), manteniendo cerradas las rutas privadas.
-- **HTML server-rendered para bots** en `/p/:slug`: los crawlers que no ejecutan JavaScript reciben título, descripción, navegación y JSON-LD del caso a través de `api/og.ts`.
+- **HTML server-rendered para bots** en `/p/:slug`: los crawlers que no ejecutan JavaScript reciben título, descripción, navegación y JSON-LD del caso a través de `api/seo.ts`.
 - **JSON-LD estático** de `Organization` y `WebSite` en `index.html`, más `FAQPage` en las preguntas frecuentes y `Article` en cada publicación.
 - Metadatos `robots` con `max-snippet:-1` y `max-image-preview:large`, cabecera `Link` hacia `llms.txt` y `noscript` con contenido real para rastreadores sin JavaScript.
 
@@ -768,18 +768,19 @@ indica.
 | Endpoint | Auth | Descripción |
 |----------|------|-------------|
 | `GET /api/health` | pública | Health check (BD, storage y proveedor IA) |
-| `GET /api/og?slug=<slug>` | bots | HTML server-rendered con Open Graph y JSON-LD para bots sociales y de IA |
-| `GET /sitemap.xml` | pública | Sitemap dinámico de casos activos (rewrite a `/api/sitemap`) |
+| `GET /api/seo?action=og&slug=<slug>` | bots | HTML server-rendered con Open Graph y JSON-LD para bots sociales y de IA |
+| `GET /sitemap.xml` | pública | Sitemap dinámico de casos activos (rewrite a `/api/seo?action=sitemap`) |
 | `GET /llms.txt` | pública | Resumen del sitio para asistentes de IA (archivo estático) |
 | `GET /llms-full.txt` | pública | FAQ completa para asistentes de IA (archivo estático) |
 | `POST /api/publications?action=create` | JWT | Alta de publicación con rate limit |
 | `POST /api/publications?action=validate-upload` | JWT | Valida tipo/tamaño/cantidad antes de subir a Storage |
-| `POST /api/admin/moderation` | JWT + rol MODERATOR/ADMIN | Acciones de moderación; escribe en `audit_logs` |
+| `POST /api/publications?action=takedown` | JWT | Solicitud de retirada de contenido (COPYRIGHT, PRIVACY, INACCURATE, OTHER) |
+| `POST /api/admin?resource=moderation` | JWT + rol MODERATOR/ADMIN | Acciones de moderación; escribe en `audit_logs` |
+| `GET/POST /api/admin?resource=verifications` | JWT + rol MODERATOR/ADMIN | Cola de verificación de perfiles |
 | `POST /api/ai?action=<action>` | JWT | Router de IA (`process-publication`, `calculate-matches`, `create-match`, `detect-duplicates`, `extract-from-image`, `process-job`) |
-| `POST /api/import/facebook-link` | JWT | Importa metadatos OG de un enlace público de Facebook |
-| `POST /api/import/facebook-screenshot` | JWT | Importa datos desde una captura de pantalla |
+| `POST /api/import?action=link` | JWT | Importa metadatos OG de un enlace público de Facebook |
+| `POST /api/import?action=screenshot` | JWT | Importa datos desde una captura de pantalla |
 | `POST /api/ingest/external-post` | HMAC | Ingesta desde el worker de Telegram (`INGEST_HMAC_SECRET`) |
-| `POST /api/takedown` | opcional | Solicitud de retirada de contenido (COPYRIGHT, PRIVACY, INACCURATE, OTHER) |
 
 > ⚠️ Varios de estos endpoints todavía tienen validación incompleta (sin Zod,
 > sin comprobación de propiedad del recurso) y su rate limiting es por IP en

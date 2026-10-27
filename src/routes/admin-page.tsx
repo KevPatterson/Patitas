@@ -163,7 +163,7 @@ export function AdminPage() {
 
       if (!token) throw new Error('No hay sesión activa');
 
-      const response = await fetch('/api/admin/moderation', {
+      const response = await fetch('/api/admin?resource=moderation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

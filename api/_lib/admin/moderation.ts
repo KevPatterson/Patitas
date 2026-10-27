@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../_types/vercel.js';
-import { supabaseAdmin } from '../_lib/supabase-admin.js';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http.js';
-import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';
-import { getActorRole, isModerator, writeAuditLog, type Role } from '../_lib/authz.js';
+import type { VercelRequest, VercelResponse } from '../../_types/vercel.js';
+import { supabaseAdmin } from '../supabase-admin.js';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../http.js';
+import { limitByIp, limitByUser } from '../rate-limit-utils.js';
+import { getActorRole, isModerator, writeAuditLog, type Role } from '../authz.js';
 
 /**
- * POST /api/admin/moderation — acciones de moderación.
+ * POST /api/admin?resource=moderation — acciones de moderación.
  *
  * Lo que YA estaba bien (y se conserva): el JWT se valida con
  * `supabase.auth.getUser` y el rol se lee de `profiles` con el service role,

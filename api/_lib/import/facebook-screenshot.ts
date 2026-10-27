@@ -1,12 +1,10 @@
-import type { VercelRequest, VercelResponse } from '../_types/vercel.js';
-import { supabaseAdmin } from '../_lib/supabase-admin.js';
-import { fail, internalError, json, requireAuth, rejectMethod } from '../_lib/http.js';
-import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';
-import { sanitizeImage } from '../_lib/image-process.js';
-import { getAIProvider } from '../_lib/ai-provider.js';
-import { buildFormExtraction } from '../_lib/ai/form-extraction.js';
-
-export const config = { api: { bodyParser: { sizeLimit: '8mb' } } };
+import type { VercelRequest, VercelResponse } from '../../_types/vercel.js';
+import { supabaseAdmin } from '../supabase-admin.js';
+import { fail, internalError, json, requireAuth, rejectMethod } from '../http.js';
+import { limitByIp, limitByUser } from '../rate-limit-utils.js';
+import { sanitizeImage } from '../image-process.js';
+import { getAIProvider } from '../ai-provider.js';
+import { buildFormExtraction } from '../ai/form-extraction.js';
 
 interface ScreenshotImportResponse {
   success: boolean;

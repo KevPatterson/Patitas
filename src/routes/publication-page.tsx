@@ -311,7 +311,7 @@ export function PublicationPage() {
     setTakedownMessage(null);
 
     try {
-      const response = await fetch('/api/takedown', {
+      const response = await fetch('/api/publications?action=takedown', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

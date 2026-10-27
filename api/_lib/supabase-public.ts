@@ -11,7 +11,7 @@ let client: SupabaseClient | null = null;
 
 /**
  * Cliente con la clave pública para lecturas que RLS ya permite a cualquiera
- * (`/api/og` y `/api/sitemap`). No necesita service role: así estos endpoints
+ * (`/api/seo?action=og` y `/api/seo?action=sitemap`). No necesita service role: así estos endpoints
  * siguen funcionando aunque la clave de servidor no esté configurada.
  *
  * Devuelve `null` si falta configuración para que cada endpoint pueda degradar

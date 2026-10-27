@@ -1,8 +1,8 @@
-import type { VercelRequest, VercelResponse } from './_types/vercel.js';
-import { getSupabasePublic } from './_lib/supabase-public.js';
+import type { VercelRequest, VercelResponse } from '../../_types/vercel.js';
+import { getSupabasePublic } from '../supabase-public.js';
 
 /**
- * GET /sitemap.xml — sitemap dinámico (tarea 6.2).
+ * GET /api/seo?action=sitemap — sitemap dinámico (tarea 6.2).
  *
  * Solo entran las publicaciones **públicas y activas**: las ocultas, resueltas,
  * eliminadas o pendientes de revisión quedan fuera, y sus páginas llevan

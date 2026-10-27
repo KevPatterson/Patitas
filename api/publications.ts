@@ -4,9 +4,10 @@ import { supabaseAdmin } from './_lib/supabase-admin.js';
 import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from './_lib/http.js';
 import { limitByIp, limitByUser } from './_lib/rate-limit-utils.js';
 import { canManagePublication, getActor, loadPublication } from './_lib/authz.js';
+import handleTakedown from './_lib/publications/takedown.js';
 
 /**
- * POST /api/publications?action=<create|validate-upload>
+ * POST /api/publications?action=<create|validate-upload|takedown>
  *
  * Router de publicaciones. Hallazgo API-11: `create` solo comprobaba que
  * `title`, `description` y `type` estuvieran presentes, sin validar enums ni
@@ -64,12 +65,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleCreate(req, res);
     case 'validate-upload':
       return handleValidateUpload(req, res);
+    case 'takedown':
+      return handleTakedown(req, res);
     default:
       return fail(
         res,
         400,
         'INVALID_INPUT',
-        'Acción desconocida. Usa ?action=create o ?action=validate-upload'
+        'Acción desconocida. Usa ?action=create, ?action=validate-upload o ?action=takedown'
       );
   }
 }

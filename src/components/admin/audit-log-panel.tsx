@@ -9,7 +9,7 @@ import { EmptyState } from '../ui/empty-state';
  * Visor de `audit_logs` (tarea 5.3).
  *
  * Hasta ahora las acciones de moderación se registraban (ejecutadas desde
- * `/api/admin/moderation` y desde el trigger de revelación de contacto) pero **no
+ * `/api/admin?resource=moderation` y desde el trigger de revelación de contacto) pero **no
  * había forma de consultarlas desde la interfaz**: el panel de administración no
  * mostraba nada.
  *

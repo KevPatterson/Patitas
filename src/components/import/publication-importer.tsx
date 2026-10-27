@@ -546,7 +546,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
 
     try {
       const token = await getAccessToken();
-      const response = await fetch('/api/import/facebook-link', {
+      const response = await fetch('/api/import?action=link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

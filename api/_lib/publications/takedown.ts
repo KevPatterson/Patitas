@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../_types/vercel.js';
-import { supabaseAdmin } from '../_lib/supabase-admin.js';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http.js';
-import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';
-import { canManagePublication, getActor, loadPublication, writeAuditLog } from '../_lib/authz.js';
+import type { VercelRequest, VercelResponse } from '../../_types/vercel.js';
+import { supabaseAdmin } from '../supabase-admin.js';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../http.js';
+import { limitByIp, limitByUser } from '../rate-limit-utils.js';
+import { canManagePublication, getActor, loadPublication, writeAuditLog } from '../authz.js';
 
 /**
- * POST /api/takedown — solicitud de retirada de contenido.
+ * POST /api/publications?action=takedown — solicitud de retirada de contenido.
  *
  * Hallazgo API-04 (crítico): antes la autenticación era opcional "por diseño" y,
  * tras crear la solicitud, el endpoint ocultaba la publicación con

@@ -2,99 +2,83 @@
 
 ## Resumen
 
-Las serverless functions han sido consolidadas para optimizar el despliegue en Vercel y mantenerse muy por debajo del límite de 12 funciones.
+Las serverless functions han sido consolidadas para mantenerse dentro del límite
+de 12 funciones del plan Hobby de Vercel. Cada router agrupa endpoints del mismo
+dominio y la lógica vive en `api/_lib/`, una ruta que Vercel ignora por el
+prefijo `_`.
 
 ## Estado Actual
 
-**Total de funciones desplegadas: 4**
+**Total de funciones desplegadas: 8**
 
 ### Funciones Activas
 
-1. **`/api/ai`** - Endpoint unificado de IA
-   - Maneja 6 acciones diferentes mediante query parameter `?action=`
-   - Importación dinámica de handlers específicos
-   - Rate limiting independiente por acción
+1. **`/api/ai`** - Router de IA (`?action=`): `calculate-matches`, `create-match`,
+   `detect-duplicates`, `extract-from-image`, `process-publication`, `process-job`.
 
-2. **`/api/publications`** - Gestión de publicaciones
-   - Maneja 2 acciones: `create` y `validate-upload`
-   - Consolidó endpoints de publicaciones y uploads
+2. **`/api/publications`** - Router de publicaciones (`?action=`): `create`,
+   `validate-upload`, `takedown`.
 
-3. **`/api/admin/moderation`** - Moderación
-   - Sin cambios, ya era único
-   - Acciones: resolve-report, hide-publication, restore-publication, set-role
+3. **`/api/uploads`** - Subida de imágenes (`?action=`): `publication-image`,
+   `avatar`, `delete-image`.
 
-4. **`/api/health`** - Health check
-   - Sin cambios
-   - Verifica estado de API, base de datos y storage
+4. **`/api/admin`** - Router de administración (`?resource=`): `moderation`,
+   `verifications`.
 
-## Migración Realizada
+5. **`/api/seo`** - Respuestas para buscadores (`?action=`): `og`, `sitemap`.
 
-### Antes (9 funciones)
+6. **`/api/import`** - Importación desde Facebook (`?action=`): `link`,
+   `screenshot`.
 
-```
-api/
-├── ai/
-│   ├── calculate-matches.ts      ❌
-│   ├── create-match.ts           ❌
-│   ├── detect-duplicates.ts      ❌
-│   ├── extract-from-image.ts     ❌
-│   ├── process-job.ts            ❌
-│   └── process-publication.ts    ❌
-├── admin/
-│   └── moderation.ts             ✅
-├── publications/
-│   └── create.ts                 ❌
-├── uploads/
-│   └── validate.ts               ❌
-└── health.ts                     ✅
-```
+7. **`/api/ingest/external-post`** - Ingesta desde el worker de Telegram (HMAC).
 
-### Después (4 funciones)
+8. **`/api/health`** - Health check.
+
+## Estructura
 
 ```
 api/
-├── ai.ts                         ✅ (consolida 6 endpoints)
-├── publications.ts               ✅ (consolida 2 endpoints)
-├── admin/
-│   └── moderation.ts             ✅
-├── health.ts                     ✅
-└── ai/ (helpers internos, no desplegados como funciones)
-    ├── calculate-matches.ts
-    ├── create-match.ts
-    ├── detect-duplicates.ts
-    ├── extract-from-image.ts
-    ├── process-job.ts
-    └── process-publication.ts
+├── ai.ts                         router de IA
+├── publications.ts               router de publicaciones y retirada
+├── uploads.ts                    subida de imágenes
+├── admin.ts                      router de administración
+├── seo.ts                        router de SEO (og y sitemap)
+├── import.ts                     router de importación de Facebook
+├── health.ts                     health check
+├── ingest/
+│   └── external-post.ts          ingesta HMAC del worker
+├── _lib/                         handlers y utilidades compartidas
+└── _types/                       tipos mínimos de Vercel
 ```
 
 ## Estrategia de Consolidación
 
 ### 1. Router Pattern
 
-En lugar de tener una función por endpoint, usamos un patrón de router:
+En lugar de una función por endpoint, cada dominio tiene un router que despacha
+por query parameter:
 
 ```typescript
-// api/ai.ts
+// api/seo.ts
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const action = req.query.action as string;
-  
+  const action = Array.isArray(req.query.action) ? req.query.action[0] : req.query.action;
+
   switch (action) {
-    case 'extract-from-image':
-      return (await import('./ai/extract-from-image')).default(req, res);
-    case 'calculate-matches':
-      return (await import('./ai/calculate-matches')).default(req, res);
-    // ... más acciones
+    case 'og':
+      return handleOg(req, res);
+    case 'sitemap':
+      return handleSitemap(req, res);
+    default:
+      return res.status(400).json({ error: 'Acción desconocida', code: 'INVALID_INPUT' });
   }
 }
 ```
 
-### 2. Importación Dinámica
+### 2. Handlers en `_lib`
 
-Los handlers específicos se importan dinámicamente solo cuando se necesitan:
-
-- Reduce el tamaño del bundle inicial
-- Cada acción mantiene su código aislado
-- Facilita el mantenimiento y testing
+Los handlers específicos viven en `api/_lib/<dominio>/`. Vercel no los despliega
+como funciones independientes, pero se incluyen en el bundle del router que los
+importa.
 
 ### 3. Query Parameters
 
@@ -102,39 +86,36 @@ Las acciones se especifican mediante query parameters:
 
 **Antes:**
 ```
-POST /api/ai/extract-from-image
-POST /api/ai/calculate-matches
+POST /api/import/facebook-link
+POST /api/admin/moderation
+GET  /api/og?slug=mi-perro
 ```
 
 **Después:**
 ```
-POST /api/ai?action=extract-from-image
-POST /api/ai?action=calculate-matches
+POST /api/import?action=link
+POST /api/admin?resource=moderation
+GET  /api/seo?action=og&slug=mi-perro
 ```
 
 ## Actualización del Frontend
 
-### Cambio en Image Data Extractor
-
 ```typescript
 // Antes
-const response = await fetch('/api/ai/extract-from-image', {
-  method: 'POST',
-  body: JSON.stringify({ image: base64Image })
-});
+const response = await fetch('/api/import/facebook-link', { ... });
 
 // Después
-const response = await fetch('/api/ai?action=extract-from-image', {
-  method: 'POST',
-  body: JSON.stringify({ image: base64Image })
-});
+const response = await fetch('/api/import?action=link', { ... });
 ```
+
+Los rewrites de `vercel.json` mantienen las rutas públicas `/sitemap.xml` y la
+variante para bots de `/p/:slug`, además de los alias `/api/og` y `/api/sitemap`.
 
 ## Beneficios
 
 1. **Optimización de recursos**
-   - De 9 funciones a 4 (reducción del 56%)
-   - Margen amplio para crecimiento (8 slots disponibles)
+   - De 12 funciones a 8
+   - 4 slots libres para crecimiento
 
 2. **Mejor organización**
    - Endpoints relacionados agrupados lógicamente
@@ -149,6 +130,13 @@ const response = await fetch('/api/ai?action=extract-from-image', {
    - Los handlers internos mantienen su estructura
    - Fácil rollback si es necesario
    - Testing individual preservado
+
+## Garantía Automática
+
+`src/lib/__tests__/api-functions.test.ts` cuenta los archivos de `api/` con la
+misma regla que Vercel (extensiones ejecutables, sin `.d.ts` y sin rutas ni
+archivos con prefijo `_`) y falla si se superan las 12 funciones. El CI lo
+ejecuta antes del deploy.
 
 ## Rate Limits Preservados
 
@@ -183,13 +171,12 @@ curl -X POST https://tu-dominio.vercel.app/api/ai?action=extract-from-image \
 
 Si se necesitan más funciones en el futuro:
 
-1. Evaluar si pueden consolidarse en endpoints existentes
-2. Si no, crear nueva función solo cuando sea necesario
-3. Mantener margen de al menos 2-3 slots libres
-4. Considerar backend separado si se excede límite regularmente
+1. Evaluar si pueden consolidarse en endpoints existentes.
+2. Si no, crear una función nueva solo cuando sea necesario.
+3. Mantener margen de al menos 2-3 slots libres.
+4. No editar una migración ya aplicada ni subir de plan como primera opción.
 
 ## Referencias
 
 - [Vercel Serverless Functions Limits](https://vercel.com/docs/functions/serverless-functions/limits)
-- [Dynamic Imports](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import)
 - Documentación completa: `api/README.md`

@@ -126,7 +126,7 @@ export function PendingReviewQueue() {
   async function handleDecision(postId: string, decision: 'APPROVE' | 'REJECT', reason?: string) {
     setActionLoadingId(postId);
     try {
-      // Endpoint correcto: /api/admin/moderation en Vercel (con JWT de sesión).
+      // Endpoint correcto: /api/admin?resource=moderation en Vercel (con JWT de sesión).
       // Antes se llamaba a supabase.functions.invoke('admin-moderation'), que
       // apunta a una Edge Function de Supabase inexistente: la cola nunca pudo
       // aprobar ni rechazar importaciones.
@@ -136,7 +136,7 @@ export function PendingReviewQueue() {
       if (!token) throw new Error('No hay sesión activa');
 
       const action = decision === 'APPROVE' ? 'approve-import' : 'reject-import';
-      const response = await fetch('/api/admin/moderation', {
+      const response = await fetch('/api/admin?resource=moderation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,7 +153,7 @@ export function PendingReviewQueue() {
 
       if (response.status === 404 && !isJson) {
         throw new Error(
-          'El endpoint /api/admin/moderation no está disponible en este servidor. ' +
+          'El endpoint /api/admin?resource=moderation no está disponible en este servidor. ' +
             'Arranca el proyecto con `vercel dev` (npm run dev no sirve /api/*) o prueba en producción.'
         );
       }

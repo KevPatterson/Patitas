@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../_types/vercel.js';
-import { supabaseAdmin } from '../_lib/supabase-admin.js';
-import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http.js';
-import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';
-import { getActorRole, isModerator, writeAuditLog } from '../_lib/authz.js';
+import type { VercelRequest, VercelResponse } from '../../_types/vercel.js';
+import { supabaseAdmin } from '../supabase-admin.js';
+import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../http.js';
+import { limitByIp, limitByUser } from '../rate-limit-utils.js';
+import { getActorRole, isModerator, writeAuditLog } from '../authz.js';
 
 /**
- * GET/POST /api/admin/verifications
+ * GET/POST /api/admin?resource=verifications
  *
  * Cola de verificación de perfiles. Vive en la API y no en el cliente porque la
  * evidencia (URL y notas) no tiene SELECT para `authenticated`: puede contener

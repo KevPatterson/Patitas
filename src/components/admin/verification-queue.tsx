@@ -87,7 +87,7 @@ export function VerificationQueue() {
 
     try {
       const headers = await authHeaders();
-      const response = await fetch(`/api/admin/verifications?status=${status}`, { headers });
+      const response = await fetch(`/api/admin?resource=verifications&status=${status}`, { headers });
       const payload = await readJson<{ items?: AdminVerification[]; error?: string }>(response);
 
       if (!response.ok) {
@@ -120,7 +120,7 @@ export function VerificationQueue() {
 
     try {
       const headers = await authHeaders();
-      const response = await fetch('/api/admin/verifications', {
+      const response = await fetch('/api/admin?resource=verifications', {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: verification.id, decision, reason }),

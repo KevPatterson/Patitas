@@ -1,8 +1,8 @@
-import type { VercelRequest, VercelResponse } from './_types/vercel.js';
-import { getSupabasePublic } from './_lib/supabase-public.js';
+import type { VercelRequest, VercelResponse } from '../../_types/vercel.js';
+import { getSupabasePublic } from '../supabase-public.js';
 
 /**
- * GET /api/og?slug=<slug> — HTML con Open Graph para crawlers (tarea 6.1).
+ * GET /api/seo?action=og&slug=<slug> — HTML con Open Graph para crawlers (tarea 6.1).
  *
  * El problema: Patitas es una SPA. Cuando pegas `https://patitass.vercel.app/p/mi-perro`
  * en WhatsApp, el crawler no ejecuta JavaScript, así que solo ve el `index.html`

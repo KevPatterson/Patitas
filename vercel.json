@@ -9,12 +9,20 @@
   },
   "rewrites": [
     {
+      "source": "/api/og",
+      "destination": "/api/seo?action=og"
+    },
+    {
+      "source": "/api/sitemap",
+      "destination": "/api/seo?action=sitemap"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
     {
       "source": "/sitemap.xml",
-      "destination": "/api/sitemap"
+      "destination": "/api/seo?action=sitemap"
     },
     {
       "source": "/p/:slug",
@@ -25,7 +33,7 @@
           "value": ".*(GPTBot|OAI-SearchBot|ChatGPT-User|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|Applebot-Extended|CCBot|meta-externalagent|DeepSeekBot|MistralAI-User|Amazonbot|YouBot|DuckAssistBot|cohere-ai|AI2Bot|Bytespider|WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|Discordbot|LinkedInBot|Pinterest|redditbot|SkypeUriPreview|vkShare|Iframely|Embedly|Mastodon|Bluesky|Signal|LineBot|Threads).*"
         }
       ],
-      "destination": "/api/og?slug=:slug"
+      "destination": "/api/seo?action=og&slug=:slug"
     },
     {
       "source": "/(.*)",
