@@ -694,18 +694,35 @@ export function PublicationPage() {
                   ) : null}
 
                   <div className="flex items-stretch gap-3">
-                    <ShareMenu
-                      publication={{
-                        title: publication.title,
-                        type: publication.type,
-                        location: (() => {
-                          const loc = normalizeLocation(publication.location);
-                          return [loc?.municipality, loc?.province].filter(Boolean).join(', ');
-                        })(),
-                        slug: publication.slug,
-                      }}
-                      className="flex-1"
-                    />
+                    {(() => {
+                      const loc = normalizeLocation(publication.location);
+
+                      return (
+                        <ShareMenu
+                          publication={{
+                            title: publication.title,
+                            type: publication.type,
+                            location: [loc?.municipality, loc?.province].filter(Boolean).join(', '),
+                            slug: publication.slug,
+                            description: publication.description,
+                            species: publication.species,
+                            breed: publication.breed,
+                            sex: publication.sex,
+                            size: publication.size,
+                            ageApprox: publication.age_approx,
+                            zone: loc?.zone ?? null,
+                            municipality: loc?.municipality ?? null,
+                            province: loc?.province ?? null,
+                            coverImageUrl: coverImagePath
+                              ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/pet-images/${coverImagePath}`
+                              : null,
+                            eventDate: publication.event_date ?? null,
+                            publishedAt: publication.published_at,
+                          }}
+                          className="flex-1"
+                        />
+                      );
+                    })()}
 
                     {!showReportForm ? (
                       <Button type="button" variant="ghost" onClick={() => setShowReportForm(true)} className="flex-1 w-full gap-2 justify-center">
