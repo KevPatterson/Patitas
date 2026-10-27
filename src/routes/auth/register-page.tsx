@@ -62,7 +62,7 @@ export function RegisterPage() {
           </div>
         }
       >
-        <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+        <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
             <TextField 
             label="Nombre" 
             autoComplete="name" 

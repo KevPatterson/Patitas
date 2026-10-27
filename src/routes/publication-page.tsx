@@ -27,6 +27,7 @@ import { chatErrorMessage, startConversation } from '../lib/supabase/chat';
 import { getChatButtonLabel } from '../lib/constants/chat-copy';
 import { generateLostPetStructuredData, injectStructuredData, removeStructuredData } from '../lib/seo/structured-data';
 import { SPECIES_LABELS, SEX_LABELS, SIZE_LABELS, AGE_LABELS } from '../lib/constants/labels';
+import { notifyError, notifySuccess } from '../lib/ui/sweetalert';
 
 // Helper para normalizar location que puede venir como objeto o array
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -285,10 +286,14 @@ export function PublicationPage() {
 
     try {
       await deletePublication(publication.id, user.id);
+      notifySuccess('Publicación eliminada', 'El caso ya no aparece en Patitas.');
       navigate('/dashboard');
     } catch (error) {
       console.error('Error deleting publication:', error);
-      alert(error instanceof Error ? error.message : 'No se pudo eliminar la publicación');
+      notifyError(
+        'No se pudo eliminar la publicación',
+        error instanceof Error ? error.message : 'Inténtalo de nuevo en unos segundos.'
+      );
     } finally {
       setDeleting(false);
     }
@@ -318,8 +323,11 @@ export function PublicationPage() {
         throw new Error(data.error || 'Error al crear solicitud');
       }
 
-      setTakedownMessage('Solicitud enviada. La publicación ha sido ocultada pendiente de revisión.');
-      
+      setTakedownMessage(null);
+      notifySuccess(
+        'Solicitud enviada',
+        'La publicación quedó oculta mientras un moderador la revisa.'
+      );
       // Cerrar modal y recargar publicación
       setShowTakedownModal(false);
       setTakedownReason('INACCURATE');

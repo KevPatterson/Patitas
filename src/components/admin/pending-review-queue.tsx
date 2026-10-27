@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, Eye, Edit, Star, Image, Globe, Shield, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase/client';
 import { Button } from '../ui/button';
+import { infoDialog, notifyError, notifySuccess, promptText } from '../../lib/ui/sweetalert';
 import type { ExternalPost, ExternalSource } from '../../types/index';
 
 const CONFIDENCE_THRESHOLD_AUTO = 0.85;
@@ -75,10 +76,25 @@ export function PendingReviewQueue() {
 
   async function handleEditAndApprove(_postId: string) {
     // TODO: Abrir modal de edición
-    alert('Función "Editar y aprobar" pendiente - abrir editor con datos extraídos');
+    await infoDialog({
+      title: 'Edición en camino',
+      text: 'Todavía estamos preparando el editor de importaciones. Por ahora puedes aprobar el post tal como llegó o rechazarlo indicando el motivo.',
+    });
   }
 
-  async function handleReject(postId: string, reason: string) {
+  async function handleReject(postId: string) {
+    const reason = await promptText({
+      title: 'Motivo del rechazo',
+      text: 'Se guardará en el historial para que otros moderadores entiendan la decisión.',
+      placeholder: 'Ej.: la foto no corresponde a la mascota o faltan datos clave.',
+      confirmText: 'Rechazar importación',
+      cancelText: 'Cancelar',
+      minLength: 5,
+      maxLength: 300,
+      tone: 'danger',
+    });
+    if (reason === null) return;
+
     await handleDecision(postId, 'REJECT', reason);
   }
 
@@ -98,8 +114,10 @@ export function PendingReviewQueue() {
 
       // Recargar
       await loadQueue();
+      notifySuccess('Fuente marcada como confiable', 'Las próximas importaciones podrán publicarse automáticamente.');
     } catch (error) {
       console.error('Error marking source as trusted:', error);
+      notifyError('No se pudo marcar la fuente', 'Inténtalo de nuevo en unos segundos.');
     } finally {
       setActionLoadingId(null);
     }
@@ -151,14 +169,26 @@ export function PendingReviewQueue() {
       }
 
       await loadQueue();
+      notifySuccess(
+        decision === 'APPROVE' ? 'Importación aprobada' : 'Importación rechazada',
+        decision === 'APPROVE'
+          ? 'La publicación ya está visible en el sitio.'
+          : 'El post quedó descartado de la cola.'
+      );
     } catch (error) {
       console.error('Error processing decision:', error);
       if (error instanceof TypeError) {
         // Fallo de red: fetch lanza TypeError cuando no hay conexión con el servidor.
-        alert('No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.');
+        notifyError(
+          'Sin conexión con el servidor',
+          'Revisa tu conexión e inténtalo de nuevo.'
+        );
         return;
       }
-      alert(error instanceof Error ? error.message : 'Error procesando la decisión');
+      notifyError(
+        'No se pudo procesar la decisión',
+        error instanceof Error ? error.message : 'Inténtalo de nuevo en unos segundos.'
+      );
     } finally {
       setActionLoadingId(null);
     }
@@ -397,10 +427,7 @@ export function PendingReviewQueue() {
                 </Button>
                 <Button
                   variant="danger"
-                  onClick={() => {
-                    const reason = prompt('Motivo del rechazo:');
-                    if (reason) handleReject(post.id, reason);
-                  }}
+                  onClick={() => handleReject(post.id)}
                   disabled={actionLoadingId === post.id}
                   className="h-9 px-4 text-sm gap-2"
                 >

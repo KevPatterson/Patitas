@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button';
 import { CatLoader } from '../components/ui/cat-loader';
 import { EmptyState } from '../components/ui/empty-state';
 import { AvatarUpload } from '../components/ui/avatar-upload';
+import { confirmDialog, notifyError, notifySuccess } from '../lib/ui/sweetalert';
 import { Trash2, CheckCircle, Eye, PlusCircle, FileText, User as UserIcon, PawPrint, TrendingUp, LogOut, HeartHandshake } from 'lucide-react';
 import { AdoptionRequestsPanel } from '../components/adoptions/adoption-requests-panel';
 
@@ -126,15 +127,27 @@ export function DashboardPage() {
         prev.map((p) => (p.id === id ? { ...p, status: 'RESOLVED' as const } : p))
       );
       setStats((s) => ({ ...s, active: s.active - 1, resolved: s.resolved + 1 }));
+      notifySuccess('Caso marcado como resuelto', 'La comunidad ya puede ver el final feliz.');
     } catch (error) {
       console.error('Error resolving:', error);
+      notifyError('No se pudo marcar como resuelto', 'Inténtalo de nuevo en unos segundos.');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!user || !window.confirm('¿Eliminar esta publicación? No se puede deshacer.')) return;
+    if (!user) return;
+
+    const confirmed = await confirmDialog({
+      title: '¿Eliminar esta publicación?',
+      text: 'Se borrarán también sus fotos, comentarios y avistamientos. Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      cancelText: 'Conservar',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+
     setActionLoading(id);
     try {
       await deletePublication(id, user.id);
@@ -145,8 +158,13 @@ export function DashboardPage() {
         total: s.total - 1,
         active: s.active - (deletedPub?.status === 'ACTIVE' ? 1 : 0),
       }));
+      notifySuccess('Publicación eliminada');
     } catch (error) {
       console.error('Error deleting:', error);
+      notifyError(
+        'No se pudo eliminar la publicación',
+        error instanceof Error ? error.message : 'Inténtalo de nuevo en unos segundos.'
+      );
     } finally {
       setActionLoading(null);
     }
@@ -160,6 +178,7 @@ export function DashboardPage() {
       navigate('/');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
+      notifyError('No se pudo cerrar sesión', 'Inténtalo de nuevo en unos segundos.');
     } finally {
       setLoggingOut(false);
     }

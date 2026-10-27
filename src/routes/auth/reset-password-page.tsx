@@ -53,7 +53,7 @@ export function ResetPasswordPage() {
           </div>
         }
       >
-        <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+        <form className="space-y-5" onSubmit={handleSubmit(onSubmit)} noValidate>
           <TextField 
             label="Nueva contraseña" 
             type="password" 

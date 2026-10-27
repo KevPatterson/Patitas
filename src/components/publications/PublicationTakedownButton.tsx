@@ -2,6 +2,7 @@ import { safeLinkUrl } from '../../lib/utils/safe-url';
 import { useState } from 'react';
 import { Flag, AlertTriangle, X } from 'lucide-react';
 import { Button } from '../ui/button';
+import { notifySuccess } from '../../lib/ui/sweetalert';
 
 type TakedownReason = 'COPYRIGHT' | 'PRIVACY' | 'INACCURATE' | 'OTHER';
 
@@ -63,9 +64,12 @@ export function PublicationTakedownButton({
       setContactEmail('');
       setDetails('');
       onSuccess?.();
-      
-      // Mostrar mensaje de éxito
-      alert('Solicitud de retirada enviada. La publicación ha sido ocultada pendiente de revisión.');
+
+      // Confirmar el resultado sin bloquear la interfaz
+      notifySuccess(
+        'Solicitud enviada',
+        'La publicación quedó oculta mientras un moderador la revisa.'
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -105,7 +109,7 @@ export function PublicationTakedownButton({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {isImported && sourceUrl && (
                 <div className="bg-secondary/40 border border-border rounded-xl p-3">
                   <p className="text-xs font-medium text-foreground mb-1">Publicación importada</p>

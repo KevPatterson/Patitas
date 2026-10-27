@@ -826,7 +826,7 @@ export function PublicationImporter({ onApply, disabled }: PublicationImporterPr
             </button>
 
             {linkOpen && (
-              <form onSubmit={handleLinkSubmit} className="mt-3 space-y-3">
+              <form onSubmit={handleLinkSubmit} className="mt-3 space-y-3" noValidate>
                 <TextField
                   label="Enlace del post"
                   placeholder="https://facebook.com/... o https://fb.watch/..."

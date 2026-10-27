@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2, PauseCircle, PlayCircle, Eye, AlertTriangle, Shield, Loader2, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabase/client';
 import { Button } from '../ui/button';
+import { confirmDialog, notifyError, notifySuccess } from '../../lib/ui/sweetalert';
 import type { ExternalSource } from '../../types/index';
 
 const PLATFORM_LABELS: Record<'TELEGRAM' | 'FACEBOOK_PUBLIC', string> = {
@@ -88,6 +89,7 @@ export function ExternalSourcesManager() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
+    const wasEditing = Boolean(editingSource);
 
     // Validaciones
     if (!formData.handle_or_url.trim()) {
@@ -141,6 +143,12 @@ export function ExternalSourcesManager() {
 
       closeModal();
       await loadSources();
+      notifySuccess(
+        wasEditing ? 'Fuente actualizada' : 'Fuente creada',
+        wasEditing
+          ? 'Los cambios ya están activos.'
+          : 'La fuente empezará a monitorearse en la próxima ejecución.'
+      );
     } catch (error) {
       console.error('Error saving source:', error);
       setFormError('Error guardando la fuente');
@@ -157,17 +165,28 @@ export function ExternalSourcesManager() {
 
       if (error) throw error;
       await loadSources();
+      notifySuccess(
+        source.is_active ? 'Fuente pausada' : 'Fuente activada',
+        source.name ?? source.handle_or_url
+      );
     } catch (error) {
       console.error('Error toggling source:', error);
+      notifyError('No se pudo cambiar el estado', 'Inténtalo de nuevo en unos segundos.');
     } finally {
       setActionLoadingId(null);
     }
   }
 
   async function deleteSource(source: ExternalSource) {
-    if (!confirm(`¿Eliminar la fuente "${source.name ?? source.handle_or_url}"? Esta acción no se puede deshacer.`)) {
-      return;
-    }
+    const label = source.name ?? source.handle_or_url;
+    const confirmed = await confirmDialog({
+      title: '¿Eliminar esta fuente?',
+      text: `Se dejará de monitorear "${label}". Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      cancelText: 'Conservar',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
 
     setActionLoadingId(source.id);
     try {
@@ -178,8 +197,10 @@ export function ExternalSourcesManager() {
 
       if (error) throw error;
       await loadSources();
+      notifySuccess('Fuente eliminada', label);
     } catch (error) {
       console.error('Error deleting source:', error);
+      notifyError('No se pudo eliminar la fuente', 'Inténtalo de nuevo en unos segundos.');
     } finally {
       setActionLoadingId(null);
     }
@@ -362,7 +383,7 @@ export function ExternalSourcesManager() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {formError && (
                 <div className="flex items-center gap-2 text-lost text-sm bg-lost/10 px-3 py-2 rounded-lg">
                   <AlertTriangle className="size-4" />

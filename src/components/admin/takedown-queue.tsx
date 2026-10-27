@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase/client';
 import { Button } from '../ui/button';
 import { EmptyState } from '../ui/empty-state';
+import { confirmDialog, notifyError, notifySuccess } from '../../lib/ui/sweetalert';
 import { CheckCircle, XCircle, Eye, Mail, Shield, Clock } from 'lucide-react';
 
 type TakedownRequest = {
@@ -80,6 +81,18 @@ export function TakedownQueue() {
   }, []);
 
   const handleReview = async (requestId: string, decision: 'APPROVED' | 'REJECTED') => {
+    // Aprobar oculta la publicación de inmediato: conviene confirmarlo.
+    if (decision === 'APPROVED') {
+      const confirmed = await confirmDialog({
+        title: '¿Aprobar la retirada?',
+        text: 'La publicación se ocultará del sitio público de forma permanente.',
+        confirmText: 'Aprobar retirada',
+        cancelText: 'Revisar después',
+        tone: 'danger',
+      });
+      if (!confirmed) return;
+    }
+
     setActionLoadingId(requestId);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -103,9 +116,19 @@ export function TakedownQueue() {
         throw new Error(result.error || 'Error en la acción');
       }
 
-      loadQueue();
+      await loadQueue();
+      notifySuccess(
+        decision === 'APPROVED' ? 'Retirada aprobada' : 'Solicitud rechazada',
+        decision === 'APPROVED'
+          ? 'La publicación ya no es visible en el sitio.'
+          : 'La publicación se mantiene visible.'
+      );
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Error en la acción');
+      console.error('Error reviewing takedown request:', error);
+      notifyError(
+        'No se pudo completar la acción',
+        error instanceof Error ? error.message : 'Inténtalo de nuevo en unos segundos.'
+      );
     } finally {
       setActionLoadingId(null);
     }

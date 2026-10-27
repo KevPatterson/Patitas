@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Camera, Trash2 } from 'lucide-react';
 import { Button } from './button';
 import { CatLoader } from './cat-loader';
+import { confirmDialog, notifyError, notifySuccess } from '../../lib/ui/sweetalert';
 
 type AvatarUploadProps = {
   currentAvatarUrl?: string | null;
@@ -23,13 +24,13 @@ export function AvatarUpload({ currentAvatarUrl, userName, onUpload, onDelete }:
     // Validar tipo de archivo
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type)) {
-      alert('Por favor selecciona una imagen válida (JPG, PNG o WebP)');
+      notifyError('Formato no válido', 'Selecciona una imagen JPG, PNG o WebP.');
       return;
     }
 
     // Validar tamaño (2MB máximo)
     if (file.size > 2 * 1024 * 1024) {
-      alert('La imagen debe ser menor a 2MB');
+      notifyError('Imagen demasiado grande', 'El archivo debe pesar menos de 2 MB.');
       return;
     }
 
@@ -44,9 +45,10 @@ export function AvatarUpload({ currentAvatarUrl, userName, onUpload, onDelete }:
     setUploading(true);
     try {
       await onUpload(file);
+      notifySuccess('Foto actualizada', 'Tu nueva foto de perfil ya se ve en tu cuenta.');
     } catch (error) {
       console.error('Error al subir avatar:', error);
-      alert('No se pudo subir la imagen. Intenta de nuevo.');
+      notifyError('No se pudo subir la imagen', 'Revisa tu conexión e inténtalo de nuevo.');
       setPreviewUrl(null);
     } finally {
       setUploading(false);
@@ -58,15 +60,24 @@ export function AvatarUpload({ currentAvatarUrl, userName, onUpload, onDelete }:
 
   const handleDelete = async () => {
     if (!onDelete) return;
-    if (!window.confirm('¿Eliminar tu foto de perfil?')) return;
+
+    const confirmed = await confirmDialog({
+      title: '¿Eliminar tu foto de perfil?',
+      text: 'Volverás a mostrar tu avatar de Google o tus iniciales.',
+      confirmText: 'Eliminar',
+      cancelText: 'Conservar',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
 
     setDeleting(true);
     try {
       await onDelete();
       setPreviewUrl(null);
+      notifySuccess('Foto eliminada', 'Tu foto de perfil se ha quitado.');
     } catch (error) {
       console.error('Error al eliminar avatar:', error);
-      alert('No se pudo eliminar la imagen. Intenta de nuevo.');
+      notifyError('No se pudo eliminar la imagen', 'Inténtalo de nuevo en unos segundos.');
     } finally {
       setDeleting(false);
     }

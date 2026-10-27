@@ -3,6 +3,7 @@ import { MessageCircle, Trash2, PawPrint, Edit2, X, Check } from 'lucide-react';
 import { Button } from '../ui/button';
 import { TextareaField } from '../ui/textarea-field';
 import { createComment, deleteComment, updateComment, getComments, type Comment } from '../../lib/supabase/comments';
+import { confirmDialog, notifyError, notifySuccess } from '../../lib/ui/sweetalert';
 
 type CommentsSectionProps = {
   publicationId: string;
@@ -68,6 +69,7 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
       await createComment(publicationId, currentUserId, body);
       setBody('');
       await loadComments();
+      notifySuccess('Comentario publicado', 'Gracias por aportar información útil.');
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'No pudimos publicar tu comentario.');
     } finally {
@@ -77,16 +79,23 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
 
   const handleDelete = async (commentId: string) => {
     if (!currentUserId) return;
-    
-    if (!confirm('¿Estás seguro de que quieres eliminar este comentario?')) {
-      return;
-    }
+
+    const confirmed = await confirmDialog({
+      title: '¿Eliminar este comentario?',
+      text: 'El comentario desaparecerá para todos los usuarios.',
+      confirmText: 'Eliminar',
+      cancelText: 'Conservar',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
 
     try {
       await deleteComment(commentId, currentUserId);
       await loadComments();
+      notifySuccess('Comentario eliminado');
     } catch (error) {
       console.error('Error deleting comment:', error);
+      notifyError('No se pudo eliminar el comentario', 'Inténtalo de nuevo en unos segundos.');
     }
   };
 
@@ -117,6 +126,7 @@ export function CommentsSection({ publicationId, currentUserId }: CommentsSectio
       setEditingCommentId(null);
       setEditingBody('');
       await loadComments();
+      notifySuccess('Comentario actualizado');
     } catch (error) {
       setEditingError(error instanceof Error ? error.message : 'No pudimos actualizar el comentario.');
     }
