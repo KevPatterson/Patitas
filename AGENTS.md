@@ -28,6 +28,19 @@ npm run seed:test      # publicaciones de prueba; requiere .env
 - `workers/telegram-collector/` es un worker Python independiente: fuera del build npm y ESLint lo ignora.
 - `vercel.json`: rewrite catch-all a `index.html` (SPA) + rutas de `/sitemap.xml`, `/p` para bots OG y `/api`.
 
+## Límite de Vercel Hobby (12 Functions)
+
+- El plan Hobby permite **máximo 12 Serverless Functions por deployment**; si se pasa, el deploy falla con `No more than 12 Serverless Functions can be added to a Deployment on the Hobby plan`.
+- Cada archivo `.ts` en `api/` que Vercel trate como endpoint cuenta como una Function. Los archivos que empiezan con `_` (p. ej. `api/_lib/`) **no** cuentan: ahí va todo el código compartido y los helpers.
+- **Antes de crear un archivo nuevo en `api/`**, cuenta los endpoints actuales y confirma que quedas en ≤ 12. Si ya estás en el tope, NO agregues otro archivo: consolida.
+- Cómo consolidar (en orden de preferencia):
+  1. Agrupar endpoints relacionados en una sola Function con un parámetro de acción (`?action=...` o `POST { action }`) y despachar internamente a handlers que vivan en `api/_lib/`.
+  2. Usar una ruta dinámica (`api/[resource].ts`) que despache por `req.query.resource`.
+  3. Mover a Supabase lo que no necesite privilegios (RLS, RPC/funciones SQL) en vez de crear otro endpoint.
+- Lógica nueva = módulo en `api/_lib/`, no endpoint nuevo, salvo que sea imprescindible.
+- Al agregar o consolidar endpoints, actualiza los rewrites de `vercel.json` si cambian las rutas públicas, y no rompas los contratos que consume `src/`.
+- No sugieras "pasar a Pro" como solución: el proyecto debe seguir cabiendo en Hobby.
+
 ## Supabase / migraciones
 
 - `supabase/migrations/` está numerado secuencialmente. **No edites una migración ya aplicada**: crea la siguiente.
