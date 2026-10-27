@@ -7,6 +7,7 @@ import {
   CheckCheck,
   Flag,
   Heart,
+  MapPin,
   MessageCircle,
   Trash2,
 } from 'lucide-react';
@@ -426,6 +427,8 @@ export function NotificationsPage() {
         return <Flag className="size-5 text-lost" />;
       case 'PUBLICATION_UPDATE':
         return <AlertCircle className="size-5 text-purple" />;
+      case 'ALERT':
+        return <MapPin className="size-5 text-turquoise" />;
       default:
         return <Bell className="size-5 text-foreground" />;
     }

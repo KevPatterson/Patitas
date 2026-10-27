@@ -1,6 +1,6 @@
 import { supabase } from './client';
 
-export type NotificationType = 'MATCH' | 'REPORT' | 'MESSAGE' | 'PUBLICATION_UPDATE' | 'SYSTEM';
+export type NotificationType = 'MATCH' | 'REPORT' | 'MESSAGE' | 'PUBLICATION_UPDATE' | 'SYSTEM' | 'ALERT';
 
 export type Notification = {
   id: string;

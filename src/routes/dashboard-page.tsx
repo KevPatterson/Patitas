@@ -10,12 +10,13 @@ import { Button } from '../components/ui/button';
 import { CatLoader } from '../components/ui/cat-loader';
 import { EmptyState } from '../components/ui/empty-state';
 import { AvatarUpload } from '../components/ui/avatar-upload';
+import { AlertSettings } from '../components/profile/alert-settings';
 import { VerificationCard } from '../components/profile/verification-card';
 import { confirmDialog, notifyError, notifySuccess } from '../lib/ui/sweetalert';
-import { Trash2, CheckCircle, Eye, PlusCircle, FileText, User as UserIcon, PawPrint, TrendingUp, LogOut, HeartHandshake } from 'lucide-react';
+import { Trash2, CheckCircle, Eye, PlusCircle, FileText, User as UserIcon, PawPrint, TrendingUp, LogOut, HeartHandshake, Bell } from 'lucide-react';
 import { AdoptionRequestsPanel } from '../components/adoptions/adoption-requests-panel';
 
-type Tab = 'resumen' | 'publicaciones' | 'adopciones' | 'perfil';
+type Tab = 'resumen' | 'publicaciones' | 'adopciones' | 'alertas' | 'perfil';
 
 export function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -208,6 +209,7 @@ export function DashboardPage() {
     { id: 'resumen', label: 'Resumen', icon: <TrendingUp className="size-4" /> },
     { id: 'publicaciones', label: 'Mis publicaciones', icon: <FileText className="size-4" /> },
     { id: 'adopciones', label: 'Adopciones', icon: <HeartHandshake className="size-4" /> },
+    { id: 'alertas', label: 'Alertas', icon: <Bell className="size-4" /> },
     { id: 'perfil', label: 'Cuenta', icon: <UserIcon className="size-4" /> },
   ];
 
@@ -366,6 +368,12 @@ export function DashboardPage() {
       {activeTab === 'adopciones' && (
         <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-6 shadow-md">
           <AdoptionRequestsPanel />
+        </div>
+      )}
+
+      {activeTab === 'alertas' && (
+        <div className="max-w-2xl">
+          <AlertSettings />
         </div>
       )}
 
