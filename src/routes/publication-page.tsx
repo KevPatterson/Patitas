@@ -17,6 +17,8 @@ import { getPublicationBySlug, searchPublications } from '../lib/supabase/public
 import { setPageMeta } from '../lib/seo/page-meta';
 import { ShareMenu } from '../components/publications/share-menu';
 import { ResolvedCelebration } from '../components/publications/resolved-celebration';
+import { ReunionConfirmation } from '../components/publications/reunion-confirmation';
+import { ProfileVerificationBadge } from '../components/profile/profile-verification-badge';
 import { SightingForm } from '../components/publications/sighting-form';
 import { SightingsTimeline } from '../components/publications/sightings-timeline';
 import { CommentsSection } from '../components/publications/comments-section';
@@ -366,6 +368,10 @@ export function PublicationPage() {
               sex={publication.sex}
               isOwner={Boolean(isOwner)}
             />
+          ) : null}
+
+          {publication.status === 'RESOLVED' && user ? (
+            <ReunionConfirmation publicationId={publication.id} />
           ) : null}
 
           <article className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -892,9 +898,14 @@ export function PublicationPage() {
               <div className="rounded-3xl border-2 border-purple/20 bg-surface p-6 space-y-3 shadow-md">
                 <h2 className="font-display text-xl font-extrabold text-foreground">👤 Publicado por</h2>
                 {publication.owner?.username ? (
-                  <Link to={`/perfil/${publication.owner.username}`} className="text-sm font-semibold text-purple hover:text-purple-dark hover:underline transition-colors">
-                    @{publication.owner.username}
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link to={`/perfil/${publication.owner.username}`} className="text-sm font-semibold text-purple hover:text-purple-dark hover:underline transition-colors">
+                      @{publication.owner.username}
+                    </Link>
+                    {publication.owner_profile_id ? (
+                      <ProfileVerificationBadge profileId={publication.owner_profile_id} />
+                    ) : null}
+                  </div>
                 ) : (
                   <p className="text-sm font-semibold text-purple">@{publication.owner?.username ?? 'Usuario'}</p>
                 )}

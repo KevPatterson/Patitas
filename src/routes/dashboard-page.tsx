@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button';
 import { CatLoader } from '../components/ui/cat-loader';
 import { EmptyState } from '../components/ui/empty-state';
 import { AvatarUpload } from '../components/ui/avatar-upload';
+import { VerificationCard } from '../components/profile/verification-card';
 import { confirmDialog, notifyError, notifySuccess } from '../lib/ui/sweetalert';
 import { Trash2, CheckCircle, Eye, PlusCircle, FileText, User as UserIcon, PawPrint, TrendingUp, LogOut, HeartHandshake } from 'lucide-react';
 import { AdoptionRequestsPanel } from '../components/adoptions/adoption-requests-panel';
@@ -369,7 +370,8 @@ export function DashboardPage() {
       )}
 
       {activeTab === 'perfil' && (
-        <div className="max-w-2xl">
+        <div className="max-w-2xl space-y-6">
+          <VerificationCard />
           <div className="rounded-2xl border-2 border-foreground/10 bg-surface p-8 shadow-md">
             <div className="flex flex-col items-center gap-6 mb-6 pb-6 border-b-2 border-foreground/10">
               <AvatarUpload

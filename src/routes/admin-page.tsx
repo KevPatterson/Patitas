@@ -11,7 +11,8 @@ import { ExternalSourcesManager } from '../components/admin/external-sources-man
 import { AdminMetrics } from '../components/admin/admin-metrics';
 import { AuditLogPanel } from '../components/admin/audit-log-panel';
 import { ChatReportsPanel } from '../components/admin/chat-reports-panel';
-import { UserPlus, Shield, Copy, AlertTriangle, Flag, CheckCircle, TrendingUp, Eye } from 'lucide-react';
+import { VerificationQueue } from '../components/admin/verification-queue';
+import { UserPlus, Shield, Copy, AlertTriangle, Flag, CheckCircle, TrendingUp, Eye, BadgeCheck } from 'lucide-react';
 import { ExternalLink, History } from 'lucide-react';
 type DashboardCounts = {
   activePublications: number;
@@ -25,6 +26,7 @@ type DashboardCounts = {
   rejectedTakedowns: number;
   activeSources: number;
   inactiveSources: number;
+  pendingVerifications: number;
 };
 
 type RecentReport = {
@@ -58,7 +60,7 @@ type UserProfile = {
   deleted_at: string | null;
 };
 
-type Tab = 'dashboard' | 'reports' | 'users' | 'publications' | 'duplicates' | 'moderation' | 'takedowns' | 'pending-review' | 'sources' | 'metrics' | 'audit' | 'chat-reports';
+type Tab = 'dashboard' | 'reports' | 'users' | 'publications' | 'duplicates' | 'moderation' | 'takedowns' | 'pending-review' | 'sources' | 'metrics' | 'audit' | 'chat-reports' | 'verifications';
 
 export function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -95,6 +97,8 @@ export function AdminPage() {
           // Source metrics
           supabase.from('external_sources').select('id', { count: 'exact', head: true }).eq('is_active', true),
           supabase.from('external_sources').select('id', { count: 'exact', head: true }).eq('is_active', false),
+          // Verificaciones pendientes de revisión
+          supabase.from('profile_verifications').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
         ]),
         supabase.from('reports').select('id, reason, status, created_at, publication_id, publication:publications(slug, title)').order('created_at', { ascending: false }).limit(20),
         supabase.from('publications').select('id, slug, title, type, status, created_at').order('created_at', { ascending: false }).limit(20),
@@ -104,7 +108,7 @@ export function AdminPage() {
       const [
         activePubs, pendingReports, resolvedCases, totalUsers, recentSightings, adoptionRequests,
         pendingTakedowns, approvedTakedowns, rejectedTakedowns,
-        activeSources, inactiveSources
+        activeSources, inactiveSources, pendingVerifications
       ] = countsResults;
 
       setCounts({
@@ -119,6 +123,7 @@ export function AdminPage() {
         rejectedTakedowns: rejectedTakedowns.count ?? 0,
         activeSources: activeSources.count ?? 0,
         inactiveSources: inactiveSources.count ?? 0,
+        pendingVerifications: pendingVerifications.count ?? 0,
       });
 
       setReports(((reportsRes.data ?? []).map((r) => ({ ...r, publication: Array.isArray(r.publication) ? r.publication[0] : r.publication })) as RecentReport[]));
@@ -259,6 +264,7 @@ export function AdminPage() {
     { id: 'metrics', label: 'Métricas', icon: <TrendingUp className="size-5" /> },
     { id: 'audit', label: 'Auditoría', icon: <History className="size-5" /> },
     { id: 'reports', label: 'Reportes', icon: <Shield className="size-5" /> },
+    { id: 'verifications', label: 'Verificaciones', icon: <BadgeCheck className="size-5" /> },
     { id: 'chat-reports', label: 'Mensajes reportados', icon: <Flag className="size-5" /> },
     { id: 'duplicates', label: 'Duplicados', icon: <Copy className="size-5" /> },
     { id: 'moderation', label: 'Moderación IA', icon: <AlertTriangle className="size-5" /> },
@@ -308,6 +314,11 @@ export function AdminPage() {
             ].join(' ')}
           >
             {tab.icon} {tab.label}
+            {tab.id === 'verifications' && (counts?.pendingVerifications ?? 0) > 0 ? (
+              <span className="rounded-pill bg-orange px-2 py-0.5 text-xs font-extrabold text-[var(--color-orange-900)]">
+                {counts?.pendingVerifications}
+              </span>
+            ) : null}
           </button>
         ))}
       </nav>
@@ -403,6 +414,17 @@ export function AdminPage() {
             <p className="text-sm font-medium text-foreground/70 mt-2">Publicaciones eliminadas</p>
           </div>
 
+          <div className="group rounded-2xl border-2 border-turquoise/20 bg-turquoise/5 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="size-12 rounded-xl bg-turquoise/10 flex items-center justify-center">
+                <BadgeCheck className="size-6 text-turquoise" />
+              </div>
+              <p className="text-xs font-bold uppercase tracking-wider text-foreground/60">Verificaciones</p>
+            </div>
+            <p className="font-display text-4xl font-extrabold text-foreground">{counts.pendingVerifications}</p>
+            <p className="text-sm font-medium text-foreground/70 mt-2">Pendientes de revisión</p>
+          </div>
+
           <div className="group rounded-2xl border-2 border-border bg-secondary/50 p-6 transition-all hover:shadow-lg hover:-translate-y-1">
             <div className="flex items-center gap-3 mb-3">
               <div className="size-12 rounded-xl bg-secondary flex items-center justify-center">
@@ -415,6 +437,8 @@ export function AdminPage() {
           </div>
         </div>
       )}
+
+      {activeTab === 'verifications' && <VerificationQueue />}
 
       {activeTab === 'reports' && (
         <div className="rounded-3xl border-2 border-foreground/10 bg-surface p-8 shadow-md space-y-6">

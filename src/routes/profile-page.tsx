@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, PawPrint, MapPin, CheckCircle, Eye, Calendar } from 'lucide-react';
+import { User, PawPrint, MapPin, CheckCircle, Eye, Calendar, HandHeart } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { PublicationCard } from '../components/publications/publication-card';
 import { CatLoader } from '../components/ui/cat-loader';
 import { EmptyState } from '../components/ui/empty-state';
+import { VerifiedBadge } from '../components/ui/verified-badge';
 import { supabase } from '../lib/supabase/client';
 import type { PublicationSummary } from '../lib/supabase/publication-search';
+import {
+  getApprovedVerification,
+  getProfileReputation,
+  type ProfileReputation,
+  type ProfileVerification,
+} from '../lib/supabase/trust';
 import { setPageMeta } from '../lib/seo/page-meta';
 
 type ProfileRow = {
@@ -22,6 +29,11 @@ export function ProfilePage() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [publications, setPublications] = useState<PublicationSummary[]>([]);
   const [stats, setStats] = useState({ total: 0, active: 0, resolved: 0 });
+  const [verification, setVerification] = useState<ProfileVerification | null>(null);
+  const [reputation, setReputation] = useState<ProfileReputation>({
+    reunionsConfirmed: 0,
+    rescuesConfirmed: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +71,21 @@ export function ProfilePage() {
 
         if (active) {
           setProfile(profileRow);
+        }
+
+        // La verificación y la reputación no deben tumbar el perfil si fallan.
+        try {
+          const [verificationResult, reputationResult] = await Promise.all([
+            getApprovedVerification(profileRow.id),
+            getProfileReputation(profileRow.id),
+          ]);
+
+          if (active) {
+            setVerification(verificationResult);
+            setReputation(reputationResult);
+          }
+        } catch (trustError) {
+          console.warn('No se pudo cargar la confianza del perfil:', trustError);
         }
 
         // Publicaciones públicas del usuario (excluye DELETED/HIDDEN). Las
@@ -224,7 +251,10 @@ export function ProfilePage() {
               <User className="size-5 text-foreground/60" />
               <span className="text-xs font-bold uppercase tracking-wider text-foreground/60">Perfil público</span>
             </div>
-            <h1 className="font-display text-4xl font-extrabold text-foreground mb-2">@{profile.username}</h1>
+            <div className="mb-2 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+              <h1 className="font-display text-4xl font-extrabold text-foreground">@{profile.username}</h1>
+              {verification ? <VerifiedBadge kind={verification.kind} /> : null}
+            </div>
             {profile.full_name && <p className="font-semibold text-foreground">{profile.full_name}</p>}
             <p className="text-sm text-foreground/60 flex items-center gap-1 justify-center md:justify-start mt-1">
               <Calendar className="size-4" />
@@ -255,6 +285,25 @@ export function ProfilePage() {
           <p className="text-sm font-medium text-foreground/70">Resueltos</p>
         </div>
       </div>
+
+      {reputation.reunionsConfirmed > 0 || reputation.rescuesConfirmed > 0 ? (
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="group rounded-2xl border-2 border-found/20 bg-found/5 p-6 text-center transition-all hover:shadow-lg hover:-translate-y-1">
+            <HandHeart className="size-8 text-found mx-auto mb-2" />
+            <p className="font-display text-3xl font-extrabold text-foreground">
+              {reputation.reunionsConfirmed}
+            </p>
+            <p className="text-sm font-medium text-foreground/70">Reencuentros confirmados</p>
+          </div>
+          <div className="group rounded-2xl border-2 border-turquoise/20 bg-turquoise/5 p-6 text-center transition-all hover:shadow-lg hover:-translate-y-1">
+            <CheckCircle className="size-8 text-turquoise mx-auto mb-2" />
+            <p className="font-display text-3xl font-extrabold text-foreground">
+              {reputation.rescuesConfirmed}
+            </p>
+            <p className="text-sm font-medium text-foreground/70">Mascotas encontradas</p>
+          </div>
+        </div>
+      ) : null}
 
       {/* Publicaciones */}
       {publications.length === 0 ? (
