@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Search, MapPin, LogOut, User, MessageCircle, type LucideIcon } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Bell, LogOut, User, type LucideIcon } from 'lucide-react';
 import { signOut } from '../../lib/supabase/auth';
 import { useAuth } from '../../app/auth-context';
 import { useNotificationCount } from '../../lib/hooks/use-notification-count';
@@ -8,6 +8,7 @@ import { useChatUnreadCount } from '../../lib/hooks/use-chat-unread-count';
 import { getOAuthAvatarUrl, getProfileAvatarUrl, AVATAR_UPDATED_EVENT } from '../../lib/supabase/profiles';
 import { Logo } from '../Logo';
 import { ThemeSwitch } from '../ui/theme-switch';
+import { NavMenu } from './nav-menu';
 
 interface DevTeamMember {
   name: string;
@@ -48,46 +49,6 @@ function WhatsAppMark({ className }: { className?: string }) {
 type SiteShellProps = {
   children: React.ReactNode;
 };
-function NavItem({
-  href,
-  label,
-  Icon,
-  badge,
-  badgeLabel = 'elementos sin leer',
-}: {
-  href: string;
-  label: string;
-  Icon: LucideIcon;
-  badge?: number;
-  badgeLabel?: string;
-}) {
-  return (
-    <NavLink
-      to={href}
-      className={({ isActive }) => [
-        'relative flex items-center gap-2 rounded-[14px] border-2 px-3.5 py-2 text-sm font-semibold transition-all duration-base',
-        isActive
-          ? 'border-foreground bg-highlight text-foreground'
-          : 'border-transparent text-[hsl(var(--muted-foreground))] hover:bg-highlight hover:text-foreground',
-      ].join(' ')}
-    >
-      {({ isActive: _isActive }) => (
-        <>
-          <Icon className="size-5" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" />
-          {label}
-          {(badge ?? 0) > 0 && (
-            <span 
-              className="absolute -right-1 -top-1 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-foreground bg-found px-1 text-[11px] font-bold leading-none text-primary-foreground"
-              aria-label={`${badge} ${badgeLabel}`}
-            >
-              {(badge ?? 0) > 9 ? '9+' : badge}
-            </span>
-          )}
-        </>
-      )}
-    </NavLink>
-  );
-}
 
 /**
  * Acceso compacto a mensajes para móvil. La cabecera es el sitio acordado
@@ -205,29 +166,13 @@ export function SiteShell({ children }: SiteShellProps) {
                 patitas
               </span>
             </Link>
-            {/* Desktop Navigation Links */}
+            {/* Navegación de escritorio agrupada en un desplegable */}
             <div className="hidden gap-2 lg:flex">
-              <NavItem href="/buscar" label="Buscar" Icon={Search} />
-              <NavItem href="/mapa" label="Mapa" Icon={MapPin} />
-              
-              {user && (
-                <>
-                  <NavItem
-                    href="/mensajes"
-                    label="Mensajes"
-                    Icon={MessageCircle}
-                    badge={unreadChatCount}
-                    badgeLabel="mensajes sin leer"
-                  />
-                  <NavItem
-                    href="/notificaciones"
-                    label="Notificaciones"
-                    Icon={Bell}
-                    badge={unreadCount}
-                    badgeLabel="notificaciones no leídas"
-                  />
-                </>
-              )}
+              <NavMenu
+                isLoggedIn={Boolean(user)}
+                unreadMessages={unreadChatCount}
+                unreadNotifications={unreadCount}
+              />
             </div>
             
             {/* Theme Switch - Desktop */}
