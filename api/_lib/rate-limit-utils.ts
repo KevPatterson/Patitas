@@ -1,5 +1,5 @@
-import type { VercelResponse } from '../types/vercel.js';
-import type { VercelRequest } from '../types/vercel.js';
+import type { VercelResponse } from '../_types/vercel.js';
+import type { VercelRequest } from '../_types/vercel.js';
 import { consumeRateLimit, rateLimitHeaders, type RateLimitResult } from './rate-limit.js';
 import { fail, getClientIp } from './http.js';
 

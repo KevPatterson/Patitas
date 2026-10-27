@@ -1,5 +1,5 @@
 import type { ZodType } from 'zod';
-import type { VercelRequest, VercelResponse } from '../types/vercel.js';
+import type { VercelRequest, VercelResponse } from '../_types/vercel.js';
 import { IS_PRODUCTION } from './env.js';
 
 /**

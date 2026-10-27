@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/triple-slash-reference -- los stubs de las
  * dependencias opcionales de IA deben cargarse también cuando Vercel compila este
  * archivo suelto, sin el tsconfig del proyecto. */
-/// <reference path="../types/ai-dependencies.d.ts" />
+/// <reference path="../_types/ai-dependencies.d.ts" />
 /**
  * Capa de abstracción para proveedores de IA
  * Permite cambiar de proveedor sin modificar toda la aplicación
@@ -34,7 +34,7 @@ export type VisionResult = {
  * Tipos locales para los SDK opcionales.
  *
  * `tesseract.js` no está instalado y `@google-cloud/vision` se declara de forma
- * laxa en `api/types/ai-dependencies.d.ts` (solo se usan cuatro métodos y sus
+ * laxa en `api/_types/ai-dependencies.d.ts` (solo se usan cuatro métodos y sus
  * tipos de protobuf chocan con estas formas mínimas). En ambos casos los
  * retornos llegan como `any` y los callbacks de `.map()` serían `implicit any`
  * con `strict`. Estas formas mínimas documentan lo que realmente consumimos.

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { VercelRequest, VercelResponse } from '../../../types/vercel.js';
+import type { VercelRequest, VercelResponse } from '../../../_types/vercel.js';
 import { supabaseAdmin } from '../../supabase-admin.js';
 import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../../http.js';
 import { limitAiByUser, limitByIp } from '../../rate-limit-utils.js';

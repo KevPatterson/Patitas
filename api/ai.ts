@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from './types/vercel.js';
+import type { VercelRequest, VercelResponse } from './_types/vercel.js';
 import { rejectMethod } from './_lib/http.js';
 import { AI_ENABLED, providerAvailable } from './_lib/env.js';
 import { handleCalculateMatches } from './_lib/ai/handlers/calculate-matches.js';

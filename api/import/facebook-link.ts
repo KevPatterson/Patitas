@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '../types/vercel.js';
+import type { VercelRequest, VercelResponse } from '../_types/vercel.js';
 import { supabaseAdmin } from '../_lib/supabase-admin.js';
 import { fail, internalError, json, parseBody, requireAuth, rejectMethod } from '../_lib/http.js';
 import { limitByIp, limitByUser } from '../_lib/rate-limit-utils.js';

@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from './types/vercel.js';
+import type { VercelRequest, VercelResponse } from './_types/vercel.js';
 import { AI_ENABLED, AI_PROVIDER, IS_PRODUCTION, providerAvailable } from './_lib/env.js';
 
 /**

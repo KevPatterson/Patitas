@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from './types/vercel.js';
+import type { VercelRequest, VercelResponse } from './_types/vercel.js';
 import { getSupabasePublic } from './_lib/supabase-public.js';
 
 /**
