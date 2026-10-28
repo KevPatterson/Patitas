@@ -51,7 +51,8 @@ function StoryCard({ story }: { story: PublicationSummary }) {
         isAdopted ? 'border-purple/20 hover:border-purple/40' : 'border-found/20 hover:border-found/40'
       }`}
     >
-      <div className="relative aspect-4/3 overflow-hidden bg-linear-to-br from-found/10 to-orange/10">
+      {/* Altura responsive: la foto crece con la pantalla sin dominar la tarjeta */}
+      <div className="relative h-36 overflow-hidden bg-linear-to-br from-found/10 to-orange/10 sm:h-40 lg:h-44 xl:h-48">
         {story.coverImageUrl ? (
           <img
             src={story.coverImageUrl}

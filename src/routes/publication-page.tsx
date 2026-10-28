@@ -383,10 +383,10 @@ export function PublicationPage() {
                   <img
                     src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/pet-images/${coverImage.storage_path}`}
                     alt={coverImage.alt_text ?? publication.title}
-                    className="h-96 w-full object-cover"
+                    className="h-60 w-full object-cover sm:h-72 lg:h-80"
                   />
                 ) : (
-                  <div className="flex h-96 items-center justify-center bg-foreground/5" aria-hidden="true">
+                  <div className="flex h-60 items-center justify-center bg-foreground/5 sm:h-72 lg:h-80" aria-hidden="true">
                     <Logo variant="mark" size={80} className="opacity-50" />
                   </div>
                 )}
